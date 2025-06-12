@@ -9,11 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@prisma/client": "^6.9.0",
     "aos": "^2.3.4",
     "framer-motion": "^12.11.3",
     "lucide-react": "^0.510.0",
+    "mysql2": "^3.14.1",
     "next": "15.3.2",
     "phosphor-react": "^1.4.1",
+    "prisma": "^6.9.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

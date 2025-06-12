@@ -5,8 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import { usePathname } from 'next/navigation';
 
 const SignupPage = () => {
+  const pathname = usePathname();
+
   useEffect(() => {
     AOS.init({
       duration: 800,
@@ -16,7 +19,7 @@ const SignupPage = () => {
 
   return (
     <div className="font-sans text-gray-900 overflow-x-hidden">
-      {/* Navbar - duplicated from Home */}
+      {/* Navbar */}
       <header className="fixed w-full z-50 bg-white/90 backdrop-blur-sm shadow-sm transition-all duration-300">
         <div className="container mx-auto flex justify-between items-center py-4 px-6">
           <div className="flex items-center gap-2">
@@ -34,12 +37,23 @@ const SignupPage = () => {
             <Link href="/contact" className="text-gray-600 hover:text-blue-600 transition duration-300">Contact</Link>
           </nav>
           <div className="flex gap-4">
-            <Link href="/login" className="text-blue-600 font-medium hover:text-blue-800 transition duration-300">
+            <Link
+              href="/login"
+              className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
+                pathname === '/login'
+                  ? 'bg-blue-700 text-white shadow-md scale-105'
+                  : 'text-blue-600 hover:text-blue-800'
+              }`}
+            >
               Log In
             </Link>
             <Link
               href="/signup"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition duration-300"
+              className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
+                pathname === '/signup'
+                  ? 'bg-blue-700 text-white shadow-md scale-105'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
               Sign Up
             </Link>
