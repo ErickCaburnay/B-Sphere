@@ -88,7 +88,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Main Content */}
       <main
-        className={`pt-[96px] px-4 md:px-8 transition-all duration-300 bg-gradient-to-b from-green-300 to-white ${
+        className={`pt-[96px] px-4 md:px-8 transition-all duration-300 ${
           sidebarOpen ? "ml-64" : "md:ml-64"
         }`}
       >

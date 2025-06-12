@@ -1,0 +1,42 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // You can remove or comment out the 'output' line to use the default client location
+  // output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Official {
+  residentId   String   @id @unique
+  resident     Resident @relation(fields: [residentId], references: [id])
+  position     String
+  termStart    DateTime
+  termEnd      DateTime
+  chairmanship String
+  status       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Resident {
+  id          String    @id @unique
+  firstName   String
+  middleName  String?
+  lastName    String
+  birthdate   DateTime
+  civilStatus String
+  gender      String
+  voterStatus String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  official    Official?
+} 
