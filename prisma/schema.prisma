@@ -28,15 +28,90 @@ model Official {
 }
 
 model Resident {
-  id          String    @id @unique
-  firstName   String
-  middleName  String?
-  lastName    String
-  birthdate   DateTime
-  civilStatus String
-  gender      String
-  voterStatus String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  official    Official?
+  id                  String    @id @unique
+  firstName           String
+  middleName          String?
+  lastName            String
+  suffix              String?
+  address             String
+  birthdate           DateTime
+  birthplace          String
+  citizenship         String
+  gender              String
+  voterStatus         String
+  maritalStatus       String
+  employmentStatus    String?
+  educationalAttainment String?
+  occupation          String?
+  contactNumber       String?
+  email               String?
+  isTUPAD             Boolean   @default(false)
+  isPWD               Boolean   @default(false)
+  is4Ps               Boolean   @default(false)
+  isSoloParent        Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  official            Official?
+  household           Household? @relation("HouseholdHead")
+  households          Household[] @relation("HouseholdMembers")
+  logs                Log[]
+}
+
+model Household {
+  id            String    @id @unique
+  headId        String    @unique
+  head          Resident  @relation("HouseholdHead", fields: [headId], references: [id])
+  totalMembers  Int       @default(1)
+  address       String
+  contactNumber String
+  members       Resident[] @relation("HouseholdMembers")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Log {
+  id         String   @id @default(uuid())
+  residentId String
+  resident   Resident @relation(fields: [residentId], references: [id])
+  action     String
+  role       String
+  timestamp  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Complaint {
+  id             String    @id @default(uuid()) // Complaint ID
+  type           String
+  respondent     String    // Consider linking to Resident or Household later
+  complainant    String    // Consider linking to Resident or Household later
+  dateFiled      DateTime  @default(now())
+  assignedOfficer String   // Consider linking to Official later
+  status         String
+  resolutionDate DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Request {
+  id             String    @id @default(uuid()) // Transaction No
+  dateFiled      DateTime  @default(now())
+  applicantName  String    // Consider linking to Resident later
+  purpose        String
+  type           String
+  status         String
+  dateIssued     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Report {
+  id         String    @id @default(uuid())
+  reportType String    // e.g., "Weekly", "Monthly", "Semestral", "Quarterly"
+  startDate  DateTime
+  endDate    DateTime
+  summary    String?   // A brief summary of the report
+  filePath   String?   // Optional: path to a generated report file (e.g., PDF)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 } 

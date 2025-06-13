@@ -76,9 +76,9 @@ export default function DashboardLayout({ children }) {
           <SidebarLink icon={<LayoutDashboard size={20} />} label="Dashboard" href="/dashboard" />
           <SidebarLink icon={<User size={20} />} label="Officials" href="/dashboard/officials" />
           <SidebarLink icon={<Users size={20} />} label="Resident Records" href="/dashboard/residents" />
-          <SidebarLink icon={<Home size={20} />} label="Households" href="/dashboard/households" />
-          <SidebarLink icon={<Settings size={20} />} label="Module 5" href="#" />
-          <SidebarLink icon={<FileText size={20} />} label="Module 6" href="#" />
+          <SidebarLink icon={<Home size={20} />} label="Households" href="/dashboard/household" />
+          <SidebarLink icon={<Settings size={20} />} label="Services" href="/dashboard/services" />
+          <SidebarLink icon={<FileText size={20} />} label="Reports" href="/dashboard/reports" />
           <SidebarLink icon={<Folder size={20} />} label="Module 7" href="#" />
           <SidebarLink icon={<Archive size={20} />} label="Module 8" href="#" />
           <SidebarLink icon={<ClipboardList size={20} />} label="Module 9" href="#" />

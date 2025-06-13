@@ -152,6 +152,40 @@ export async function PUT(request) {
       );
     }
 
+    // Check for unique positions (similar to POST)
+    const uniquePositions = [
+      "Barangay Captain",
+      "Barangay Treasurer",
+      "Barangay Secretary",
+      "SK Chairperson"
+    ];
+
+    if (uniquePositions.includes(position)) {
+      const existingPositionHolder = await prisma.official.findFirst({
+        where: {
+          position: position,
+          status: "Active",
+          // Exclude the current official being updated
+          residentId: {
+            not: residentId
+          }
+        },
+        include: {
+          resident: true
+        }
+      });
+
+      if (existingPositionHolder) {
+        return NextResponse.json(
+          { 
+            error: "Position already taken",
+            message: `The position of ${position} is currently held by ${existingPositionHolder.resident.firstName} ${existingPositionHolder.resident.lastName}. Please remove the current official from this position first.`
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const updatedOfficial = await prisma.official.update({
       where: { residentId: residentId },
       data: {

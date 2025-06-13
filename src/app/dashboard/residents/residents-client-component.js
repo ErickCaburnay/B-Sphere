@@ -115,22 +115,61 @@ export function ResidentsClientComponent({ initialResidents }) {
   const [selectedResident, setSelectedResident] = useState(null);
   const [residentToDelete, setResidentToDelete] = useState(null);
   const [newResident, setNewResident] = useState({
-    firstName: '', middleName: '', lastName: '',
-    birthdate: '', civilStatus: '', gender: '', voterStatus: ''
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    suffix: '',
+    address: '',
+    birthdate: '',
+    birthplace: '',
+    citizenship: '',
+    gender: '',
+    voterStatus: '',
+    maritalStatus: '',
+    employmentStatus: '',
+    educationalAttainment: '',
+    occupation: '',
+    contactNumber: '',
+    email: '',
+    isTUPAD: false,
+    isPWD: false,
+    is4Ps: false,
+    isSoloParent: false
   });
 
   const handleAddResidentChange = (e) => {
-    const { name, value } = e.target;
-    console.log(`[Add Resident] Input changed: ${name}, Value: ${value}`);
-    const newValue = (name === 'firstName' || name === 'middleName' || name === 'lastName') ? value.toUpperCase() : value;
-    console.log(`[Add Resident] New value after capitalization: ${newValue}`);
-    setNewResident(prev => {
-      const updatedResident = {
-        ...prev,
-        [name]: newValue
-      };
-      console.log("[Add Resident] Updated newResident state:", updatedResident);
-      return updatedResident;
+    const { name, value, type, checked } = e.target;
+    
+    // Force uppercase for text inputs except email
+    if (type === 'text' && name !== 'email') {
+      setNewResident({ ...newResident, [name]: value.toUpperCase() });
+    } else {
+      setNewResident({ ...newResident, [name]: value });
+    }
+  };
+
+  const handleClearForm = () => {
+    setNewResident({
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      suffix: '',
+      address: '',
+      birthdate: '',
+      birthplace: '',
+      citizenship: '',
+      gender: '',
+      voterStatus: '',
+      maritalStatus: '',
+      employmentStatus: '',
+      educationalAttainment: '',
+      occupation: '',
+      contactNumber: '',
+      email: '',
+      isTUPAD: false,
+      isPWD: false,
+      is4Ps: false,
+      isSoloParent: false
     });
   };
 
@@ -160,7 +199,28 @@ export function ResidentsClientComponent({ initialResidents }) {
       if (res.ok) {
         console.log('Resident added successfully!');
         setIsAddModalOpen(false);
-        setNewResident({ firstName: '', middleName: '', lastName: '', birthdate: '', civilStatus: '', gender: '', voterStatus: '' });
+        setNewResident({
+          firstName: '',
+          middleName: '',
+          lastName: '',
+          suffix: '',
+          address: '',
+          birthdate: '',
+          birthplace: '',
+          citizenship: '',
+          gender: '',
+          voterStatus: '',
+          maritalStatus: '',
+          employmentStatus: '',
+          educationalAttainment: '',
+          occupation: '',
+          contactNumber: '',
+          email: '',
+          isTUPAD: false,
+          isPWD: false,
+          is4Ps: false,
+          isSoloParent: false
+        });
         refreshResidents();
       } else {
         const errorData = await res.json();
@@ -322,7 +382,7 @@ export function ResidentsClientComponent({ initialResidents }) {
               <th className="p-4 text-left font-semibold">Unique ID</th>
               <th className="p-4 text-left font-semibold">Full Name</th>
               <th className="p-4 text-left font-semibold">Age</th>
-              <th className="p-4 text-left font-semibold">Civil Status</th>
+              <th className="p-4 text-left font-semibold">Marital Status</th>
               <th className="p-4 text-left font-semibold">Gender</th>
               <th className="p-4 text-left font-semibold">Voter Status</th>
               <th className="p-4 text-left font-semibold">Action</th>
@@ -338,7 +398,7 @@ export function ResidentsClientComponent({ initialResidents }) {
                 <td className="p-4">{resident.id}</td>
                 <td className="p-4">{`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`}</td>
                 <td className="p-4">{calculateAge(resident.birthdate)}</td>
-                <td className="p-4">{resident.civilStatus}</td>
+                <td className="p-4">{resident.maritalStatus}</td>
                 <td className="p-4">{resident.gender}</td>
                 <td className="p-4">{resident.voterStatus}</td>
                 <td className="p-4">
@@ -449,84 +509,288 @@ export function ResidentsClientComponent({ initialResidents }) {
 
       {/* Add Resident Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h3 className="text-xl font-bold mb-6 text-center">Add New Resident</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl overflow-y-auto relative">
+            <button
+              onClick={() => setIsAddModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-2xl font-bold mb-6">Add New Resident</h2>
             <form onSubmit={handleAddResidentSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">First Name</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  placeholder="First Name"
-                  value={newResident.firstName}
-                  onChange={handleAddResidentChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Required Fields */}
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">First Name *</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    placeholder="First Name"
+                    value={newResident.firstName}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">Middle Name</label>
+                  <input
+                    type="text"
+                    name="middleName"
+                    placeholder="Middle Name"
+                    value={newResident.middleName}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">Last Name *</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    placeholder="Last Name"
+                    value={newResident.lastName}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="suffix" className="block text-sm font-medium text-gray-700">Suffix</label>
+                  <input
+                    type="text"
+                    name="suffix"
+                    placeholder="e.g., Jr., Sr., III"
+                    value={newResident.suffix}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address *</label>
+                  <input
+                    type="text"
+                    name="address"
+                    placeholder="Complete Address"
+                    value={newResident.address}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="birthdate" className="block text-sm font-medium text-gray-700">Birthdate *</label>
+                  <input
+                    type="date"
+                    name="birthdate"
+                    value={newResident.birthdate}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="birthplace" className="block text-sm font-medium text-gray-700">Birthplace *</label>
+                  <input
+                    type="text"
+                    name="birthplace"
+                    placeholder="Place of Birth"
+                    value={newResident.birthplace}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="citizenship" className="block text-sm font-medium text-gray-700">Citizenship *</label>
+                  <input
+                    type="text"
+                    name="citizenship"
+                    placeholder="Citizenship"
+                    value={newResident.citizenship}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="gender" className="block text-sm font-medium text-gray-700">Gender *</label>
+                  <select
+                    name="gender"
+                    value={newResident.gender}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="voterStatus" className="block text-sm font-medium text-gray-700">Voter Status *</label>
+                  <select
+                    name="voterStatus"
+                    value={newResident.voterStatus}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  >
+                    <option value="">Select Voter Status</option>
+                    <option value="Registered">Registered</option>
+                    <option value="Not Registered">Not Registered</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="maritalStatus" className="block text-sm font-medium text-gray-700">Marital Status *</label>
+                  <select
+                    name="maritalStatus"
+                    value={newResident.maritalStatus}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  >
+                    <option value="">Select Marital Status</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Separated">Separated</option>
+                  </select>
+                </div>
+
+                {/* Optional Fields */}
+                <div>
+                  <label htmlFor="employmentStatus" className="block text-sm font-medium text-gray-700">Employment Status</label>
+                  <select
+                    name="employmentStatus"
+                    value={newResident.employmentStatus}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="">Select Employment Status</option>
+                    <option value="Employed">Employed</option>
+                    <option value="Unemployed">Unemployed</option>
+                    <option value="Self-employed">Self-employed</option>
+                    <option value="Student">Student</option>
+                    <option value="Retired">Retired</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="educationalAttainment" className="block text-sm font-medium text-gray-700">Educational Attainment</label>
+                  <select
+                    name="educationalAttainment"
+                    value={newResident.educationalAttainment}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="">Select Educational Attainment</option>
+                    <option value="No Formal Education">No Formal Education</option>
+                    <option value="Elementary">Elementary</option>
+                    <option value="High School">High School</option>
+                    <option value="Vocational">Vocational</option>
+                    <option value="College">College</option>
+                    <option value="Post Graduate">Post Graduate</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="occupation" className="block text-sm font-medium text-gray-700">Occupation</label>
+                  <input
+                    type="text"
+                    name="occupation"
+                    placeholder="Occupation"
+                    value={newResident.occupation}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contactNumber" className="block text-sm font-medium text-gray-700">Contact Number</label>
+                  <input
+                    type="tel"
+                    name="contactNumber"
+                    placeholder="Contact Number"
+                    value={newResident.contactNumber}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email Address"
+                    value={newResident.email}
+                    onChange={handleAddResidentChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                {/* Special Programs */}
+                <div className="md:col-span-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isTUPAD"
+                        checked={newResident.isTUPAD}
+                        onChange={(e) => setNewResident(prev => ({ ...prev, isTUPAD: e.target.checked }))}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="isTUPAD" className="ml-2 block text-sm text-gray-700">TUPAD</label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isPWD"
+                        checked={newResident.isPWD}
+                        onChange={(e) => setNewResident(prev => ({ ...prev, isPWD: e.target.checked }))}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="isPWD" className="ml-2 block text-sm text-gray-700">PWD</label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="is4Ps"
+                        checked={newResident.is4Ps}
+                        onChange={(e) => setNewResident(prev => ({ ...prev, is4Ps: e.target.checked }))}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="is4Ps" className="ml-2 block text-sm text-gray-700">4Ps</label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isSoloParent"
+                        checked={newResident.isSoloParent}
+                        onChange={(e) => setNewResident(prev => ({ ...prev, isSoloParent: e.target.checked }))}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="isSoloParent" className="ml-2 block text-sm text-gray-700">Solo Parent</label>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">Middle Name</label>
-                <input
-                  type="text"
-                  name="middleName"
-                  placeholder="Middle Name"
-                  value={newResident.middleName}
-                  onChange={handleAddResidentChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
-                />
-              </div>
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">Last Name</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  placeholder="Last Name"
-                  value={newResident.lastName}
-                  onChange={handleAddResidentChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="birthdate" className="block text-sm font-medium text-gray-700">Birthdate</label>
-                <input type="date" id="birthdate" name="birthdate" value={newResident.birthdate} onChange={handleAddResidentChange} required
-                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500" />
-              </div>
-              <div>
-                <label htmlFor="civilStatus" className="block text-sm font-medium text-gray-700">Civil Status</label>
-                <select id="civilStatus" name="civilStatus" value={newResident.civilStatus} onChange={handleAddResidentChange} required
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 bg-white">
-                  <option value="">Select Civil Status</option>
-                  <option value="Single">Single</option>
-                  <option value="Married">Married</option>
-                  <option value="Widowed">Widowed</option>
-                  <option value="Divorced">Divorced</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="gender" className="block text-sm font-medium text-gray-700">Gender</label>
-                <select id="gender" name="gender" value={newResident.gender} onChange={handleAddResidentChange} required
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 bg-white">
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="voterStatus" className="block text-sm font-medium text-gray-700">Voter Status</label>
-                <select id="voterStatus" name="voterStatus" value={newResident.voterStatus} onChange={handleAddResidentChange} required
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 bg-white">
-                  <option value="">Select Voter Status</option>
-                  <option value="Registered">Registered</option>
-                  <option value="Not Registered">Not Registered</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsAddModalOpen(false)}
-                        className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300">Cancel</button>
-                <button type="submit"
-                        className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">Add Resident</button>
+
+              <div className="flex justify-end space-x-4 mt-6">
+                <button
+                  type="button"
+                  onClick={handleClearForm}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Clear Form
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Add Resident
+                </button>
               </div>
             </form>
           </div>
@@ -580,10 +844,10 @@ export function ResidentsClientComponent({ initialResidents }) {
                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500" />
               </div>
               <div>
-                <label htmlFor="civilStatus" className="block text-sm font-medium text-gray-700">Civil Status</label>
-                <select id="civilStatus" name="civilStatus" value={selectedResident.civilStatus} onChange={handleUpdateResidentChange} required
+                <label htmlFor="maritalStatus" className="block text-sm font-medium text-gray-700">Marital Status</label>
+                <select id="maritalStatus" name="maritalStatus" value={selectedResident.maritalStatus} onChange={handleUpdateResidentChange} required
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 bg-white">
-                  <option value="">Select Civil Status</option>
+                  <option value="">Select Marital Status</option>
                   <option value="Single">Single</option>
                   <option value="Married">Married</option>
                   <option value="Widowed">Widowed</option>
@@ -651,9 +915,9 @@ export function ResidentsClientComponent({ initialResidents }) {
       {/* View Resident Details Modal */}
       {isViewModalOpen && selectedResidentForView && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Resident Details</h3>
+              <h3 className="text-2xl font-bold">Resident Information</h3>
               <button
                 onClick={() => setIsViewModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -663,51 +927,128 @@ export function ResidentsClientComponent({ initialResidents }) {
                 </svg>
               </button>
             </div>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Unique ID</p>
-                  <p className="mt-1">{selectedResidentForView.id}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Full Name</p>
-                  <p className="mt-1">{`${selectedResidentForView.firstName} ${selectedResidentForView.middleName ? selectedResidentForView.middleName + ' ' : ''}${selectedResidentForView.lastName}`}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Age</p>
-                  <p className="mt-1">{calculateAge(selectedResidentForView.birthdate)} years old</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Birthdate</p>
-                  <p className="mt-1">{new Date(selectedResidentForView.birthdate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Civil Status</p>
-                  <p className="mt-1">{selectedResidentForView.civilStatus}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Gender</p>
-                  <p className="mt-1">{selectedResidentForView.gender}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Voter Status</p>
-                  <p className="mt-1">{selectedResidentForView.voterStatus}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Date Added</p>
-                  <p className="mt-1">{new Date(selectedResidentForView.createdAt).toLocaleDateString()}</p>
+
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-4 text-gray-800">Basic Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Unique ID</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Full Name</p>
+                    <p className="mt-1 text-gray-900">
+                      {`${selectedResidentForView.firstName} ${selectedResidentForView.middleName ? selectedResidentForView.middleName + ' ' : ''}${selectedResidentForView.lastName}${selectedResidentForView.suffix ? ' ' + selectedResidentForView.suffix : ''}`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Age</p>
+                    <p className="mt-1 text-gray-900">{calculateAge(selectedResidentForView.birthdate)} years old</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Birthdate</p>
+                    <p className="mt-1 text-gray-900">{new Date(selectedResidentForView.birthdate).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Birthplace</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.birthplace}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Citizenship</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.citizenship}</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setIsViewModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
-              >
-                Close
-              </button>
+              {/* Personal Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-4 text-gray-800">Personal Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Gender</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.gender}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Marital Status</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.maritalStatus}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Voter Status</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.voterStatus}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Address</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.address}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-4 text-gray-800">Additional Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Employment Status</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.employmentStatus || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Educational Attainment</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.educationalAttainment || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Occupation</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.occupation || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Contact Number</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.contactNumber || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Email</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.email || 'Not specified'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Special Programs */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-4 text-gray-800">Special Programs</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="flex items-center">
+                    <div className={`w-3 h-3 rounded-full mr-2 ${selectedResidentForView.isTUPAD ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-gray-900">TUPAD</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className={`w-3 h-3 rounded-full mr-2 ${selectedResidentForView.isPWD ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-gray-900">PWD</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className={`w-3 h-3 rounded-full mr-2 ${selectedResidentForView.is4Ps ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-gray-900">4Ps</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className={`w-3 h-3 rounded-full mr-2 ${selectedResidentForView.isSoloParent ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-gray-900">Solo Parent</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Record Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-4 text-gray-800">Record Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Date Added</p>
+                    <p className="mt-1 text-gray-900">{new Date(selectedResidentForView.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Last Updated</p>
+                    <p className="mt-1 text-gray-900">{new Date(selectedResidentForView.updatedAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

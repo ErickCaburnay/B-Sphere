@@ -17,10 +17,31 @@ export async function GET() {
 // POST /api/residents - Create a new resident
 export async function POST(request) {
   try {
-    const { firstName, middleName, lastName, birthdate, civilStatus, gender, voterStatus } = await request.json();
+    const { 
+      firstName, 
+      middleName, 
+      lastName, 
+      suffix,
+      address,
+      birthdate, 
+      birthplace,
+      citizenship,
+      maritalStatus, 
+      gender, 
+      voterStatus,
+      employmentStatus,
+      educationalAttainment,
+      occupation,
+      contactNumber,
+      email,
+      isTUPAD,
+      isPWD,
+      is4Ps,
+      isSoloParent
+    } = await request.json();
 
     // Basic validation
-    if (!firstName || !lastName || !birthdate || !civilStatus || !gender || !voterStatus) {
+    if (!firstName || !lastName || !birthdate || !maritalStatus || !gender || !voterStatus || !address || !birthplace || !citizenship) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -42,12 +63,25 @@ export async function POST(request) {
       data: {
         id: newId,
         firstName,
-        middleName: middleName || null, // Allow null for optional middleName
+        middleName: middleName || null,
         lastName,
-        birthdate: new Date(birthdate), // Convert string to Date object
-        civilStatus,
+        suffix: suffix || null,
+        address,
+        birthdate: new Date(birthdate),
+        birthplace,
+        citizenship,
+        maritalStatus,
         gender,
         voterStatus,
+        employmentStatus: employmentStatus || null,
+        educationalAttainment: educationalAttainment || null,
+        occupation: occupation || null,
+        contactNumber: contactNumber || null,
+        email: email || null,
+        isTUPAD: isTUPAD || false,
+        isPWD: isPWD || false,
+        is4Ps: is4Ps || false,
+        isSoloParent: isSoloParent || false
       },
     });
     return NextResponse.json(newResident, { status: 201 });
@@ -64,10 +98,32 @@ export async function POST(request) {
 // PUT /api/residents - Update a resident
 export async function PUT(request) {
   try {
-    const { id, firstName, middleName, lastName, birthdate, civilStatus, gender, voterStatus } = await request.json();
+    const { 
+      id, 
+      firstName, 
+      middleName, 
+      lastName, 
+      suffix,
+      address,
+      birthdate, 
+      birthplace,
+      citizenship,
+      maritalStatus, 
+      gender, 
+      voterStatus,
+      employmentStatus,
+      educationalAttainment,
+      occupation,
+      contactNumber,
+      email,
+      isTUPAD,
+      isPWD,
+      is4Ps,
+      isSoloParent
+    } = await request.json();
 
     // Basic validation
-    if (!id || !firstName || !lastName || !birthdate || !civilStatus || !gender || !voterStatus) {
+    if (!id || !firstName || !lastName || !birthdate || !maritalStatus || !gender || !voterStatus || !address || !birthplace || !citizenship) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -77,10 +133,23 @@ export async function PUT(request) {
         firstName,
         middleName: middleName || null,
         lastName,
+        suffix: suffix || null,
+        address,
         birthdate: new Date(birthdate),
-        civilStatus,
+        birthplace,
+        citizenship,
+        maritalStatus,
         gender,
         voterStatus,
+        employmentStatus: employmentStatus || null,
+        educationalAttainment: educationalAttainment || null,
+        occupation: occupation || null,
+        contactNumber: contactNumber || null,
+        email: email || null,
+        isTUPAD: isTUPAD || false,
+        isPWD: isPWD || false,
+        is4Ps: is4Ps || false,
+        isSoloParent: isSoloParent || false
       },
     });
     return NextResponse.json(updatedResident);

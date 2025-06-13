@@ -16,6 +16,11 @@ const OfficialsPage = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [messageModalTitle, setMessageModalTitle] = useState('');
+  const [messageModalContent, setMessageModalContent] = useState('');
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedOfficialForView, setSelectedOfficialForView] = useState(null);
   const [newOfficial, setNewOfficial] = useState({
     firstName: '',
     middleName: '',
@@ -48,7 +53,9 @@ const OfficialsPage = () => {
     try {
       // Only search if we have at least first name and last name
       if (!newOfficial.firstName || !newOfficial.lastName) {
-        alert('Please enter at least first name and last name to search');
+        setMessageModalTitle("Missing Information");
+        setMessageModalContent('Please enter at least first name and last name to search.');
+        setIsMessageModalOpen(true);
         return;
       }
 
@@ -69,11 +76,15 @@ const OfficialsPage = () => {
       setSearchResults(data);
       
       if (data.length === 0) {
-        alert('No matching residents found');
+        setMessageModalTitle("No Residents Found");
+        setMessageModalContent('No matching residents found.');
+        setIsMessageModalOpen(true);
       }
     } catch (error) {
       console.error('Error searching resident:', error);
-      alert('Error searching for residents. Please try again.');
+      setMessageModalTitle("Search Error");
+      setMessageModalContent('An error occurred while searching for residents. Please try again.');
+      setIsMessageModalOpen(true);
     }
   };
 
@@ -172,13 +183,20 @@ const OfficialsPage = () => {
         setIsDeleteModalOpen(false);
         setSelectedOfficial(null);
         fetchOfficials();
+        setMessageModalTitle("Success");
+        setMessageModalContent('Official deleted successfully!');
+        setIsMessageModalOpen(true);
       } else {
         const errorData = await res.json();
-        alert(`Failed to delete official: ${errorData.error}`);
+        setMessageModalTitle("Deletion Failed");
+        setMessageModalContent(`Failed to delete official: ${errorData.error}`);
+        setIsMessageModalOpen(true);
       }
     } catch (error) {
       console.error('Error deleting official:', error);
-      alert('An error occurred while deleting official.');
+      setMessageModalTitle("Error");
+      setMessageModalContent('An error occurred while deleting official.');
+      setIsMessageModalOpen(true);
     }
   };
 
@@ -208,6 +226,11 @@ const OfficialsPage = () => {
     setActiveMenu((prev) => (prev === id ? null : id));
   };
 
+  const handleViewClick = (official) => {
+    setSelectedOfficialForView(official);
+    setIsViewModalOpen(true);
+  };
+
   return (
     <div className="w-full font-sans text-gray-900">
       <h2 className="text-2xl font-bold mb-6 text-center">Barangay Officials</h2>
@@ -230,7 +253,7 @@ const OfficialsPage = () => {
           <tbody>
             {Array.isArray(officials) && officials.length > 0 ? (
               officials.map((official) => (
-                <tr key={official.id} className="hover:bg-blue-50 transition-colors border-t border-gray-100">
+                <tr key={official.residentId} className="hover:bg-blue-50 transition-colors border-t border-gray-100 cursor-pointer" onClick={() => handleViewClick(official)}>
                   <td className="p-4">{official.residentId}</td>
                   <td className="p-4">{`${official.resident.firstName} ${official.resident.middleName ? official.resident.middleName + ' ' : ''}${official.resident.lastName}`}</td>
                   <td className="p-4">{official.position}</td>
@@ -338,9 +361,9 @@ const OfficialsPage = () => {
       {/* Error Modal */}
       {isErrorModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-red-600">Error</h3>
+              <h3 className="text-xl font-semibold text-gray-800">Error</h3>
               <button
                 onClick={() => setIsErrorModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -354,13 +377,32 @@ const OfficialsPage = () => {
             <div className="flex justify-end">
               <button
                 onClick={() => setIsErrorModalOpen(false)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Close
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Generic Message Modal */}
+      {isMessageModalOpen && (
+        <MessageModal
+          isOpen={isMessageModalOpen}
+          onClose={() => setIsMessageModalOpen(false)}
+          title={messageModalTitle}
+          content={messageModalContent}
+        />
+      )}
+
+      {/* View Official Details Modal */}
+      {isViewModalOpen && selectedOfficialForView && (
+        <ViewOfficialModal
+          isOpen={isViewModalOpen}
+          onClose={() => setIsViewModalOpen(false)}
+          official={selectedOfficialForView}
+        />
       )}
     </div>
   );
@@ -574,6 +616,8 @@ const EditOfficialModal = ({ isOpen, onClose, official, onUpdate }) => {
     chairmanship: official.chairmanship,
     status: official.status,
   });
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     // Ensure the form is populated with the correct official data when the modal opens or official changes
@@ -597,9 +641,33 @@ const EditOfficialModal = ({ isOpen, onClose, official, onUpdate }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onUpdate(editedOfficial);
+    try {
+      const res = await fetch(`/api/officials`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedOfficial),
+      });
+      if (res.ok) {
+        console.log('Official updated successfully!');
+        onClose();
+        onUpdate(editedOfficial); // Refresh the list
+      } else {
+        const errorData = await res.json();
+        if (errorData.error === "Position already taken") {
+          setErrorMessage(errorData.message);
+          setIsErrorModalOpen(true);
+        } else {
+          setErrorMessage(`Failed to update official: ${errorData.error}`);
+          setIsErrorModalOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating official:', error);
+      setErrorMessage('An error occurred while updating official.');
+      setIsErrorModalOpen(true);
+    }
   };
 
   if (!isOpen) return null;
@@ -718,6 +786,119 @@ const EditOfficialModal = ({ isOpen, onClose, official, onUpdate }) => {
             </button>
           </div>
         </form>
+
+        {/* Error Modal for Edit Official */}
+        {isErrorModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-800">Error</h3>
+                <button
+                  onClick={() => setIsErrorModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-gray-700 mb-6">{errorMessage}</p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setIsErrorModalOpen(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Generic Message Modal Component
+const MessageModal = ({ isOpen, onClose, title, content }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-gray-700 mb-6">{content}</p>
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// View Official Modal Component
+const ViewOfficialModal = ({ isOpen, onClose, official }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4 overflow-y-auto max-h-[90vh]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-800">Official Details</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="space-y-3 text-gray-700 mb-6">
+          <p><span className="font-semibold">ID:</span> {official.residentId}</p>
+          <p><span className="font-semibold">Full Name:</span> {`${official.resident.firstName} ${official.resident.middleName ? official.resident.middleName + ' ' : ''}${official.resident.lastName}`}</p>
+          <p><span className="font-semibold">Birthdate:</span> {new Date(official.resident.birthdate).toLocaleDateString()}</p>
+          <p><span className="font-semibold">Position:</span> {official.position}</p>
+          <p><span className="font-semibold">Term Start:</span> {new Date(official.termStart).toLocaleDateString()}</p>
+          <p><span className="font-semibold">Term End:</span> {new Date(official.termEnd).toLocaleDateString()}</p>
+          <p><span className="font-semibold">Chairmanship:</span> {official.chairmanship}</p>
+          <p>
+            <span className="font-semibold">Status:</span> 
+            <span
+              className={`px-2 py-1 text-xs rounded-full font-semibold ml-2 ${
+                official.status === "Active"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-200 text-gray-600"
+              }`}
+            >
+              {official.status}
+            </span>
+          </p>
+          <p><span className="font-semibold">Date Added:</span> {new Date(official.createdAt).toLocaleDateString()}</p>
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
