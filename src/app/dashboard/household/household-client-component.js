@@ -16,6 +16,7 @@ export function HouseholdClientComponent({ initialHouseholds }) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [householdToDelete, setHouseholdToDelete] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Function to re-fetch data (for CRUD operations)
   const refreshHouseholds = async () => {
@@ -73,8 +74,18 @@ export function HouseholdClientComponent({ initialHouseholds }) {
   };
 
   return (
-    <div className="w-full font-sans text-gray-900">
-      <h2 className="text-2xl font-bold mb-6 text-center">Household Records</h2>
+    <div className={`w-full font-sans ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Household Records</h2>
+        <div className="flex items-center gap-2">
+          <button
+            className={`p-2 rounded-full transition ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-900'}`}
+          >
+            {/* Filter icon SVG, width=20, height=20 */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          </button>
+        </div>
+      </div>
       <div className="h-1 bg-red-500 w-full mb-6"></div>
 
       {/* Top Controls */}

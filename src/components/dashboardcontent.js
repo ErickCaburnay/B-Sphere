@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 
@@ -28,8 +28,10 @@ export default function DashboardSections() {
   };
 
   return (
-    <div className="px-4 py-6 bg-gradient-to-b from-green-300 to-white min-h-screen">
-      <h2 className="text-3xl font-bold mb-8 text-center text-gray-800">Dashboard</h2>
+    <div className="px-4 py-6 min-h-screen">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-3xl font-bold">Dashboard</h2>
+      </div>
       <div className="h-1 bg-red-300 w-full mb-6"></div>
 
       {/* DEMOGRAPHICS SECTION */}

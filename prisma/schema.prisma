@@ -114,4 +114,41 @@ model Report {
   filePath   String?   // Optional: path to a generated report file (e.g., PDF)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  residentId  String
+  resident    Resident @relation(fields: [residentId], references: [id])
+  type        String   // e.g., "Barangay ID", "Certificate", etc.
+  filePath    String   // URL or path to the document
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FamilyMember {
+  id          String   @id @default(uuid())
+  residentId  String
+  resident    Resident @relation(fields: [residentId], references: [id])
+  firstName   String
+  middleName  String?
+  lastName    String
+  suffix      String?
+  birthdate   DateTime
+  gender      String
+  relationship String  // e.g., "Father", "Mother", "Sibling", etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ActivityHistory {
+  id          String   @id @default(uuid())
+  residentId  String
+  resident    Resident @relation(fields: [residentId], references: [id])
+  action      String   // e.g., "Profile Updated", "Document Added", etc.
+  details     String?  // Additional details about the activity
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 } 

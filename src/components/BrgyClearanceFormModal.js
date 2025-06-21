@@ -26,9 +26,7 @@ export default function BrgyClearanceFormModal({ isOpen, onClose }) {
       if (response.ok) {
         setFullName(`${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`);
         setAge(String(new Date().getFullYear() - new Date(data.birthdate).getFullYear())); // Calculate age
-        // You would need to fetch address from a related Household model or store it in Resident model
-        // For now, I'll leave address as a manual input or a placeholder.
-        setAddress("Address will be fetched from household data if available.");
+        setAddress(data.address || data.household?.address || "No address found");
       } else {
         alert(data.message || "No matching data found for this ID.");
         setFullName("");

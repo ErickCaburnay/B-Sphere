@@ -9,8 +9,8 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
   const [age, setAge] = useState("");
   const [address, setAddress] = useState("");
   const [issueDate, setIssueDate] = useState("");
-  const [contactNo, setContactNo] = useState(""); // Specific to ID
-  const [bloodType, setBloodType] = useState(""); // Specific to ID
+  const [contactNumber, setcontactNo] = useState("");
+  const [bloodType, setBloodType] = useState("");
 
   if (!isOpen) return null;
 
@@ -27,17 +27,15 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
       if (response.ok) {
         setFullName(`${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`);
         setAge(String(new Date().getFullYear() - new Date(data.birthdate).getFullYear())); // Calculate age
-        // You would need to fetch address from a related Household model or store it in Resident model
-        // For now, I'll leave address as a manual input or a placeholder.
-        setAddress("Address will be fetched from household data if available.");
-        setContactNo(data.contactNo || ""); // Assuming contactNo might be directly on Resident or fetched separately
+        setAddress(data.address || data.household?.address || "No address found");
+        setcontactNo(data.contactNumber || ""); // Assuming contactNo might be directly on Resident or fetched separately
         setBloodType(data.bloodType || ""); // Assuming bloodType might be directly on Resident or fetched separately
       } else {
         alert(data.message || "No matching data found for this ID.");
         setFullName("");
         setAge("");
         setAddress("");
-        setContactNo("");
+        setcontactNumber("");
         setBloodType("");
       }
     } catch (error) {
@@ -46,7 +44,7 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
       setFullName("");
       setAge("");
       setAddress("");
-      setContactNo("");
+      setcontactNumber("");
       setBloodType("");
     }
   };
@@ -140,8 +138,8 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
               type="text"
               id="contactNo"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={contactNo}
-              onChange={(e) => setContactNo(e.target.value)}
+              value={contactNumber}
+              onChange={(e) => setcontactNumber(e.target.value)}
             />
           </div>
           <div>

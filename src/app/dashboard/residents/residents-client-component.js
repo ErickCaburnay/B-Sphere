@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { MoreVertical, Pencil, Trash2, Plus, Search, Upload } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { MoreVertical, Pencil, Trash2, Plus, Search, Upload, Eye } from "lucide-react";
 import CustomSelect from "@/components/CustomSelect";
+import { ViewResidentModal } from '@/components/residents/ViewResidentModal';
+import { EditResidentModal } from '@/components/residents/EditResidentModal';
+import { DeleteResidentModal } from '@/components/residents/DeleteResidentModal';
+import { toast } from "react-hot-toast";
+import Pagination from '@/components/ui/Pagination';
 
 // Utility function to calculate age from birthdate
 const calculateAge = (birthdate) => {
@@ -17,7 +22,8 @@ const calculateAge = (birthdate) => {
 };
 
 export function ResidentsClientComponent({ initialResidents }) {
-  const [residents, setResidents] = useState(initialResidents);
+  const [residents, setResidents] = useState(initialResidents || []);
+  const [filteredResidents, setFilteredResidents] = useState(initialResidents || []);
   const [activeMenu, setActiveMenu] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -26,59 +32,88 @@ export function ResidentsClientComponent({ initialResidents }) {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedResidentForView, setSelectedResidentForView] = useState(null);
+  const [selectedResident, setSelectedResident] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const debounceTimeout = useRef(null);
 
   // Function to re-fetch data (for CRUD operations)
   const refreshResidents = async () => {
     const res = await fetch('/api/residents');
     const data = await res.json();
     setResidents(data);
+    setFilteredResidents(data);
   };
 
-  const handleSearch = () => {
-    // This will trigger re-filtering based on the current state
-    console.log('Triggering search/filter update.');
+  const fetchSearchResults = async (query) => {
+    const res = await fetch(`/api/residents/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    setFilteredResidents(data);
+    setCurrentPage(1);
   };
+  
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchText(value);
+  
+    if (value.trim()) {
+      const keyword = value.toLowerCase();
+      const filtered = residents.filter(r => {
+        // Check all relevant fields
+        const fields = [
+          r.firstName,
+          r.middleName,
+          r.lastName,
+          r.suffix,
+          r.id,
+          r.address,
+          r.gender,
+          r.voterStatus,
+          r.maritalStatus,
+          r.occupation,
+          r.citizenship,
+          r.educationalAttainment,
+          r.contactNumber,
+          r.email
+        ];
+        // Concatenate all fields into one string
+        const haystack = fields.filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(keyword);
+      });
+      setFilteredResidents(filtered);
+      setCurrentPage(1);
+    } else {
+      setFilteredResidents(residents);
+      setCurrentPage(1);
+    }
+  };
+  
+  
+
+  
+
+  // Clear search and show all residents
+  const clearSearch = () => {
+    setSearchText("");
+    setFilteredResidents(residents);
+    setCurrentPage(1);
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
     }
   };
 
-  const filteredResidents = residents.filter(resident => {
-    const residentAge = calculateAge(resident.birthdate);
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, []);
 
-    const fullName = `${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`;
-
-    const matchesSearch = 
-      fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-      resident.id.toLowerCase().includes(searchText.toLowerCase());
-
-    if (!matchesSearch) return false;
-
-    switch (filter) {
-      case "senior":
-        return residentAge >= 60;
-      case "voters":
-        return resident.voterStatus === "Registered";
-      case "non-voters":
-        return resident.voterStatus !== "Registered";
-      case "minors":
-        return residentAge < 18;
-      case "head-household":
-        return true; 
-      case "no-education":
-        return true; 
-      case "elementary":
-        return true; 
-      case "high-school":
-        return true; 
-      case "college":
-        return true; 
-      default:
-        return true;
-    }
-  });
+  
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredResidents.length / rowsPerPage);
@@ -90,9 +125,9 @@ export function ResidentsClientComponent({ initialResidents }) {
     setCurrentPage(newPage);
   };
 
-  const handleRowsPerPageChange = (e) => {
-    setRowsPerPage(Number(e.target.value));
-    setCurrentPage(1); // Reset to first page when changing rows per page
+  const handleRowsPerPageChange = (value) => {
+    setRowsPerPage(Number(value));
+    setCurrentPage(1);
   };
 
   const filterOptions = [
@@ -112,8 +147,6 @@ export function ResidentsClientComponent({ initialResidents }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedResident, setSelectedResident] = useState(null);
-  const [residentToDelete, setResidentToDelete] = useState(null);
   const [newResident, setNewResident] = useState({
     firstName: '',
     middleName: '',
@@ -264,8 +297,8 @@ export function ResidentsClientComponent({ initialResidents }) {
   };
 
   const handleDeleteClick = (resident) => {
-    setResidentToDelete(resident);
-    setIsDeleteModalOpen(true);
+    setSelectedResident(resident);
+    setShowDeleteModal(true);
   };
 
   const handleDeleteConfirm = async () => {
@@ -273,21 +306,22 @@ export function ResidentsClientComponent({ initialResidents }) {
       const res = await fetch('/api/residents', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: residentToDelete.id }),
+        body: JSON.stringify({ id: selectedResident.id }),
       });
 
       if (res.ok) {
         console.log('Resident deleted successfully!');
-        setIsDeleteModalOpen(false);
-        setResidentToDelete(null);
+        setShowDeleteModal(false);
+        setSelectedResident(null);
         refreshResidents();
+        toast.success('Resident deleted successfully');
       } else {
         const errorData = await res.json();
-        alert(`Failed to delete resident: ${errorData.error}`);
+        toast.error(`Failed to delete resident: ${errorData.error}`);
       }
     } catch (error) {
       console.error('Error deleting resident:', error);
-      alert('An error occurred while deleting resident.');
+      toast.error('An error occurred while deleting resident.');
     }
   };
 
@@ -296,10 +330,74 @@ export function ResidentsClientComponent({ initialResidents }) {
     setIsViewModalOpen(true);
   };
 
+  const handleViewResident = (resident) => {
+    setSelectedResident(resident);
+    setShowViewModal(true);
+  };
+
+  const handleEditResident = (resident) => {
+    setSelectedResident(resident);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteResident = async (residentId) => {
+    try {
+      const response = await fetch(`/api/residents/${residentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete resident');
+      }
+
+      await refreshResidents();
+      setShowDeleteModal(false);
+      setSelectedResident(null);
+      toast.success('Resident deleted successfully');
+    } catch (error) {
+      console.error('Error deleting resident:', error);
+      toast.error('Failed to delete resident');
+    }
+  };
+
+  const handleUpdateResident = async (residentId, formData) => {
+    try {
+      const response = await fetch(`/api/residents/${residentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update resident');
+      }
+
+      await refreshResidents();
+      setShowEditModal(false);
+      setSelectedResident(null);
+      toast.success('Resident updated successfully');
+    } catch (error) {
+      console.error('Error updating resident:', error);
+      toast.error('Failed to update resident');
+    }
+  };
+
   return (
-    <div className="w-full font-sans text-gray-900">
-      <h2 className="text-2xl font-bold mb-6 text-center">Resident Records</h2>
-      <div className="h-1 bg-red-500 w-full mb-6"></div>
+    <div className="w-full font-sans text-gray-900 bg-white">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold">Resident Records</h2>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2 rounded-full transition text-gray-600 hover:text-gray-900"
+          >
+            {/* Filter icon SVG, width=20, height=20 */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          </button>
+        </div>
+      </div>
+      <div className="h-1 bg-green-600 w-full mb-6 rounded"></div>
 
       {/* Top Controls */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -313,57 +411,26 @@ export function ResidentsClientComponent({ initialResidents }) {
 
         {/* Search Box with Icons */}
         <div className="relative">
-          <button 
-            onClick={handleSearch}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-          >
-            <Search size={18} />
-          </button>
           <input
             type="text"
             placeholder="Search resident..."
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onChange={handleSearchChange}            
             className="border pl-10 pr-10 py-2 rounded-lg w-60 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
           />
           {searchText && (
             <button
-              onClick={() => {
-                setSearchText("");
-                handleSearch();
-              }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
+            onClick={clearSearch}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            type="button"
+          >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </button>
           )}
-        </div>
-
-        {/* Choose File */}
-        <label className="bg-gray-100 px-4 py-2 rounded-lg border cursor-pointer hover:bg-gray-200">
-          <input
-            type="file"
-            className="hidden"
-            onChange={(e) => setSelectedFile(e.target.files[0])}
-          />
-          Choose File
-        </label>
-
-        {/* File Preview */}
-        {selectedFile && (
-          <span className="text-sm text-gray-700 truncate max-w-[200px]">
-            {selectedFile.name}
-          </span>
-        )}
-
-        {/* Batch Upload */}
-        <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2">
-          <Upload size={18} /> Batch Upload
-        </button>
+        </div>        
 
         {/* Filter Dropdown (Custom) */}
         <CustomSelect
@@ -374,137 +441,81 @@ export function ResidentsClientComponent({ initialResidents }) {
         />
       </div>
 
-      {/* Resident Table */}
-      <div className="w-full overflow-auto rounded-xl shadow border border-gray-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-green-600 text-white">
-            <tr>
-              <th className="p-4 text-left font-semibold">Unique ID</th>
-              <th className="p-4 text-left font-semibold">Full Name</th>
-              <th className="p-4 text-left font-semibold">Age</th>
-              <th className="p-4 text-left font-semibold">Marital Status</th>
-              <th className="p-4 text-left font-semibold">Gender</th>
-              <th className="p-4 text-left font-semibold">Voter Status</th>
-              <th className="p-4 text-left font-semibold">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentResidents.map((resident) => (
-              <tr
-                key={resident.id}
-                className="hover:bg-green-50 transition-colors border-t border-gray-100 cursor-pointer"
-                onClick={() => handleRowClick(resident)}
-              >
-                <td className="p-4">{resident.id}</td>
-                <td className="p-4">{`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`}</td>
-                <td className="p-4">{calculateAge(resident.birthdate)}</td>
-                <td className="p-4">{resident.maritalStatus}</td>
-                <td className="p-4">{resident.gender}</td>
-                <td className="p-4">{resident.voterStatus}</td>
-                <td className="p-4">
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className="p-2 rounded-full hover:bg-gray-200 transition text-blue-600"
-                      onClick={() => handleEditClick(resident)}
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      className="p-2 rounded-full hover:bg-gray-200 transition text-red-600"
-                      onClick={() => handleDeleteClick(resident)}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
+      {/* Resident Table and Pagination in a single container */}
+      <div>
+        <div className="w-full overflow-auto rounded-xl shadow border border-gray-200 bg-white">
+          <table className="min-w-full text-sm">
+            <thead className="bg-green-600 text-white">
+              <tr>
+                <th className="p-4 text-left font-semibold">Unique ID</th>
+                <th className="p-4 text-left font-semibold">Full Name</th>
+                <th className="p-4 text-left font-semibold">Age</th>
+                <th className="p-4 text-left font-semibold">Marital Status</th>
+                <th className="p-4 text-left font-semibold">Gender</th>
+                <th className="p-4 text-left font-semibold">Voter Status</th>
+                <th className="p-4 text-left font-semibold">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Pagination Controls */}
-        <div className="flex items-center justify-between p-4 border-t border-gray-200">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Rows per page:</span>
-            <select
-              value={rowsPerPage}
-              onChange={handleRowsPerPageChange}
-              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <span className="text-sm text-gray-600">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredResidents.length)} of {filteredResidents.length} entries
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handlePageChange(1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 rounded-md border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              First
-            </button>
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 rounded-md border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Previous
-            </button>
-
-            {/* Page Numbers */}
-            <div className="flex items-center gap-1">
-              {[...Array(totalPages)].map((_, index) => {
-                const pageNumber = index + 1;
-                // Show current page, first page, last page, and pages around current page
-                if (
-                  pageNumber === 1 ||
-                  pageNumber === totalPages ||
-                  (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={pageNumber}
-                      onClick={() => handlePageChange(pageNumber)}
-                      className={`px-3 py-1 rounded-md border text-sm ${
-                        currentPage === pageNumber
-                          ? 'bg-green-600 text-white border-green-600'
-                          : 'border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                } else if (
-                  pageNumber === currentPage - 2 ||
-                  pageNumber === currentPage + 2
-                ) {
-                  return <span key={pageNumber} className="px-1">...</span>;
-                }
-                return null;
-              })}
-            </div>
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 rounded-md border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Next
-            </button>
-            <button
-              onClick={() => handlePageChange(totalPages)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 rounded-md border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Last
-            </button>
-          </div>
+            </thead>
+            <tbody>
+              {currentResidents.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-gray-400">No residents found.</td>
+                </tr>
+              ) : (
+                currentResidents.map((resident) => (
+                  <tr
+                    key={resident.id}
+                    className="hover:bg-green-50 transition-colors border-t border-gray-100"
+                  >
+                    <td className="p-4">{resident.id}</td>
+                    <td className="p-4">{`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`}</td>
+                    <td className="p-4">{calculateAge(resident.birthdate)}</td>
+                    <td className="p-4">{resident.maritalStatus}</td>
+                    <td className="p-4">{resident.gender}</td>
+                    <td className="p-4">{resident.voterStatus}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="p-2 rounded-full hover:bg-gray-200 transition text-blue-600"
+                          onClick={() => handleViewResident(resident)}
+                          title="View Details"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          className="p-2 rounded-full hover:bg-gray-200 transition text-green-600"
+                          onClick={() => handleEditResident(resident)}
+                          title="Edit Resident"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          className="p-2 rounded-full hover:bg-gray-200 transition text-red-600"
+                          onClick={() => handleDeleteResident(resident)}
+                          title="Delete Resident"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          rowsPerPage={rowsPerPage}
+          rowsPerPageOptions={[10, 20, 50]}
+          totalEntries={filteredResidents.length}
+          startEntry={startIndex + 1}
+          endEntry={Math.min(endIndex, filteredResidents.length)}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          className="mt-2"
+        />
       </div>
 
       {/* Add Resident Modal */}
@@ -883,35 +894,6 @@ export function ResidentsClientComponent({ initialResidents }) {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && residentToDelete && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4 text-center">Delete Resident</h3>
-            <p className="text-gray-600 mb-6 text-center">
-              Are you sure you want to delete {residentToDelete.firstName} {residentToDelete.lastName}? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setResidentToDelete(null);
-                }}
-                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* View Resident Details Modal */}
       {isViewModalOpen && selectedResidentForView && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
@@ -1052,6 +1034,39 @@ export function ResidentsClientComponent({ initialResidents }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modals */}
+      {showViewModal && (
+        <ViewResidentModal
+          resident={selectedResident}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedResident(null);
+          }}
+        />
+      )}
+
+      {showEditModal && (
+        <EditResidentModal
+          resident={selectedResident}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedResident(null);
+          }}
+          onUpdate={handleUpdateResident}
+        />
+      )}
+
+      {showDeleteModal && (
+        <DeleteResidentModal
+          resident={selectedResident}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedResident(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
       )}
     </div>
   );

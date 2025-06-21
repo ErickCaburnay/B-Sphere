@@ -8,6 +8,7 @@ import BrgyCertificateFormModal from "@/components/BrgyCertificateFormModal";
 import BrgyIndigencyFormModal from "@/components/BrgyIndigencyFormModal";
 import BrgyIdFormModal from "@/components/BrgyIdFormModal";
 import BrgyBusinessPermitFormModal from "@/components/BrgyBusinessPermitFormModal";
+import Pagination from '@/components/ui/Pagination';
 
 export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,6 +21,7 @@ export default function ServicesPage() {
   const [isBrgyIndigencyFormModalOpen, setIsBrgyIndigencyFormModalOpen] = useState(false);
   const [isBrgyIdFormModalOpen, setIsBrgyIdFormModalOpen] = useState(false);
   const [isBrgyBusinessPermitFormModalOpen, setIsBrgyBusinessPermitFormModalOpen] = useState(false);
+  const [activeView, setActiveView] = useState("table"); // 'table' or 'grid'
 
   const handleOpenDocumentApplicationModal = () => {
     setIsDocumentApplicationModalOpen(true);
@@ -237,106 +239,145 @@ export default function ServicesPage() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Services Management</h1>
+    <div className={`container mx-auto p-4`}>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className={`text-2xl font-bold`}>Services Management</h1>
+      </div>
 
-      {/* Controls above the table */}
+      {/* Search and Action Buttons */}
       <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-        <div className="flex items-center gap-4">
+        <div className="relative w-full md:w-auto">
+          <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search services..."
+            className={`pl-10 pr-8 py-2 border border-gray-300 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500`}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              onClick={() => setSearchTerm("")}
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {/* Table View Icon */}
+          <button
+            onClick={() => setActiveView("table")}
+            className={`p-2 rounded-lg transition-colors ${
+              activeView === "table"
+                ? "bg-blue-100 text-blue-600"
+                : "text-gray-500 hover:bg-gray-100 "
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-table">
+              <path d="M12 3v18"></path>
+              <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+              <path d="M3 9h18"></path>
+              <path d="M3 15h18"></path>
+            </svg>
+          </button>
+          {/* Grid View Icon */}
+          <button
+            onClick={() => setActiveView("grid")}
+            className={`p-2 rounded-lg transition-colors ${
+              activeView === "grid"
+                ? "bg-blue-100 text-blue-600"
+                : "text-gray-500 hover:bg-gray-100 "
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-layout-grid">
+              <rect width="7" height="7" x="3" y="3" rx="1"></rect>
+              <rect width="7" height="7" x="14" y="3" rx="1"></rect>
+              <rect width="7" height="7" x="14" y="14" rx="1"></rect>
+              <rect width="7" height="7" x="3" y="14" rx="1"></rect>
+            </svg>
+          </button>
+          {/* Download Icon */}
+          <button
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-download">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" x2="12" y1="15" y2="3"></line>
+            </svg>
+          </button>
+          
           <button 
-            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition"
+            className="px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition flex items-center gap-2"
             onClick={handleOpenDocumentApplicationModal}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus">
+              <line x1="12" x2="12" y1="5" y2="19"></line>
+              <line x1="5" x2="19" y1="12" y2="12"></line>
+            </svg>
             Apply
           </button>
-          <div className="relative flex items-center">
-            <Search size={20} className="absolute left-3 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="pl-10 pr-8 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button
-                className="absolute right-2 text-gray-500 hover:text-gray-700"
-                onClick={() => setSearchTerm("")}
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="relative">
-          <select
-            className="appearance-none px-4 py-2 border border-gray-300 rounded-md bg-white pr-8 focus:outline-none focus:ring-2 focus:ring-green-500"
-            value={filterBy}
-            onChange={(e) => setFilterBy(e.target.value)}
-          >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-          </select>
-          <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">
+      <div className={`shadow-md rounded-lg overflow-hidden mb-6`}>
         <table className="min-w-full leading-normal">
-          <thead>
-            <tr className="bg-green-700 text-white text-left">
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider">
+          <thead className={`bg-green-600`}>
+            <tr>
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white">
                 TRANSACTION NO
               </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider">
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white">
                 DATE FILED
               </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider">
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white">
                 NAME OF APPLICANT
               </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider">
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white">
                 PURPOSE
               </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider">
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white">
                 TYPE
               </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider">
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white">
                 STATUS
               </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider">
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white">
                 DATE ISSUED
               </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 text-sm font-semibold tracking-wider text-center">
+              <th className="px-5 py-3 border-b-2 border-gray-200 text-xs font-bold uppercase tracking-wider text-white text-center">
                 ACTION
               </th>
             </tr>
           </thead>
           <tbody>
             {paginatedData.map((service, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+              <tr key={index} className={`hover:bg-gray-50`}>
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm`}>
                   {service.transactionNo}
                 </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm`}>
                   {service.dateFiled}
                 </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm`}>
                   {service.nameOfApplicant}
                 </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm`}>
                   {service.purpose}
                 </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm`}>
                   {service.type}
                 </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm`}>
                   {service.status}
                 </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm`}>
                   {service.dateIssued}
                 </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
+                <td className={`px-5 py-5 border-b border-gray-200 bg-white text-gray-900 text-sm text-center`}>
                   <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition flex items-center justify-center mx-auto gap-1">
                     <Download size={16} />
                     Download
@@ -347,45 +388,18 @@ export default function ServicesPage() {
           </tbody>
         </table>
       </div>
-
-      {/* Pagination Controls */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-700">Rows per page:</span>
-          <select
-            className="appearance-none px-3 py-1 border border-gray-300 rounded-md bg-white pr-8 focus:outline-none focus:ring-2 focus:ring-green-500"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(Number(e.target.value));
-              setCurrentPage(1); // Reset to first page when rows per page changes
-            }}
-          >
-            <option value={10}>10</option>
-            <option value={30}>30</option>
-            <option value={50}>50</option>
-          </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none md:static md:translate-y-0" />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-700">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="p-2 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="p-2 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        rowsPerPage={rowsPerPage}
+        rowsPerPageOptions={[10, 20, 50]}
+        totalEntries={filteredData.length}
+        startEntry={(currentPage - 1) * rowsPerPage + 1}
+        endEntry={Math.min(currentPage * rowsPerPage, filteredData.length)}
+        onPageChange={setCurrentPage}
+        onRowsPerPageChange={v => { setRowsPerPage(v); setCurrentPage(1); }}
+        className="mt-2"
+      />
 
       <DocumentApplicationModal
         isOpen={isDocumentApplicationModalOpen}

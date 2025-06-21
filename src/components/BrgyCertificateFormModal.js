@@ -9,7 +9,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
   const [age, setAge] = useState("");
   const [address, setAddress] = useState("");
   const [issueDate, setIssueDate] = useState("");
-  const [purpose, setPurpose] = useState(""); // Specific to Certificate, e.g., "for employment", "for school"
+  const [purpose, setPurpose] = useState(""); 
 
   if (!isOpen) return null;
 
@@ -26,9 +26,8 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
       if (response.ok) {
         setFullName(`${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`);
         setAge(String(new Date().getFullYear() - new Date(data.birthdate).getFullYear())); // Calculate age
-        // You would need to fetch address from a related Household model or store it in Resident model
-        // For now, I'll leave address as a manual input or a placeholder.
-        setAddress("Address will be fetched from household data if available.");
+        
+        setAddress(data.address || data.household?.address || "No address found");
       } else {
         alert(data.message || "No matching data found for this ID.");
         setFullName("");

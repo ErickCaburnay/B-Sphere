@@ -2,15 +2,19 @@
 "use client";
 import {
   Bell, UserCircle, LayoutDashboard, Users, Home, User, Settings,
-  FileText, Folder, Archive, ClipboardList, Menu, X,
+  FileText, Folder, Archive, ClipboardList, Menu, X, Activity,
+  Sun, Moon
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useTheme } from '@/components/ui/ThemeContext';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { darkMode, toggleDarkMode } = useTheme();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -46,6 +50,24 @@ export default function DashboardLayout({ children }) {
             <span className="hidden md:block text-sm font-medium text-gray-700">Juan Dela Cruz</span>
             <UserCircle size={28} className="text-green-700" />
             <Bell size={24} className="text-green-700" />
+            {/* Neumorphic Toggle Switch for Dark Mode with icon inside thumb */}
+            <button
+              onClick={toggleDarkMode}
+              aria-label="Toggle dark mode"
+              className={`relative w-14 h-8 flex items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 ${darkMode ? 'bg-[#3a3d4d]' : 'bg-gray-200'}`}
+              style={{ boxShadow: darkMode
+                ? 'inset 2px 2px 8px #232533, inset -2px -2px 8px #44475a'
+                : 'inset 2px 2px 8px #e0e0e0, inset -2px -2px 8px #ffffff' }}
+            >
+              <span
+                className={`absolute top-1 left-1 w-6 h-6 rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${darkMode ? 'translate-x-6 bg-gray-500' : 'translate-x-0 bg-white'}`}
+                style={{ boxShadow: darkMode
+                  ? '2px 2px 6px #232533, -2px -2px 6px #44475a'
+                  : '2px 2px 6px #e0e0e0, -2px -2px 6px #ffffff' }}
+              >
+                {darkMode ? <Moon size={18} className="text-yellow-300" /> : <Sun size={18} className="text-yellow-400" />}
+              </span>
+            </button>
             <button className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
               {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -79,8 +101,8 @@ export default function DashboardLayout({ children }) {
           <SidebarLink icon={<Home size={20} />} label="Households" href="/dashboard/household" />
           <SidebarLink icon={<Settings size={20} />} label="Services" href="/dashboard/services" />
           <SidebarLink icon={<FileText size={20} />} label="Reports" href="/dashboard/reports" />
-          <SidebarLink icon={<Folder size={20} />} label="Module 7" href="#" />
-          <SidebarLink icon={<Archive size={20} />} label="Module 8" href="#" />
+          <SidebarLink icon={<Folder size={20} />} label="Complaints" href="/dashboard/complaints" />
+          <SidebarLink icon={<Activity size={20} />} label="Logs" href="/dashboard/logs" />
           <SidebarLink icon={<ClipboardList size={20} />} label="Module 9" href="#" />
           <SidebarLink icon={<Settings size={20} />} label="Module 10" href="#" />
         </nav>
@@ -99,9 +121,11 @@ export default function DashboardLayout({ children }) {
 }
 
 function SidebarLink({ icon, label, href }) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
   return (
     <Link href={href}>
-      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-green-800 transition cursor-pointer">
+      <div className={`flex items-center gap-3 p-3 rounded-lg transition cursor-pointer ${isActive ? 'bg-green-900 font-bold' : 'hover:bg-green-800'}`}>
         {icon}
         <span className="text-sm">{label}</span>
       </div>
