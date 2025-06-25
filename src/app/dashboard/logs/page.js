@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Search, RefreshCw, Download, Printer, Eye } from "lucide-react";
+import { Search, RefreshCw, Download, Printer, Eye, Filter, Plus } from "lucide-react";
 import Pagination from '@/components/ui/Pagination';
+import DashboardPageContainer from '@/components/DashboardPageContainer';
 
 const mockLogs = [
   { id: 1, username: "admin", action: "Login", role: "Admin", timestamp: "2025-06-13 10:00 AM" },
@@ -62,62 +63,41 @@ export default function LogsPage() {
   const handleRefresh = () => alert("Refreshing logs...");
 
   return (
-    <div className="w-full font-sans">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Logs & User Activities</h2>
+    <DashboardPageContainer heading="Logs & User Activities">
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search logs..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-10 pr-12 py-2 border border-gray-300 text-gray-900 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+        </div>
+        <button
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          title="Filter"
+          // onClick={handleFilterToggle}
+        >
+          <Filter className="h-5 w-5" />
+        </button>
         <div className="flex items-center gap-2">
-          <button className={`p-2 rounded-full transition text-gray-600 hover:text-gray-900`} onClick={handleExport} title="Export">
-            <Download size={20} />
+          <button
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+            title="Export"
+            // onClick={handleExport}
+          >
+            <Download className="h-5 w-5" />
           </button>
-          <button className={`p-2 rounded-full transition text-gray-600 hover:text-gray-900`} onClick={handlePrint} title="Print">
-            <Printer size={20} />
-          </button>
+          
         </div>
       </div>
-      <div className="bg-green-600 h-1 w-full mb-6 rounded"></div>
+      
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        {/* Search Box */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search logs..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="border pl-10 pr-10 py-2 rounded-lg w-60 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-900 border-gray-300"
-          />
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              type="button"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          )}
-        </div>
-        {/* Role Filter */}
-        <select
-          value={role}
-          onChange={e => { setRole(e.target.value); setCurrentPage(1); }}
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-900 border-gray-300"
-        >
-          {roles.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-        {/* Action Filter */}
-        <select
-          value={action}
-          onChange={e => { setAction(e.target.value); setCurrentPage(1); }}
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-900 border-gray-300"
-        >
-          {actions.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
-      </div>
+      
 
       {/* Logs Table */}
       <div className="w-full overflow-auto rounded-xl shadow border border-gray-200 bg-white">
@@ -182,6 +162,6 @@ export default function LogsPage() {
         onRowsPerPageChange={v => { setRowsPerPage(v); setCurrentPage(1); }}
         className="mt-2"
       />
-    </div>
+    </DashboardPageContainer>
   );
 } 

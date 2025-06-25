@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, X, ChevronDown, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, X, ChevronDown, Download, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import DocumentApplicationModal from "@/components/DocumentApplicationModal";
 import BrgyClearanceFormModal from "@/components/BrgyClearanceFormModal";
 import BrgyCertificateFormModal from "@/components/BrgyCertificateFormModal";
@@ -9,6 +9,7 @@ import BrgyIndigencyFormModal from "@/components/BrgyIndigencyFormModal";
 import BrgyIdFormModal from "@/components/BrgyIdFormModal";
 import BrgyBusinessPermitFormModal from "@/components/BrgyBusinessPermitFormModal";
 import Pagination from '@/components/ui/Pagination';
+import DashboardPageContainer from '@/components/DashboardPageContainer';
 
 export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -239,11 +240,7 @@ export default function ServicesPage() {
   };
 
   return (
-    <div className={`container mx-auto p-4`}>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className={`text-2xl font-bold`}>Services Management</h1>
-      </div>
-
+    <DashboardPageContainer heading="Services Management">
       {/* Search and Action Buttons */}
       <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
         <div className="relative w-full md:w-auto">
@@ -251,7 +248,7 @@ export default function ServicesPage() {
           <input
             type="text"
             placeholder="Search services..."
-            className={`pl-10 pr-8 py-2 border border-gray-300 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500`}
+            className="pl-10 pr-12 py-2 border border-gray-300 text-gray-900 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -264,8 +261,15 @@ export default function ServicesPage() {
             </button>
           )}
         </div>
-        
         <div className="flex items-center gap-2">
+          {/* Filter Icon */}
+          <button
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+            title="Filter"
+            // onClick={handleFilterToggle}
+          >
+            <Filter className="h-5 w-5" />
+          </button>
           {/* Table View Icon */}
           <button
             onClick={() => setActiveView("table")}
@@ -308,7 +312,6 @@ export default function ServicesPage() {
               <line x1="12" x2="12" y1="15" y2="3"></line>
             </svg>
           </button>
-          
           <button 
             className="px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition flex items-center gap-2"
             onClick={handleOpenDocumentApplicationModal}
@@ -431,6 +434,6 @@ export default function ServicesPage() {
         isOpen={isBrgyBusinessPermitFormModalOpen}
         onClose={handleCloseAllModalsAndReopenDocumentApplication}
       />
-    </div>
+    </DashboardPageContainer>
   );
 }

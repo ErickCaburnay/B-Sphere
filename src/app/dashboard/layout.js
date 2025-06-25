@@ -94,17 +94,17 @@ export default function DashboardLayout({ children }) {
             Barangay San Francisco
             </h2>
         </div>
-        <nav className="flex flex-col gap-2 p-4">
+        <nav className="flex flex-col gap-3 p-4 overflow-y-auto max-h-[calc(100vh-300px)] scrollbar-thin scrollbar-thumb-green-900 scrollbar-track-green-700">
           <SidebarLink icon={<LayoutDashboard size={20} />} label="Dashboard" href="/dashboard" />
           <SidebarLink icon={<User size={20} />} label="Officials" href="/dashboard/officials" />
           <SidebarLink icon={<Users size={20} />} label="Resident Records" href="/dashboard/residents" />
           <SidebarLink icon={<Home size={20} />} label="Households" href="/dashboard/household" />
           <SidebarLink icon={<Settings size={20} />} label="Services" href="/dashboard/services" />
-          <SidebarLink icon={<FileText size={20} />} label="Reports" href="/dashboard/reports" />
           <SidebarLink icon={<Folder size={20} />} label="Complaints" href="/dashboard/complaints" />
+          <SidebarLink icon={<FileText size={20} />} label="Reports" href="/dashboard/reports" />          
           <SidebarLink icon={<Activity size={20} />} label="Logs" href="/dashboard/logs" />
-          <SidebarLink icon={<ClipboardList size={20} />} label="Module 9" href="#" />
-          <SidebarLink icon={<Settings size={20} />} label="Module 10" href="#" />
+          <SidebarLink icon={<ClipboardList size={20} />} label="Module 9" href="/dashboard/module9" />
+          <SidebarLink icon={<Settings size={20} />} label="Module 10" href="/dashboard/module10" />
         </nav>
       </aside>
 
@@ -119,16 +119,16 @@ export default function DashboardLayout({ children }) {
     </div>
   );
 }
-
 function SidebarLink({ icon, label, href }) {
   const pathname = usePathname();
   const isActive = pathname === href;
   return (
-    <Link href={href}>
-      <div className={`flex items-center gap-3 p-3 rounded-lg transition cursor-pointer ${isActive ? 'bg-green-900 font-bold' : 'hover:bg-green-800'}`}>
+    <Link href={href} passHref>
+      <div className={`flex items-center gap-3 p-3 rounded-lg transition cursor-pointer ${isActive ? 'bg-green-900 font-bold' : 'hover:bg-green-800/80'}`}>
         {icon}
         <span className="text-sm">{label}</span>
       </div>
     </Link>
   );
 }
+

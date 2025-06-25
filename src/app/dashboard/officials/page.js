@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { MoreVertical, Pencil, Trash2, Plus } from "lucide-react";
 import Image from "next/image";
 import Pagination from '@/components/ui/Pagination';
+import DashboardPageContainer from '@/components/DashboardPageContainer';
 
 const OfficialsPage = () => {
   const [activeMenu, setActiveMenu] = useState(null);
@@ -246,19 +247,17 @@ const OfficialsPage = () => {
   };
 
   return (
-    <div className={`w-full font-sans ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Barangay Officials</h2>
+    <DashboardPageContainer heading="Barangay Officials">
+      <div className="flex items-center justify-between mb-6">        
         <div className="flex items-center gap-2">
-          <button
+          {/* <button
             className="p-2 rounded-full transition text-gray-600 hover:text-gray-900"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-          </button>
+          </button> */}
         </div>
       </div>
-      <div className="h-1 bg-red-500 w-full mb-6"></div>
-
+      
       <div className="w-full overflow-auto rounded-xl shadow border border-gray-200 bg-white">
         <table className="min-w-full text-sm">
           <thead className="bg-green-600 text-white">
@@ -439,7 +438,7 @@ const OfficialsPage = () => {
           official={selectedOfficialForView}
         />
       )}
-    </div>
+    </DashboardPageContainer>
   );
 };
 

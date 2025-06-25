@@ -1,12 +1,12 @@
 // household/page.js - this is a Server Component
 
-// import prisma from "@/lib/prisma"; // Temporarily omit prisma import
 import { HouseholdClientComponent } from "./household-client-component"; 
+import DashboardPageContainer from '@/components/DashboardPageContainer';
 
-// This is the Server Component that fetches data
+
 export default async function HouseholdPage() {
-  // Temporarily omit prisma data fetching
-  const households = []; // Provide an empty array or dummy data for UI testing
+  
+  const households = []; 
 
   const serializableHouseholds = households.map(household => ({
     ...household,
@@ -17,5 +17,9 @@ export default async function HouseholdPage() {
     }
   }));
 
-  return <HouseholdClientComponent initialHouseholds={serializableHouseholds} />;
+  return (
+    <DashboardPageContainer heading="Households">
+      <HouseholdClientComponent initialHouseholds={serializableHouseholds} />
+    </DashboardPageContainer>
+  );
 } 

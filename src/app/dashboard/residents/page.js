@@ -1,6 +1,7 @@
 // residents/page.js - this is a Server Component
 
 import { EnhancedResidentsView } from '@/components/residents/EnhancedResidentsView';
+import DashboardPageContainer from '@/components/DashboardPageContainer';
 
 export default async function ResidentsPage({ searchParams }) {
   // Get page and pageSize from searchParams (Next.js 13+)
@@ -24,13 +25,13 @@ export default async function ResidentsPage({ searchParams }) {
   }));
 
   return (
-    <div className="min-h-screen">
+    <DashboardPageContainer heading="Resident Records">
       <EnhancedResidentsView
         initialResidents={serializedResidents}
         total={total}
         initialPage={page}
         initialPageSize={pageSize}
       />
-    </div>
+    </DashboardPageContainer>
   );
 }

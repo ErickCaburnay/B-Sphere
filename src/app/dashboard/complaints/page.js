@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Search, Plus, Download, Eye, Pencil, Trash2, Table, Grid, Moon, Sun } from "lucide-react";
+import { Search, Plus, Download, Eye, Pencil, Trash2, Table, Grid, Moon, Sun, Filter } from "lucide-react";
 import CustomSelect from "@/components/CustomSelect";
 import { ExportReports } from '@/components/residents/ExportReports';
 import ComplaintFormModal from '@/components/complaints/ComplaintFormModal';
 import ComplaintViewModal from '@/components/complaints/ComplaintViewModal';
 import Pagination from '@/components/ui/Pagination';
+import DashboardPageContainer from '@/components/DashboardPageContainer';
 
 export default function ComplaintsPage() {
   const [complaints, setComplaints] = useState([
@@ -224,236 +225,223 @@ export default function ComplaintsPage() {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50'}`}>
-      {/* Header */}
-      <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Complaint Records</h1>
+    <DashboardPageContainer heading="Complaint Records">
+      {/* Toolbar */}
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <input
+              type="text"
+              placeholder="Search complaints..."
+              value={searchText}
+              onChange={handleSearchChange}
+              className="pl-10 pr-12 py-2 border border-gray-300 text-gray-900 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            {searchText && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            )}
           </div>
+        </div>
+        {/* Filter Icon */}
+        <button
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          title="Filter"
+          // onClick={handleFilterToggle} // Add filter panel logic if needed
+        >
+          <Filter className="h-5 w-5" />
+        </button>
+        {/* View Toggle, Export, Add */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode('table')}
+            className={`p-2 rounded-lg ${viewMode === 'table' 
+              ? 'bg-blue-100 text-blue-600' 
+              : darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Table className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-2 rounded-lg ${viewMode === 'grid' 
+              ? 'bg-blue-100 text-blue-600' 
+              : darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Grid className="h-5 w-5" />
+          </button>
+          <ExportReports data={filteredComplaints} type="complaints" />
+          <button
+            className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2
+              ${darkMode ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus className="h-5 w-5" />
+            <span>File a Complaint</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Toolbar */}
-        <div className="mb-6 flex flex-wrap items-center gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-              <input
-                type="text"
-                placeholder="Search complaints..."
-                value={searchText}
-                onChange={handleSearchChange}
-                className={`w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                  ${darkMode 
-                    ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
-                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                  }`}
-              />
-              {searchText && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  type="button"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-lg ${viewMode === 'table' 
-                ? 'bg-blue-100 text-blue-600' 
-                : darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Table className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${viewMode === 'grid' 
-                ? 'bg-blue-100 text-blue-600' 
-                : darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Grid className="h-5 w-5" />
-            </button>
-            <ExportReports data={filteredComplaints} type="complaints" />
-            <CustomSelect
-              options={filterOptions}
-              value={filter}
-              onChange={setFilter}
-              placeholder="Filter By"
-            />
-            <button
-              className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2
-                ${darkMode ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
-              onClick={() => setShowAddModal(true)}
-            >
-              <Plus className="h-5 w-5" />
-              <span>File a Complaint</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Table/Grid View */}
-        <div className={`rounded-lg shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          {viewMode === 'table' ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-green-600">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Complaint ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Type of Complaint</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Respondent</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Complainant</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Date Filed</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Assigned Officer</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Resolution Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Actions</th>
+      {/* Table/Grid View */}
+      <div className={`rounded-lg shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        {viewMode === 'table' ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-green-600">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Complaint ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Type of Complaint</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Respondent</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Complainant</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Date Filed</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Assigned Officer</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Resolution Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-white">Actions</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>  
+                {currentComplaints.map((complaint) => (
+                  <tr key={complaint.id} className={`${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}> 
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.type}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.respondent}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.complainant}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.dateFiled}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.officer}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        complaint.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                        complaint.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                        complaint.status === 'Resolved' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {complaint.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.resolutionDate}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          className="text-blue-600 hover:text-blue-800"
+                          onClick={() => handleViewComplaint(complaint)}
+                          title="View Details"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
+                        <button
+                          className="text-green-600 hover:text-green-800"
+                          onClick={() => handleEditComplaint(complaint)}
+                          title="Edit Complaint"
+                        >
+                          <Pencil className="h-5 w-5" />
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-800"
+                          onClick={() => handleDeleteComplaint(complaint)}
+                          title="Delete Complaint"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>  
-                  {currentComplaints.map((complaint) => (
-                    <tr key={complaint.id} className={`${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}> 
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.type}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.respondent}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.complainant}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.dateFiled}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.officer}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          complaint.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                          complaint.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                          complaint.status === 'Resolved' ? 'bg-green-100 text-green-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {complaint.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{complaint.resolutionDate}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            className="text-blue-600 hover:text-blue-800"
-                            onClick={() => handleViewComplaint(complaint)}
-                            title="View Details"
-                          >
-                            <Eye className="h-5 w-5" />
-                          </button>
-                          <button
-                            className="text-green-600 hover:text-green-800"
-                            onClick={() => handleEditComplaint(complaint)}
-                            title="Edit Complaint"
-                          >
-                            <Pencil className="h-5 w-5" />
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-800"
-                            onClick={() => handleDeleteComplaint(complaint)}
-                            title="Delete Complaint"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-              {currentComplaints.map(complaint => (
-                <div
-                  key={complaint.id}
-                  className={`rounded-lg shadow p-4 ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{complaint.type}</h3>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewComplaint(complaint)}
-                        className={`${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`}
-                        title="View Details"
-                      >
-                        <Eye className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditComplaint(complaint)}
-                        className={`${darkMode ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-800'}`}
-                        title="Edit Complaint"
-                      >
-                        <Pencil className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteComplaint(complaint)}
-                        className={`${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
-                        title="Delete Complaint"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>ID: {complaint.id}</p>
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Respondent: {complaint.respondent}</p>
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Complainant: {complaint.complainant}</p>
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Date Filed: {complaint.dateFiled}</p>
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Officer: {complaint.officer}</p>
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Status: {complaint.status}</p>
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Resolution Date: {complaint.resolutionDate}</p>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+            {currentComplaints.map(complaint => (
+              <div
+                key={complaint.id}
+                className={`rounded-lg shadow p-4 ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{complaint.type}</h3>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleViewComplaint(complaint)}
+                      className={`${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`}
+                      title="View Details"
+                    >
+                      <Eye className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleEditComplaint(complaint)}
+                      className={`${darkMode ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-800'}`}
+                      title="Edit Complaint"
+                    >
+                      <Pencil className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteComplaint(complaint)}
+                      className={`${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
+                      title="Delete Complaint"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={[10, 20, 50]}
-          totalEntries={filteredComplaints.length}
-          startEntry={startIndex + 1}
-          endEntry={Math.min(endIndex, filteredComplaints.length)}
-          onPageChange={setCurrentPage}
-          onRowsPerPageChange={v => { setRowsPerPage(v); setCurrentPage(1); }}
-          className="mt-2"
-        />
-
-        {/* Modals */}
-        {showAddModal && (
-          <ComplaintFormModal
-            isOpen={showAddModal}
-            onClose={() => setShowAddModal(false)}
-            onSubmit={handleAddComplaint}
-          />
-        )}
-        {showEditModal && (
-          <ComplaintFormModal
-            isOpen={showEditModal}
-            onClose={() => setShowEditModal(false)}
-            onSubmit={handleUpdateComplaint}
-            initialData={selectedComplaint}
-            isEdit
-          />
-        )}
-        {showViewModal && (
-          <ComplaintViewModal
-            isOpen={showViewModal}
-            onClose={() => setShowViewModal(false)}
-            complaint={selectedComplaint}
-          />
+                <div className="space-y-2">
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>ID: {complaint.id}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Respondent: {complaint.respondent}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Complainant: {complaint.complainant}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Date Filed: {complaint.dateFiled}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Officer: {complaint.officer}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Status: {complaint.status}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Resolution Date: {complaint.resolutionDate}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
-    </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        rowsPerPage={rowsPerPage}
+        rowsPerPageOptions={[10, 20, 50]}
+        totalEntries={filteredComplaints.length}
+        startEntry={startIndex + 1}
+        endEntry={Math.min(endIndex, filteredComplaints.length)}
+        onPageChange={setCurrentPage}
+        onRowsPerPageChange={v => { setRowsPerPage(v); setCurrentPage(1); }}
+        className="mt-2"
+      />
+
+      {/* Modals */}
+      {showAddModal && (
+        <ComplaintFormModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddComplaint}
+        />
+      )}
+      {showEditModal && (
+        <ComplaintFormModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSubmit={handleUpdateComplaint}
+          initialData={selectedComplaint}
+          isEdit
+        />
+      )}
+      {showViewModal && (
+        <ComplaintViewModal
+          isOpen={showViewModal}
+          onClose={() => setShowViewModal(false)}
+          complaint={selectedComplaint}
+        />
+      )}
+    </DashboardPageContainer>
   );
 }

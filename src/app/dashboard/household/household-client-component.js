@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { MoreVertical, Pencil, Trash2, Plus, Search } from "lucide-react";
+import { useState, useRef } from "react";
+import { MoreVertical, Pencil, Trash2, Plus, Search, Filter, Download, Upload, Table, Grid, FileSpreadsheet, FileText as FileTextIcon } from "lucide-react";
 import CustomSelect from "@/components/CustomSelect";
+import { Menu, Transition } from '@headlessui/react';
 
 export function HouseholdClientComponent({ initialHouseholds }) {
   const [households, setHouseholds] = useState(initialHouseholds);
@@ -17,6 +18,9 @@ export function HouseholdClientComponent({ initialHouseholds }) {
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   const [householdToDelete, setHouseholdToDelete] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('table');
+  const fileInputRef = useRef(null);
 
   // Function to re-fetch data (for CRUD operations)
   const refreshHouseholds = async () => {
@@ -74,61 +78,118 @@ export function HouseholdClientComponent({ initialHouseholds }) {
   };
 
   return (
-    <div className={`w-full font-sans ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Household Records</h2>
-        <div className="flex items-center gap-2">
-          <button
-            className={`p-2 rounded-full transition ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-900'}`}
-          >
-            {/* Filter icon SVG, width=20, height=20 */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-          </button>
-        </div>
-      </div>
-      <div className="h-1 bg-red-500 w-full mb-6"></div>
-
+    <div className={`w-full font-sans ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>      
+      
       {/* Top Controls */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
-        {/* Add Button */}
+        <div className="flex-1">
+          <div className="relative">
+            <button 
+              onClick={handleSearch}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <Search size={18} />
+            </button>
+            <input
+              type="text"
+              placeholder="Search households..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="pl-10 pr-12 py-2 border border-gray-300 text-gray-900 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            {searchText && (
+              <button
+                onClick={() => {
+                  setSearchText("");
+                  handleSearch();
+                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Filter Icon Button */}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="p-2 rounded-lg text-gray-600 hover:text-gray-900"
+          title="Show filters"
+        >
+          <Filter className="h-5 w-5" />
+        </button>
+        {/* Table/Grid Toggle */}
+        <button
+          onClick={() => setViewMode('table')}
+          className={`p-2 rounded-lg ${viewMode === 'table' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
+        >
+          <Table className="h-5 w-5" />
+        </button>
+        <button
+          onClick={() => setViewMode('grid')}
+          className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
+        >
+          <Grid className="h-5 w-5" />
+        </button>
+        {/* Export Dropdown */}
+        <Menu as="div" className="relative">
+          <Menu.Button className={`p-2 rounded-lg text-gray-600 hover:text-gray-900`}>
+            <Download className="h-5 w-5" />
+          </Menu.Button>
+          <Transition
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+          >
+            <Menu.Items className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-10 bg-white`}>
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={() => {}}
+                    className={`${active ? 'bg-gray-100' : ''} flex items-center px-4 py-2 text-sm w-full`}
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export to Excel
+                  </button>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={() => {}}
+                    className={`${active ? 'bg-gray-100' : ''} flex items-center px-4 py-2 text-sm w-full`}
+                  >
+                    <FileTextIcon className="h-4 w-4 mr-2" />
+                    Export to PDF
+                  </button>
+                )}
+              </Menu.Item>
+            </Menu.Items>
+          </Transition>
+        </Menu>
+        {/* Import Excel Button */}
+        <button
+          onClick={() => {}}
+          className={`bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2`}
+        >
+          <Upload className="h-5 w-5" />
+          <span>Import Excel</span>
+        </button>
+        {/* Add Household Button */}
         <button 
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
           onClick={() => setIsAddModalOpen(true)}
         >
-          <Plus size={18} /> Add Household
+          <Plus className="h-5 w-5" />
+          <span>Add Household</span>
         </button>
-
-        {/* Search Box with Icons */}
-        <div className="relative">
-          <button 
-            onClick={handleSearch}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-          >
-            <Search size={18} />
-          </button>
-          <input
-            type="text"
-            placeholder="Search household..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="border pl-10 pr-10 py-2 rounded-lg w-60 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-          />
-          {searchText && (
-            <button
-              onClick={() => {
-                setSearchText("");
-                handleSearch();
-              }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Table */}

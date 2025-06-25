@@ -409,25 +409,6 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
 
   return (
     <div className="text-gray-900 dark:text-white">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Resident Records
-            </h1>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900"
-              >
-                <Filter className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Actions */}
@@ -440,8 +421,15 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
                 placeholder="Search residents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`pl-10 pr-8 py-2 border border-gray-300 text-gray-900 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500`}
+                className={`pl-10 pr-12 py-2 border border-gray-300 text-gray-900 rounded-md w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-green-500`}
               />
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-lg text-gray-600 hover:text-gray-900"
+                title="Show filters"
+              >
+                <Filter className="h-5 w-5" />
+              </button>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -502,7 +490,7 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
             {/* Import Excel Button */}
             <button
               onClick={handleImportClick}
-              className={`bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700`}
+              className={`bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2`}
             >
               <Upload className="h-5 w-5" />
               <span>Import Excel</span>
@@ -516,7 +504,7 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
             />
             <button
               onClick={() => setShowAddModal(true)}
-              className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700`}
+              className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2`}
             >
               <Plus className="h-5 w-5" />
               <span>Add Resident</span>
@@ -728,16 +716,15 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
               }}
               className={`rounded-md border text-gray-900 shadow-sm focus:ring-blue-500 focus:border-blue-500`}
             >
-              {[10, 20, 30, 40, 50].map(size => (
-                <option key={size} value={size}>{size}</option>
+              {Array.from({ length: 10 }, (_, i) => (i + 1) * 10).map(value => (
+                <option key={value} value={value}>{value}</option>
               ))}
             </select>
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setPage(page - 1)}
-              disabled={page <= 1}
-              className={`px-3 py-1 rounded-md text-gray-900 text-sm font-medium ${page <= 1 ? 'opacity-50 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+              onClick={() => setPage(Math.max(1, page - 1))}
+              className={`rounded-md p-2 text-gray-900 hover:bg-gray-200`}
             >
               Previous
             </button>
@@ -745,55 +732,14 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
               Page {page} of {totalPages}
             </span>
             <button
-              onClick={() => setPage(page + 1)}
-              disabled={page >= totalPages}
-              className={`px-3 py-1 rounded-md text-gray-900 text-sm font-medium ${page >= totalPages ? 'opacity-50 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}`}
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              className={`rounded-md p-2 text-gray-900 hover:bg-gray-200`}
             >
               Next
             </button>
           </div>
         </div>
-
-        {/* Add Resident Modal */}
-        <AddResidentModal
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          onSubmit={handleAddResident}
-        />
-
-        {/* Modals */}
-        {showViewModal && (
-          <ViewResidentModal
-            resident={selectedResident}
-            onClose={() => {
-              setShowViewModal(false);
-              setSelectedResident(null);
-            }}
-          />
-        )}
-
-        {showEditModal && (
-          <EditResidentModal
-            resident={selectedResident}
-            onClose={() => {
-              setShowEditModal(false);
-              setSelectedResident(null);
-            }}
-            onUpdate={handleUpdateResident}
-          />
-        )}
-
-        {showDeleteModal && (
-          <DeleteResidentModal
-            resident={selectedResident}
-            onClose={() => {
-              setShowDeleteModal(false);
-              setSelectedResident(null);
-            }}
-            onConfirm={handleDeleteConfirm}
-          />
-        )}
       </div>
     </div>
   );
-} 
+}
