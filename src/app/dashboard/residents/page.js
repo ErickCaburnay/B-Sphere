@@ -13,7 +13,9 @@ export default async function ResidentsPage({ searchParams }) {
     ? `https://${process.env.VERCEL_URL}`
     : 'http://localhost:3000';
 
-  const res = await fetch(`${baseUrl}/api/residents?page=${page}&pageSize=${pageSize}`, { cache: 'no-store' });
+  const res = await fetch(`${baseUrl}/api/residents?page=${page}&pageSize=${pageSize}`, { 
+    cache: 'no-store' // Temporarily disable caching to fix the error
+  });
   const { data: residents, total } = await res.json();
 
   // Serialize dates

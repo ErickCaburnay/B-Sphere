@@ -6,6 +6,7 @@ import { MoreVertical, Pencil, Trash2, Plus } from "lucide-react";
 import Image from "next/image";
 import Pagination from '@/components/ui/Pagination';
 import DashboardPageContainer from '@/components/DashboardPageContainer';
+import { cachedFetch, invalidateCache } from '@/components/ui/ClientCache';
 
 const OfficialsPage = () => {
   const [activeMenu, setActiveMenu] = useState(null);
@@ -52,8 +53,7 @@ const OfficialsPage = () => {
 
   const fetchOfficials = async () => {
     try {
-      const res = await fetch('/api/officials');
-      const data = await res.json();
+      const data = await cachedFetch('/api/officials', {}, 300000); // Cache for 5 minutes
       setOfficials(Array.isArray(data) ? data : []);
       setTotalPages(Math.ceil(data.length / rowsPerPage));
       setStartIndex((currentPage - 1) * rowsPerPage);

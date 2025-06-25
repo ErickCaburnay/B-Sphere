@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { MoreVertical, Pencil, Trash2, Plus, Search, Filter, Download, Upload, Table, Grid, FileSpreadsheet, FileText as FileTextIcon } from "lucide-react";
 import CustomSelect from "@/components/CustomSelect";
 import { Menu, Transition } from '@headlessui/react';
+import { cachedFetch, invalidateCache } from '@/components/ui/ClientCache';
 
 export function HouseholdClientComponent({ initialHouseholds }) {
   const [households, setHouseholds] = useState(initialHouseholds);
@@ -24,9 +25,12 @@ export function HouseholdClientComponent({ initialHouseholds }) {
 
   // Function to re-fetch data (for CRUD operations)
   const refreshHouseholds = async () => {
-    const res = await fetch('/api/households');
-    const data = await res.json();
-    setHouseholds(data);
+    try {
+      const data = await cachedFetch('/api/households', { bypassCache: true }); // Bypass cache for fresh data
+      setHouseholds(data);
+    } catch (error) {
+      console.error('Error fetching households:', error);
+    }
   };
 
   const handleSearch = () => {

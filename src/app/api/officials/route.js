@@ -20,7 +20,12 @@ export async function GET() {
       termEnd: official.termEnd.toISOString()
     }));
 
-    return NextResponse.json(formattedOfficials);
+    const response = NextResponse.json(formattedOfficials);
+    
+    // Add caching headers
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    
+    return response;
   } catch (error) {
     console.error("Error fetching officials:", error);
     return NextResponse.json(

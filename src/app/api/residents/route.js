@@ -21,7 +21,12 @@ export async function GET(request) {
       prisma.resident.count(),
     ]);
 
-    return NextResponse.json({ data: residents, total });
+    const response = NextResponse.json({ data: residents, total });
+    
+    // Add caching headers
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    
+    return response;
   } catch (error) {
     console.error('Error fetching residents:', error);
     return NextResponse.json({ error: 'Failed to fetch residents' }, { status: 500 });

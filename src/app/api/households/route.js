@@ -10,7 +10,12 @@ export async function GET() {
         head: true,
       }
     });
-    return NextResponse.json(households);
+    const response = NextResponse.json(households);
+    
+    // Add caching headers
+    response.headers.set('Cache-Control', 'public, s-maxage=180, stale-while-revalidate=360');
+    
+    return response;
   } catch (error) {
     console.error('Error fetching households:', error);
     return NextResponse.json({ error: 'Failed to fetch households' }, { status: 500 });
