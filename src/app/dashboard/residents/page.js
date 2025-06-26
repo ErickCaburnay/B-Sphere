@@ -27,7 +27,10 @@ export default async function ResidentsPage({ searchParams }) {
   }));
 
   return (
-    <DashboardPageContainer heading="Resident Records">
+    <DashboardPageContainer 
+      heading="Resident Records"
+      subtitle="Manage and monitor all registered residents in the barangay"
+    >
       <EnhancedResidentsView
         initialResidents={serializedResidents}
         total={total}

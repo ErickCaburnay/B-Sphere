@@ -240,7 +240,10 @@ export default function ServicesPage() {
   };
 
   return (
-    <DashboardPageContainer heading="Services Management">
+    <DashboardPageContainer 
+      heading="Services Management"
+      subtitle="Process document requests and manage barangay services efficiently"
+    >
       {/* Search and Action Buttons */}
       <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
         <div className="relative w-full md:w-auto">

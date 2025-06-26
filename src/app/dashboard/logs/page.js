@@ -63,7 +63,10 @@ export default function LogsPage() {
   const handleRefresh = () => alert("Refreshing logs...");
 
   return (
-    <DashboardPageContainer heading="Logs & User Activities">
+    <DashboardPageContainer 
+      heading="Logs & User Activities"
+      subtitle="Monitor system activities and track user actions for security and compliance"
+    >
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <div className="flex-1">
           <div className="relative">

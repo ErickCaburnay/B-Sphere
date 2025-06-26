@@ -225,7 +225,10 @@ export default function ComplaintsPage() {
   };
 
   return (
-    <DashboardPageContainer heading="Complaint Records">
+    <DashboardPageContainer 
+      heading="Complaint Records"
+      subtitle="Track and manage community complaints and resolutions"
+    >
       {/* Toolbar */}
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <div className="flex-1">

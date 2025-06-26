@@ -247,7 +247,10 @@ const OfficialsPage = () => {
   };
 
   return (
-    <DashboardPageContainer heading="Barangay Officials">
+    <DashboardPageContainer 
+      heading="Barangay Officials"
+      subtitle="Manage elected and appointed officials serving the barangay"
+    >
       <div className="flex items-center justify-between mb-6">        
         <div className="flex items-center gap-2">
           {/* <button

@@ -18,7 +18,10 @@ export default async function HouseholdPage() {
   }));
 
   return (
-    <DashboardPageContainer heading="Households">
+    <DashboardPageContainer 
+      heading="Households"
+      subtitle="Monitor family units and household composition in the barangay"
+    >
       <HouseholdClientComponent initialHouseholds={serializableHouseholds} />
     </DashboardPageContainer>
   );

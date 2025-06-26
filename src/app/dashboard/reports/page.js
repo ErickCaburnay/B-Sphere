@@ -94,7 +94,10 @@ export default function ReportsPage() {
   };
 
   return (
-    <DashboardPageContainer heading="Reports Module">
+    <DashboardPageContainer 
+      heading="Reports Module"
+      subtitle="Generate comprehensive reports and analytics for data-driven decisions"
+    >
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="flex-1 flex items-center gap-2 min-w-0">
           <div className="relative w-full max-w-xs">
