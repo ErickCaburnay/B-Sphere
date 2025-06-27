@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import AOS from "aos";
@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 
 const LoginPage = () => {
     const pathname = usePathname();
+    const [userType, setUserType] = useState(null); // null, 'resident', or 'admin'
 
   useEffect(() => {
     AOS.init({
@@ -16,6 +17,14 @@ const LoginPage = () => {
       once: true,
     });
   }, []);
+
+  const handleUserTypeSelect = (type) => {
+    setUserType(type);
+  };
+
+  const handleBackToSelection = () => {
+    setUserType(null);
+  };
 
   return (
     <div className="font-sans text-gray-900 overflow-x-hidden">
@@ -91,56 +100,126 @@ const LoginPage = () => {
                 </p>
               </div>
 
-              {/* Right Panel - Login Form */}
+              {/* Right Panel - User Type Selection or Login Form */}
               <div className="md:w-1/2 p-8 bg-white/10 backdrop-blur-sm">
-                <h3 className="text-2xl font-bold mb-6 text-center text-white">Welcome Back</h3>
-                <form className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-white/90 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="you@example.com"
-                      className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/90 mb-1">Password</label>
-                    <input
-                      type="password"
-                      name="password"
-                      placeholder="••••••••"
-                      className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="remember"
-                        className="h-4 w-4 text-green-600 border-white/30 rounded focus:ring-green-500 bg-white/20"
-                      />
-                      <label htmlFor="remember" className="ml-2 text-sm text-white/90">
-                        Remember me
-                      </label>
+                {!userType ? (
+                  // User Type Selection
+                  <div className="flex flex-col justify-center h-full">
+                    <h3 className="text-2xl font-bold mb-8 text-center text-white">Choose Login Type</h3>
+                    <div className="space-y-4">
+                      <button
+                        onClick={() => handleUserTypeSelect('resident')}
+                        className="w-full p-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg text-white hover:bg-white/30 transition duration-300 flex items-center justify-start gap-3 group"
+                      >
+                        <div className="relative w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center group-hover:bg-green-500/30 transition duration-300">
+                          <div className="absolute -inset-1 bg-green-400/60 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                          <div className="absolute -inset-2 bg-green-400/40 rounded-full animate-ping opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <div className="absolute inset-0 bg-green-500/50 rounded-full animate-pulse opacity-0 group-hover:opacity-75 transition-opacity duration-300"></div>
+                          <Image src="/resources/resident.png" alt="Resident" width={24} height={24} className="relative z-10" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold text-lg">Resident Login</div>
+                          <div className="text-sm text-white/70">Access resident services and information</div>
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleUserTypeSelect('admin')}
+                        className="w-full p-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg text-white hover:bg-white/30 transition duration-300 flex items-center justify-start gap-3 group"
+                      >
+                        <div className="relative w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center group-hover:bg-blue-500/30 transition duration-300">
+                          <div className="absolute -inset-1 bg-blue-400/60 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                          <div className="absolute -inset-2 bg-blue-400/40 rounded-full animate-ping opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <div className="absolute inset-0 bg-blue-500/50 rounded-full animate-pulse opacity-0 group-hover:opacity-75 transition-opacity duration-300"></div>
+                          <Image src="/resources/settings.png" alt="Admin" width={24} height={24} className="relative z-10" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-semibold text-lg">Admin Login</div>
+                          <div className="text-sm text-white/70">Access administrative dashboard</div>
+                        </div>
+                      </button>
                     </div>
-                    <Link href="/forgot-password" className="text-sm text-green-300 hover:text-green-100 transition duration-300">
-                      Forgot Password?
-                    </Link>
                   </div>
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition duration-300 shadow-lg"
-                  >
-                    Log In
-                  </button>
-                </form>
-                <p className="mt-4 text-center text-white/90 text-sm">
-                  Don't have an account?{' '}
-                  <Link href="/signup" className="text-green-300 hover:text-green-100 transition duration-300">
-                    Sign Up
-                  </Link>
-                </p>
+                ) : (
+                  // Login Form
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <button
+                        onClick={handleBackToSelection}
+                        className="text-white/70 hover:text-white transition duration-300 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <div className={`relative w-3 h-3 rounded-full ${userType === 'resident' ? 'bg-green-500' : 'bg-blue-500'}`}>
+                          <div className={`absolute -inset-1 rounded-full animate-pulse blur-sm ${userType === 'resident' ? 'bg-green-400/80' : 'bg-blue-400/80'}`}></div>
+                          <div className={`absolute -inset-2 rounded-full animate-ping ${userType === 'resident' ? 'bg-green-400/60' : 'bg-blue-400/60'}`}></div>
+                          <div className={`absolute inset-0 rounded-full animate-pulse ${userType === 'resident' ? 'bg-green-500/70' : 'bg-blue-500/70'}`}></div>
+                        </div>
+                        <span className="text-white/90 text-sm capitalize">{userType} Login</span>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-2xl font-bold mb-6 text-center text-white">
+                      {userType === 'resident' ? 'Resident Login' : 'Admin Login'}
+                    </h3>
+                    
+                    <form className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-white/90 mb-1">Email Address</label>
+                        <input
+                          type="email"
+                          name="email"
+                          placeholder="you@example.com"
+                          className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white/90 mb-1">Password</label>
+                        <input
+                          type="password"
+                          name="password"
+                          placeholder="••••••••"
+                          className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="remember"
+                            className="h-4 w-4 text-green-600 border-white/30 rounded focus:ring-green-500 bg-white/20"
+                          />
+                          <label htmlFor="remember" className="ml-2 text-sm text-white/90">
+                            Remember me
+                          </label>
+                        </div>
+                        <Link href="/forgot-password" className="text-sm text-green-300 hover:text-green-100 transition duration-300">
+                          Forgot Password?
+                        </Link>
+                      </div>
+                      <button
+                        type="submit"
+                        className={`w-full py-3 text-white rounded-lg font-medium transition duration-300 shadow-lg ${
+                          userType === 'resident' 
+                            ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' 
+                            : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                        }`}
+                      >
+                        Log In as {userType === 'resident' ? 'Resident' : 'Admin'}
+                      </button>
+                    </form>
+                    <p className="mt-4 text-center text-white/90 text-sm">
+                      Don't have an account?{' '}
+                      <Link href="/signup" className="text-green-300 hover:text-green-100 transition duration-300">
+                        Sign Up
+                      </Link>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,13 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  // You can remove or comment out the 'output' line to use the default client location
-  // output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -16,139 +8,148 @@ datasource db {
 }
 
 model Official {
-  residentId   String   @id @unique
-  resident     Resident @relation(fields: [residentId], references: [id])
+  residentId   String    @unique(map: "Official_residentId_key")
   position     String
-  termStart    DateTime
-  termEnd      DateTime
-  chairmanship String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  id           String?
+  chairmanship String?
   status       String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  termEnd      DateTime?
+  termStart    DateTime?
+  resident     Resident  @relation(fields: [residentId], references: [id])
+
+  @@map("official")
 }
 
 model Resident {
-  id                  String    @id @unique
-  firstName           String
-  middleName          String?
-  lastName            String
-  suffix              String?
-  address             String
-  birthdate           DateTime
-  birthplace          String
-  citizenship         String
-  gender              String
-  voterStatus         String
-  maritalStatus       String
-  employmentStatus    String?
-  educationalAttainment String?
-  occupation          String?
-  contactNumber       String?
-  email               String?
-  isTUPAD             Boolean   @default(false)
-  isPWD               Boolean   @default(false)
-  is4Ps               Boolean   @default(false)
-  isSoloParent        Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  official            Official?
-  household           Household? @relation("HouseholdHead")
-  households          Household[] @relation("HouseholdMembers")
-  logs                Log[]
+  id                         String      @id @unique
+  firstName                  String
+  middleName                 String?
+  lastName                   String
+  birthdate                  DateTime
+  maritalStatus              String
+  gender                     String
+  createdAt                  DateTime    @default(now())
+  updatedAt                  DateTime    @updatedAt
+  address                    String
+  citizenship                String
+  occupation                 String?
+  contactNumber              String?
+  email                      String?
+  isTUPAD                    Boolean     @default(false)
+  isPWD                      Boolean     @default(false)
+  is4Ps                      Boolean     @default(false)
+  isSenior                   Boolean     @default(false)
+  isVoter                    Boolean     @default(false)
+  photo                      String?
+  uniqueId                   String?
+  suffix                     String?
+  birthplace                 String?
+  educationalAttainment      String?
+  employmentStatus           String?
+  isSoloParent               Boolean     @default(false)
+  voterStatus                String?
+  household                  Household?  @relation("HouseholdHead")
+  logs                       Log[]
+  official                   Official?
+  household_householdmembers Household[] @relation("householdmembers")
+
+  @@map("resident")
 }
 
 model Household {
-  id            String    @id @unique
-  headId        String    @unique
-  head          Resident  @relation("HouseholdHead", fields: [headId], references: [id])
-  totalMembers  Int       @default(1)
-  address       String
-  contactNumber String
-  members       Resident[] @relation("HouseholdMembers")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                        String     @id @unique
+  headId                    String     @unique(map: "Household_headId_key")
+  totalMembers              Int        @default(1)
+  address                   String
+  contactNumber             String
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+  head                      Resident   @relation("HouseholdHead", fields: [headId], references: [id])
+  resident_householdmembers Resident[] @relation("householdmembers")
+
+  @@map("household")
 }
 
 model Log {
-  id         String   @id @default(uuid())
+  id         String   @id
   residentId String
-  resident   Resident @relation(fields: [residentId], references: [id])
   action     String
+  createdAt  DateTime @default(now())
   role       String
   timestamp  DateTime @default(now())
-  createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  resident   Resident @relation(fields: [residentId], references: [id])
+
+  @@index([residentId], map: "log_residentId_fkey")
+  @@map("log")
 }
 
 model Complaint {
-  id             String    @id @default(uuid()) // Complaint ID
-  type           String
-  respondent     String    // Consider linking to Resident or Household later
-  complainant    String    // Consider linking to Resident or Household later
-  dateFiled      DateTime  @default(now())
-  assignedOfficer String   // Consider linking to Official later
-  status         String
-  resolutionDate DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              String    @id
+  type            String
+  respondent      String
+  complainant     String
+  dateFiled       DateTime  @default(now())
+  assignedOfficer String
+  status          String
+  resolutionDate  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("complaint")
 }
 
 model Request {
-  id             String    @id @default(uuid()) // Transaction No
-  dateFiled      DateTime  @default(now())
-  applicantName  String    // Consider linking to Resident later
-  purpose        String
-  type           String
-  status         String
-  dateIssued     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id            String    @id
+  dateFiled     DateTime  @default(now())
+  applicantName String
+  purpose       String
+  type          String
+  status        String
+  dateIssued    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("request")
 }
 
 model Report {
-  id         String    @id @default(uuid())
-  reportType String    // e.g., "Weekly", "Monthly", "Semestral", "Quarterly"
+  id         String   @id
+  reportType String
   startDate  DateTime
   endDate    DateTime
-  summary    String?   // A brief summary of the report
-  filePath   String?   // Optional: path to a generated report file (e.g., PDF)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  summary    String?
+  filePath   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("report")
 }
 
 model Document {
-  id          String   @id @default(uuid())
+  id          String   @id
+  type        String
   residentId  String
-  resident    Resident @relation(fields: [residentId], references: [id])
-  type        String   // e.g., "Barangay ID", "Certificate", etc.
-  filePath    String   // URL or path to the document
-  description String?
   createdAt   DateTime @default(now())
+  description String?
+  filePath    String
   updatedAt   DateTime @updatedAt
+
+  @@map("document")
 }
 
-model FamilyMember {
+model User {
   id          String   @id @default(uuid())
-  residentId  String
-  resident    Resident @relation(fields: [residentId], references: [id])
   firstName   String
   middleName  String?
   lastName    String
-  suffix      String?
-  birthdate   DateTime
-  gender      String
-  relationship String  // e.g., "Father", "Mother", "Sibling", etc.
+  email       String   @unique
+  phoneNumber String
+  password    String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-}
 
-model ActivityHistory {
-  id          String   @id @default(uuid())
-  residentId  String
-  resident    Resident @relation(fields: [residentId], references: [id])
-  action      String   // e.g., "Profile Updated", "Document Added", etc.
-  details     String?  // Additional details about the activity
-  timestamp   DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-} 
+  @@map("users")
+}

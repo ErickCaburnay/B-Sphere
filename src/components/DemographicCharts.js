@@ -40,7 +40,13 @@ export default function DemographicCharts() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Chart options with animations
+
+
+
+
+
+
+  // Chart options with animations and interactivity
   const getChartOptions = (type, labels, colors, title = "", customOptions = {}) => {
     const baseOptions = {
       chart: {
@@ -61,7 +67,8 @@ export default function DemographicCharts() {
           show: false
         },
         background: 'transparent',
-        fontFamily: 'Inter, sans-serif'
+        fontFamily: 'Inter, sans-serif',
+
       },
       colors: colors,
       labels: labels,
@@ -513,20 +520,195 @@ export default function DemographicCharts() {
     return baseOptions;
   };
 
-  // Chart Components
+  // Chart Components - Updated according to image specifications
   const PopulationChart = () => {
-    const options = getChartOptions(
-      'donut', 
-      demographicsData.population.chartData.labels,
-      demographicsData.population.chartData.colors
-    );
+    // Population Overview - Area Chart for total pop over time OR Bar Chart for pop/zone (Image 2)
+    const options = {
+      chart: {
+        type: 'area',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false },
+        sparkline: { enabled: false }
+      },
+      dataLabels: { enabled: false },
+      stroke: {
+        curve: 'smooth',
+        width: 2
+      },
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shadeIntensity: 1,
+          opacityFrom: 0.7,
+          opacityTo: 0.3,
+          stops: [0, 90, 100]
+        }
+      },
+      colors: ['#3B82F6'],
+      xaxis: {
+        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        labels: { style: { fontSize: '10px' } }
+      },
+      yaxis: {
+        labels: { 
+          style: { fontSize: '10px' },
+          formatter: function (val) {
+            return val.toFixed(0);
+          }
+        }
+      },
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return val.toLocaleString() + " residents";
+          }
+        }
+      }
+    };
+    
+    const series = [{
+      name: 'Population',
+      data: [12000, 12150, 12300, 12450, 12600, demographicsData.population.total]
+    }];
     
     return (
-      <div className="h-48 mt-4">
+      <div className="h-full">
         {startAnimation && (
           <Chart
             options={options}
-            series={demographicsData.population.chartData.data}
+            series={series}
+            type="area"
+            height="100%"
+          />
+        )}
+      </div>
+    );
+  };
+
+  const PopulationGrowthChart = () => {
+    // Population Growth - Line Chart (compare year-by-year) (Image 3)
+    const options = {
+      chart: {
+        type: 'line',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false }
+      },
+      dataLabels: { enabled: false },
+      stroke: {
+        curve: 'smooth',
+        width: 3
+      },
+      colors: ['#10B981'],
+      xaxis: {
+        categories: ['2019', '2020', '2021', '2022', '2023', '2024'],
+        labels: { style: { fontSize: '10px' } }
+      },
+      yaxis: {
+        labels: { 
+          style: { fontSize: '10px' },
+          formatter: function (val) {
+            return val.toFixed(1) + '%';
+          }
+        }
+      },
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return val.toFixed(1) + "% growth";
+          }
+        }
+      }
+    };
+    
+    const series = [{
+      name: 'Growth Rate',
+      data: [2.1, 1.8, 2.3, 2.7, 3.1, demographicsData.population.growth]
+    }];
+    
+    return (
+      <div className="h-full">
+        {startAnimation && (
+          <Chart
+            options={options}
+            series={series}
+            type="line"
+            height="100%"
+          />
+        )}
+      </div>
+    );
+  };
+
+  const VotersChart = () => {
+    // Voters vs. Non-Voters - Donut Chart (simple %) OR Stacked Bar (per zone) (Image 1)
+    const voterPercentage = Math.round((demographicsData.voters.registered / (demographicsData.voters.registered + demographicsData.voters.unregistered)) * 100);
+    const nonVoterPercentage = 100 - voterPercentage;
+    
+    const options = {
+      chart: {
+        type: 'donut',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif'
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '70%',
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                label: 'Voters',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#374151',
+                formatter: function (w) {
+                  return voterPercentage + '%';
+                }
+              }
+            }
+          }
+        }
+      },
+      colors: ['#10B981', '#EF4444'],
+      labels: ['Registered', 'Unregistered'],
+      dataLabels: {
+        enabled: true,
+        formatter: function (val) {
+          return Math.round(val) + '%';
+        },
+        style: { fontSize: '10px', fontWeight: 'bold' }
+      },
+      legend: {
+        show: true,
+        position: 'bottom',
+        fontSize: '10px'
+      }
+    };
+    
+    return (
+      <div className="h-full">
+        {startAnimation && (
+          <Chart
+            options={options}
+            series={[voterPercentage, nonVoterPercentage]}
             type="donut"
             height="100%"
           />
@@ -535,22 +717,145 @@ export default function DemographicCharts() {
     );
   };
 
-  const AgeDistributionChart = () => {
-    const options = getChartOptions(
-      'bar',
-      demographicsData.ageDistribution.chartData.labels,
-      demographicsData.ageDistribution.chartData.colors
-    );
+  const EmploymentStatusChart = () => {
+    // Employment Rate - Line Chart over years OR Bar Chart (by category: employed, unemployed) (Image 2)
+    const employmentRate = Math.round((demographicsData.employmentStatus.employed / demographicsData.employmentStatus.total) * 100);
+    
+    const options = {
+      chart: {
+        type: 'bar',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false }
+      },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: '60%',
+          borderRadius: 4
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        style: { fontSize: '10px', fontWeight: 'bold' },
+        formatter: function (val) {
+          return val.toLocaleString();
+        }
+      },
+      colors: ['#10B981', '#EF4444'],
+      xaxis: {
+        categories: ['Employed', 'Unemployed'],
+        labels: { style: { fontSize: '10px' } }
+      },
+      yaxis: {
+        labels: { 
+          style: { fontSize: '10px' },
+          formatter: function (val) {
+            return val.toLocaleString();
+          }
+        }
+      },
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return val.toLocaleString() + " people";
+          }
+        }
+      }
+    };
+    
+    const series = [{
+      name: 'Employment Status',
+              data: [demographicsData.employmentStatus.employed, demographicsData.employmentStatus.unemployed]
+    }];
     
     return (
-      <div className="h-48 mt-4">
+      <div className="h-full">
         {startAnimation && (
           <Chart
             options={options}
-            series={[{
-              name: 'Population',
-              data: demographicsData.ageDistribution.chartData.data
-            }]}
+            series={series}
+            type="bar"
+            height="100%"
+          />
+        )}
+      </div>
+    );
+  };
+
+  const AgeGenderGroupedChart = () => {
+    // Age & Gender Distribution - Grouped Bar Chart (x-axis = age brackets, grouped by gender) (Image 2)
+    const options = {
+      chart: {
+        type: 'bar',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false }
+      },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: '70%',
+          borderRadius: 4
+        }
+      },
+      dataLabels: {
+        enabled: false
+      },
+      colors: ['#3B82F6', '#EC4899'],
+      xaxis: {
+        categories: ['0-17', '18-35', '36-59', '60+'],
+        labels: { style: { fontSize: '10px' } }
+      },
+      yaxis: {
+        labels: { 
+          style: { fontSize: '10px' },
+          formatter: function (val) {
+            return val.toLocaleString();
+          }
+        }
+      },
+      legend: {
+        show: true,
+        position: 'top',
+        fontSize: '10px'
+      },
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return val.toLocaleString() + " people";
+          }
+        }
+      }
+    };
+    
+    const series = [
+      {
+        name: 'Male',
+        data: [1200, 2800, 2400, 800]
+      },
+      {
+        name: 'Female',
+        data: [1150, 2900, 2500, 900]
+      }
+    ];
+    
+    return (
+      <div className="h-full">
+        {startAnimation && (
+          <Chart
+            options={options}
+            series={series}
             type="bar"
             height="100%"
           />
@@ -560,90 +865,68 @@ export default function DemographicCharts() {
   };
 
   const EducationChart = () => {
-    const options = getChartOptions(
-      'donut',
-      demographicsData.education.chartData.labels,
-      demographicsData.education.chartData.colors
-    );
+    // Educational Attainment - Horizontal Bar Chart (x = number, y = education level) (Image 2)
+    const options = {
+      chart: {
+        type: 'bar',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false }
+      },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          borderRadius: 4,
+          barHeight: '70%'
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        style: { fontSize: '10px', fontWeight: 'bold' },
+        formatter: function (val) {
+          return val.toLocaleString();
+        }
+      },
+      colors: ['#8B5CF6'],
+      xaxis: {
+        labels: { 
+          style: { fontSize: '10px' },
+          formatter: function (val) {
+            return val.toLocaleString();
+          }
+        }
+      },
+      yaxis: {
+        labels: { style: { fontSize: '10px' } }
+      },
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return val.toLocaleString() + " people";
+          }
+        }
+      }
+    };
+    
+    const series = [{
+      name: 'Population',
+      data: [3200, 2800, 2400, 1800, 1200, 800]
+    }];
+    
+    const categories = ['Elementary', 'High School', 'College', 'Vocational', 'Graduate', 'Post-Graduate'];
+    options.yaxis.categories = categories;
     
     return (
-      <div className="h-48 mt-4">
+      <div className="h-full">
         {startAnimation && (
           <Chart
             options={options}
-            series={demographicsData.education.chartData.data}
-            type="donut"
-            height="100%"
-          />
-        )}
-      </div>
-    );
-  };
-
-  const VotersChart = () => {
-    const options = getChartOptions(
-      'donut',
-      demographicsData.voters.chartData.labels,
-      demographicsData.voters.chartData.colors
-    );
-    
-    return (
-              <div className="h-48 mt-4">
-          {startAnimation && (
-            <Chart
-              options={options}
-              series={demographicsData.voters.chartData.data}
-              type="donut"
-              height="100%"
-            />
-          )}
-        </div>
-    );
-  };
-
-  const HouseholdChart = () => {
-    const options = getChartOptions(
-      'bar',
-      demographicsData.households.chartData.labels,
-      demographicsData.households.chartData.colors,
-      '',
-      { horizontal: true }
-    );
-    
-          return (
-        <div className="h-48 mt-4">
-          {startAnimation && (
-            <Chart
-              options={options}
-              series={[{
-                name: 'Households',
-                data: demographicsData.households.chartData.data
-              }]}
-              type="bar"
-              height="100%"
-            />
-          )}
-        </div>
-      );
-  };
-
-  // New Charts for PWD, 4Ps, Solo-Parent
-  const SpecialProgramsChart = () => {
-    const options = getChartOptions(
-      'bar',
-      demographicsData.specialPrograms.chartData.programs.labels,
-      demographicsData.specialPrograms.chartData.programs.colors
-    );
-    
-    return (
-      <div className="h-48 mt-4">
-        {startAnimation && (
-          <Chart
-            options={options}
-            series={[{
-              name: 'Beneficiaries',
-              data: demographicsData.specialPrograms.chartData.programs.data
-            }]}
+            series={series}
             type="bar"
             height="100%"
           />
@@ -652,19 +935,60 @@ export default function DemographicCharts() {
     );
   };
 
-  const PWDByAgeChart = () => {
-    const options = getChartOptions(
-      'donut',
-      demographicsData.specialPrograms.chartData.pwdByAge.labels,
-      demographicsData.specialPrograms.chartData.pwdByAge.colors
-    );
+  const SpecialProgramsChart = () => {
+    // Special Programs (PWD, 4Ps, etc) - Donut Chart (program %) OR Bar Chart (count per program) (Image 1)
+    const options = {
+      chart: {
+        type: 'donut',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif'
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '70%',
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                label: 'Programs',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#374151'
+              }
+            }
+          }
+        }
+      },
+      colors: ['#F59E0B', '#10B981', '#EF4444', '#8B5CF6'],
+      labels: ['4Ps', 'PWD', 'Solo Parent', 'Senior'],
+      dataLabels: {
+        enabled: true,
+        formatter: function (val) {
+          return Math.round(val) + '%';
+        },
+        style: { fontSize: '10px', fontWeight: 'bold' }
+      },
+      legend: {
+        show: true,
+        position: 'bottom',
+        fontSize: '10px'
+      }
+    };
+    
+    const series = [45, 25, 20, 10]; // Sample percentages
     
     return (
-      <div className="h-48 mt-4">
+      <div className="h-full">
         {startAnimation && (
           <Chart
             options={options}
-            series={demographicsData.specialPrograms.chartData.pwdByAge.data}
+            series={series}
             type="donut"
             height="100%"
           />
@@ -674,118 +998,48 @@ export default function DemographicCharts() {
   };
 
   const CivilStatusChart = () => {
+    // Civil Status - Pie Chart (Single, Married, etc.) (Image 2)
     const options = {
       chart: {
-        type: 'radialBar',
-        height: 300,
+        type: 'pie',
+        height: 200,
         animations: {
           enabled: true,
           easing: 'easeinout',
-          speed: 1500
+          speed: 800
         },
         fontFamily: 'Inter, sans-serif'
       },
-      stroke: {
-        lineCap: 'round',
-        width: 8
+      colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+      labels: ['Single', 'Married', 'Widowed', 'Separated', 'Divorced'],
+      dataLabels: {
+        enabled: true,
+        formatter: function (val) {
+          return Math.round(val) + '%';
+        },
+        style: { fontSize: '10px', fontWeight: 'bold' }
       },
-      plotOptions: {
-        radialBar: {
-          offsetY: -20,
-          startAngle: -90,
-          endAngle: 270,
-          hollow: {
-            margin: 5,
-            size: '30%',
-            background: 'transparent'
-          },
-          track: {
-            background: '#F3F4F6',
-            strokeWidth: '97%',
-            margin: 0
-          },
-          stroke: {
-            lineCap: 'round'
-          },
-          dataLabels: {
-            name: {
-              show: true,
-              fontSize: '10px',
-              fontWeight: 600,
-              color: '#374151',
-              offsetY: -8
-            },
-            value: {
-              show: true,
-              fontSize: '12px',
-              fontWeight: 'bold',
-              color: '#1F2937',
-              offsetY: 6,
-              formatter: function (val) {
-                return parseInt(val) + "%"
-              }
-            }
-          },
-          barLabels: {
-            enabled: true,
-            useSeriesColors: true,
-            offsetX: 0,
-            fontSize: '11px',
-            fontWeight: 600,
-            formatter: function(seriesName, opts) {
-              return parseInt(opts.w.globals.series[opts.seriesIndex]) + "%"
-            }
-          }
-        }
-      },
-      colors: ['#3B82F6', '#22C55E', '#8B5CF6', '#F59E0B', '#EF4444'],
-      labels: demographicsData.civilStatus.chartData.labels,
       legend: {
         show: true,
         position: 'bottom',
-        offsetY: 0,
-        fontSize: '12px',
-        fontWeight: 500,
-        labels: {
-          colors: '#6B7280',
-          useSeriesColors: false
-        },
-        markers: {
-          width: 10,
-          height: 10,
-          strokeWidth: 0,
-          radius: 12
-        },
-        itemMargin: {
-          horizontal: 6,
-          vertical: 4
-        },
-        formatter: function(seriesName, opts) {
-          const value = demographicsData.civilStatus.chartData.data[opts.seriesIndex];
-          return seriesName + ": " + value.toLocaleString()
-        }
+        fontSize: '10px'
       },
-      responsive: [{
-        breakpoint: 480,
-        options: {
-          legend: {
-            fontSize: '10px'
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return Math.round(val) + '%';
           }
         }
-      }]
+      }
     };
-
-    const series = demographicsData.civilStatus.chartData.data.map(value => 
-      Math.round((value / demographicsData.civilStatus.total) * 100)
-    );
     
     return (
-      <div className="h-72 mt-4">
+      <div className="h-full">
         {startAnimation && (
           <Chart
             options={options}
-            series={series}
-            type="radialBar"
+            series={demographicsData.civilStatus.chartData.data}
+            type="pie"
             height="100%"
           />
         )}
@@ -793,22 +1047,67 @@ export default function DemographicCharts() {
     );
   };
 
-  const EmploymentStatusChart = () => {
-    const options = getChartOptions(
-      'bar',
-      demographicsData.employmentStatus.chartData.labels,
-      demographicsData.employmentStatus.chartData.colors
-    );
+  const HouseholdChart = () => {
+    // Household Types - Bar Chart (Own, Rent, Informal, etc.) (Image 1 or 2)
+    const options = {
+      chart: {
+        type: 'bar',
+        height: 200,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800
+        },
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false }
+      },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: '60%',
+          borderRadius: 4
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        style: { fontSize: '10px', fontWeight: 'bold' },
+        formatter: function (val) {
+          return val.toLocaleString();
+        }
+      },
+      colors: ['#10B981'],
+      xaxis: {
+        categories: ['Own', 'Rent', 'Informal', 'Others'],
+        labels: { style: { fontSize: '10px' } }
+      },
+      yaxis: {
+        labels: { 
+          style: { fontSize: '10px' },
+          formatter: function (val) {
+            return val.toLocaleString();
+          }
+        }
+      },
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return val.toLocaleString() + " households";
+          }
+        }
+      }
+    };
+    
+    const series = [{
+      name: 'Households',
+      data: [2800, 1200, 800, 400]
+    }];
     
     return (
-      <div className="h-48 mt-4">
+      <div className="h-full">
         {startAnimation && (
           <Chart
             options={options}
-            series={[{
-              name: 'Population',
-              data: demographicsData.employmentStatus.chartData.data
-            }]}
+            series={series}
             type="bar"
             height="100%"
           />
@@ -818,347 +1117,69 @@ export default function DemographicCharts() {
   };
 
   const ReligiousAffiliationChart = () => {
-    const options = {
-      chart: {
-        type: 'radialBar',
-        height: 300,
-        animations: {
-          enabled: true,
-          easing: 'easeinout',
-          speed: 1500
-        },
-        fontFamily: 'Inter, sans-serif'
-      },
-      stroke: {
-        lineCap: 'round',
-        width: 8
-      },
-      plotOptions: {
-        radialBar: {
-          offsetY: -10,
-          startAngle: 0,
-          endAngle: 360,
-          hollow: {
-            margin: 10,
-            size: '25%',
-            background: 'transparent'
-          },
-          track: {
-            background: '#F9FAFB',
-            strokeWidth: '97%',
-            margin: 0
-          },
-          stroke: {
-            lineCap: 'round'
-          },
-          dataLabels: {
-            name: {
-              show: true,
-              fontSize: '10px',
-              fontWeight: 600,
-              color: '#374151',
-              offsetY: -8
-            },
-            value: {
-              show: true,
-              fontSize: '12px',
-              fontWeight: 'bold',
-              color: '#1F2937',
-              offsetY: 6,
-              formatter: function (val) {
-                return parseInt(val) + "%"
-              }
-            }
-          },
-          barLabels: {
-            enabled: true,
-            useSeriesColors: true,
-            offsetX: 0,
-            fontSize: '11px',
-            fontWeight: 600,
-            formatter: function(seriesName, opts) {
-              return parseInt(opts.w.globals.series[opts.seriesIndex]) + "%"
-            }
-          }
-        }
-      },
-      colors: ['#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#6B7280'],
-      labels: demographicsData.religiousAffiliation.chartData.labels,
-      legend: {
-        show: true,
-        position: 'bottom',
-        offsetY: 5,
-        fontSize: '12px',
-        fontWeight: 500,
-        labels: {
-          colors: '#6B7280',
-          useSeriesColors: false
-        },
-        markers: {
-          width: 10,
-          height: 10,
-          strokeWidth: 0,
-          radius: 12
-        },
-        itemMargin: {
-          horizontal: 6,
-          vertical: 4
-        },
-        formatter: function(seriesName, opts) {
-          const value = demographicsData.religiousAffiliation.chartData.data[opts.seriesIndex];
-          return seriesName + ": " + value.toLocaleString()
-        }
-      },
-      responsive: [{
-        breakpoint: 480,
-        options: {
-          legend: {
-            fontSize: '10px'
-          }
-        }
-      }]
-    };
-
-    const series = demographicsData.religiousAffiliation.chartData.data.map(value => 
-      Math.round((value / demographicsData.religiousAffiliation.total) * 100)
-    );
-    
-    return (
-      <div className="h-72 mt-4">
-        {startAnimation && (
-          <Chart
-            options={options}
-            series={series}
-            type="radialBar"
-            height="100%"
-          />
-        )}
-      </div>
-    );
-  };
-
-  // New Chart Types inspired by the dashboard image
-  
-  // Population Growth Trend (Area Chart)
-  const PopulationTrendChart = () => {
-    const trendData = [
-      { month: 'Jan', population: 12200 },
-      { month: 'Feb', population: 12350 },
-      { month: 'Mar', population: 12480 },
-      { month: 'Apr', population: 12620 },
-      { month: 'May', population: 12750 },
-      { month: 'Jun', population: 12847 }
-    ];
-
-    const options = getChartOptions(
-      'area',
-      trendData.map(d => d.month),
-      ['#3B82F6']
-    );
-    
-    return (
-      <div className="h-48 mt-4">
-        {startAnimation && (
-          <Chart
-            options={options}
-            series={[{
-              name: 'Population',
-              data: trendData.map(d => d.population)
-            }]}
-            type="area"
-            height="100%"
-          />
-        )}
-      </div>
-    );
-  };
-
-  // Voter Registration Rate (Radial Bar)
-  const VoterRegistrationRadial = () => {
-    const options = {
-      chart: {
-        type: 'radialBar',
-        animations: {
-          enabled: true,
-          easing: 'easeinout',
-          speed: 1500
-        }
-      },
-      plotOptions: {
-        radialBar: {
-          hollow: {
-            size: '60%'
-          },
-          dataLabels: {
-            name: {
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#374151'
-            },
-            value: {
-              fontSize: '20px',
-              fontWeight: 'bold',
-              color: '#059669'
-            }
-          }
-        }
-      },
-      colors: ['#059669'],
-      labels: ['Registration Rate']
-    };
-    
-    return (
-      <div className="h-48 mt-4">
-        {startAnimation && (
-          <Chart
-            options={options}
-            series={[demographicsData.voters.registrationRate]}
-            type="radialBar"
-            height="100%"
-          />
-        )}
-      </div>
-    );
-  };
-
-  // Age & Gender Grouped Bar Chart
-  const AgeGenderGroupedChart = () => {
-    // Calculate approximate male/female split for each age group
-    const maleData = [
-      Math.round(demographicsData.ageDistribution.groups.children * 0.51), // 51% male
-      Math.round(demographicsData.ageDistribution.groups.adults * 0.50),   // 50% male
-      Math.round(demographicsData.ageDistribution.groups.seniors * 0.48)   // 48% male (women live longer)
-    ];
-    
-    const femaleData = [
-      demographicsData.ageDistribution.groups.children - maleData[0],
-      demographicsData.ageDistribution.groups.adults - maleData[1],
-      demographicsData.ageDistribution.groups.seniors - maleData[2]
-    ];
-
+    // Religious Groups - Bar Chart (x = group, y = count) OR Donut (Image 1)
     const options = {
       chart: {
         type: 'bar',
+        height: 200,
         animations: {
           enabled: true,
           easing: 'easeinout',
-          speed: 1500
+          speed: 800
         },
-        toolbar: { show: false },
-        fontFamily: 'Inter, sans-serif'
+        fontFamily: 'Inter, sans-serif',
+        toolbar: { show: false }
       },
-      colors: ['#3B82F6', '#EC4899'], // Blue for male, Pink for female
       plotOptions: {
         bar: {
           horizontal: false,
-          columnWidth: '60%',
-          borderRadius: 4,
-          dataLabels: {
-            position: 'top'
-          }
+          columnWidth: '70%',
+          borderRadius: 4
         }
       },
       dataLabels: {
         enabled: true,
-        style: {
-          fontSize: '11px',
-          fontWeight: 'bold',
-          colors: ['#374151']
-        },
-        formatter: function(val) {
+        style: { fontSize: '10px', fontWeight: 'bold' },
+        formatter: function (val) {
           return val.toLocaleString();
-        },
-        offsetY: -20
-      },
-      legend: {
-        show: true,
-        position: 'bottom',
-        fontSize: '12px',
-        fontFamily: 'Inter, sans-serif',
-        labels: {
-          colors: '#6B7280'
-        },
-        markers: {
-          width: 8,
-          height: 8,
-          radius: 2
         }
       },
+      colors: ['#8B5CF6'],
       xaxis: {
-        categories: ['Children (0-17)', 'Adults (18-59)', 'Seniors (60+)'],
-        labels: {
-          show: true,
-          style: {
-            fontSize: '12px',
-            colors: '#6B7280'
-          },
+        categories: ['Catholic', 'Protestant', 'INC', 'Islam', 'Others', 'None'],
+        labels: { 
+          style: { fontSize: '9px' },
           rotate: -45
-        },
-        axisBorder: {
-          show: true,
-          color: '#E5E7EB'
-        },
-        axisTicks: {
-          show: true,
-          color: '#E5E7EB'
         }
       },
       yaxis: {
-        labels: {
-          show: true,
-          style: {
-            fontSize: '12px',
-            colors: '#6B7280'
-          },
-          formatter: function(val) {
+        labels: { 
+          style: { fontSize: '10px' },
+          formatter: function (val) {
             return val.toLocaleString();
           }
         }
       },
-      grid: {
-        show: true,
-        borderColor: '#F3F4F6',
-        strokeDashArray: 3,
-        xaxis: {
-          lines: {
-            show: false
-          }
-        },
-        yaxis: {
-          lines: {
-            show: true
-          }
-        }
-      },
       tooltip: {
-        theme: 'light',
-        style: {
-          fontSize: '12px',
-          fontFamily: 'Inter, sans-serif'
-        },
         y: {
-          formatter: function(val) {
-            return val.toLocaleString() + ' people';
+          formatter: function (val) {
+            return val.toLocaleString() + " people";
           }
         }
       }
     };
     
+    const series = [{
+      name: 'Population',
+              data: demographicsData.religiousAffiliation.chartData.data
+    }];
+    
     return (
-      <div className="h-48 mt-4">
+      <div className="h-full">
         {startAnimation && (
           <Chart
             options={options}
-            series={[
-              {
-                name: 'Male',
-                data: maleData
-              },
-              {
-                name: 'Female',
-                data: femaleData
-              }
-            ]}
+            series={series}
             type="bar"
             height="100%"
           />
@@ -1167,113 +1188,7 @@ export default function DemographicCharts() {
     );
   };
 
-  // Educational Progress Line Chart
-  const EducationProgressChart = () => {
-    const progressData = [
-      { level: 'Elementary', completion: 85 },
-      { level: 'High School', completion: 78 },
-      { level: 'College', completion: 65 },
-      { level: 'Post Grad', completion: 45 }
-    ];
 
-    const options = getChartOptions(
-      'line',
-      progressData.map(d => d.level),
-      ['#F59E0B']
-    );
-    
-    return (
-      <div className="h-48 mt-4">
-        {startAnimation && (
-          <Chart
-            options={options}
-            series={[{
-              name: 'Completion Rate %',
-              data: progressData.map(d => d.completion)
-            }]}
-            type="line"
-            height="100%"
-          />
-        )}
-      </div>
-    );
-  };
-
-  // Employment Status Radial Progress
-  const EmploymentRadialChart = () => {
-    const employmentRate = Math.round((demographicsData.employmentStatus.employed / demographicsData.employmentStatus.total) * 100);
-    
-    const options = {
-      chart: {
-        type: 'radialBar',
-        animations: {
-          enabled: true,
-          easing: 'easeinout',
-          speed: 1500
-        }
-      },
-      plotOptions: {
-        radialBar: {
-          hollow: {
-            size: '60%'
-          },
-          dataLabels: {
-            name: {
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#374151'
-            },
-            value: {
-              fontSize: '20px',
-              fontWeight: 'bold',
-              color: '#22C55E'
-            }
-          }
-        }
-      },
-      colors: ['#22C55E'],
-      labels: ['Employment Rate']
-    };
-    
-    return (
-      <div className="h-48 mt-4">
-        {startAnimation && (
-          <Chart
-            options={options}
-            series={[employmentRate]}
-            type="radialBar"
-            height="100%"
-          />
-        )}
-      </div>
-    );
-  };
-
-  // TUPAD Age Distribution Chart
-  const TupadAgeChart = () => {
-    const options = getChartOptions(
-      'donut',
-      ['Young (18-30)', 'Middle (31-50)', 'Senior (51-60)'],
-      ['#10B981', '#059669', '#047857']
-    );
-    
-    return (
-      <div className="h-48 mt-4">
-        {startAnimation && (
-          <Chart
-            options={options}
-            series={[
-              demographicsData.specialPrograms.tupad.ageGroups.young,
-              demographicsData.specialPrograms.tupad.ageGroups.middle,
-              demographicsData.specialPrograms.tupad.ageGroups.senior
-            ]}
-            type="donut"
-            height="100%"
-          />
-        )}
-      </div>
-    );
-  };
 
   // Stats Grid Component
   const StatsGrid = ({ data, colors }) => (
@@ -1304,19 +1219,19 @@ export default function DemographicCharts() {
   // Demographic Card Component
   const DemographicCard = ({ icon, title, data, subtitle, trend, children, ChartComponent }) => (
     <motion.div
-      className="group relative bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 p-8 border border-gray-100 hover:border-gray-200 overflow-hidden"
+      className="group relative bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 p-3 border border-gray-100 hover:border-gray-200 overflow-hidden flex flex-col h-[450px]"
       initial="initial"
       animate="animate"
       variants={cardAnimation}
       whileHover={{ y: -8, scale: 1.02 }}
     >
       {/* Icon Background - Blurred */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-25 group-hover:opacity-35 transition-opacity duration-500">
+      <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity duration-500">
         <Image 
           src={`/resources/${icon}`} 
           alt={title} 
-          width={160} 
-          height={160}
+          width={120} 
+          height={120}
           className="filter blur-[1px] scale-110 grayscale-[20%] brightness-75"
           onError={(e) => {
             e.target.style.display = 'none';
@@ -1327,20 +1242,20 @@ export default function DemographicCharts() {
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-purple-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       
-      {/* Header */}
-      <div className="relative flex flex-col items-center text-center mb-6">
-        <div className="mb-3">
-          <h4 className="text-xl font-bold text-gray-800 group-hover:text-gray-900 transition-colors">{title}</h4>
-          <p className="text-sm text-gray-500">{subtitle}</p>
+      {/* Header - Ultra Compact */}
+      <div className="relative flex flex-col items-center text-center mb-1">
+        <div className="mb-0.5">
+          <h4 className="text-sm font-bold text-gray-800 group-hover:text-gray-900 transition-colors">{title}</h4>
+          <p className="text-xs text-gray-500">{subtitle}</p>
         </div>
         
-        {/* Centered Total Value */}
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-5xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        {/* Centered Total Value - Ultra Compact */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             {startAnimation ? <AnimatedCounter value={data.total} /> : "0"}
           </span>
           {trend && (
-            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${
+            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-semibold ${
               trend.isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
             }`}>
               <span className={`text-xs ${trend.isPositive ? '↗' : '↘'}`}>
@@ -1352,10 +1267,10 @@ export default function DemographicCharts() {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart - Expanded */}
       {ChartComponent && startAnimation && (
         <motion.div
-          className="relative"
+          className="relative flex-1 min-h-0"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.5 }}
@@ -1364,21 +1279,24 @@ export default function DemographicCharts() {
         </motion.div>
       )}
       
-      {/* Additional content */}
-      <div className="relative">
+      {/* Additional content - At Bottom */}
+      <div className="relative mt-1">
         {children}
       </div>
 
       {/* Decorative elements */}
-      <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-xl group-hover:scale-110 transition-transform duration-500"></div>
+      <div className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-xl group-hover:scale-110 transition-transform duration-500"></div>
     </motion.div>
   );
 
+
+
   return (
-    <div className="space-y-8">
-      {/* First Row - Main Overview Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-        {/* Population Overview with Donut Chart */}
+    <div className="space-y-6">
+
+      {/* First Row - 2 Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 1. Population Overview */}
         <DemographicCard
           icon="users.png"
           title="Population Overview"
@@ -1387,15 +1305,15 @@ export default function DemographicCharts() {
           trend={{ value: demographicsData.population.growth, isPositive: true }}
           ChartComponent={PopulationChart}
         >
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="text-center p-3 bg-blue-50 rounded-2xl border border-blue-100">
-              <p className="text-lg font-bold text-blue-600">
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="text-center p-2 bg-blue-50 rounded-xl border border-blue-100">
+              <p className="text-sm font-bold text-blue-600">
                 {startAnimation ? <AnimatedCounter value={demographicsData.population.male} /> : "0"}
               </p>
               <p className="text-xs text-blue-500">Male</p>
             </div>
-            <div className="text-center p-3 bg-pink-50 rounded-2xl border border-pink-100">
-              <p className="text-lg font-bold text-pink-600">
+            <div className="text-center p-2 bg-pink-50 rounded-xl border border-pink-100">
+              <p className="text-sm font-bold text-pink-600">
                 {startAnimation ? <AnimatedCounter value={demographicsData.population.female} /> : "0"}
               </p>
               <p className="text-xs text-pink-500">Female</p>
@@ -1403,75 +1321,27 @@ export default function DemographicCharts() {
           </div>
         </DemographicCard>
 
-        {/* Population Growth Trend with Area Chart */}
+        {/* 2. Population Growth */}
         <DemographicCard
           icon="arrow_up.png"
           title="Population Growth"
           subtitle="6-month trend analysis"
           data={demographicsData.population}
           trend={{ value: demographicsData.population.growth, isPositive: true }}
-          ChartComponent={PopulationTrendChart}
+          ChartComponent={PopulationGrowthChart}
         >
-          <div className="text-center p-3 bg-blue-50 rounded-2xl border border-blue-100 mt-4">
-            <p className="text-lg font-bold text-blue-600">
+          <div className="text-center p-2 bg-blue-50 rounded-xl border border-blue-100">
+            <p className="text-sm font-bold text-blue-600">
               {startAnimation ? <AnimatedCounter value={demographicsData.population.growth} decimals={1} suffix="%" /> : "0%"}
             </p>
             <p className="text-xs text-blue-500">Growth Rate</p>
           </div>
         </DemographicCard>
-
-        {/* Voter Registration with Radial Progress */}
-        <DemographicCard
-          icon="fingerprint.png"
-          title="Voter Registration"
-          subtitle="Registration progress"
-          data={demographicsData.voters}
-          ChartComponent={VoterRegistrationRadial}
-        >
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="text-center p-3 bg-green-50 rounded-2xl border border-green-100">
-              <p className="text-lg font-bold text-green-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.voters.registered} /> : "0"}
-              </p>
-              <p className="text-xs text-green-500">Registered</p>
-            </div>
-            <div className="text-center p-3 bg-red-50 rounded-2xl border border-red-100">
-              <p className="text-lg font-bold text-red-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.voters.unregistered} /> : "0"}
-              </p>
-              <p className="text-xs text-red-500">Unregistered</p>
-            </div>
-          </div>
-        </DemographicCard>
-
-        {/* Employment Status with Radial Progress */}
-        <DemographicCard
-          icon="users.png"
-          title="Employment Rate"
-          subtitle="Working age employment"
-          data={demographicsData.employmentStatus}
-          ChartComponent={EmploymentRadialChart}
-        >
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="text-center p-3 bg-green-50 rounded-2xl border border-green-100">
-              <p className="text-lg font-bold text-green-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.employmentStatus.employed} /> : "0"}
-              </p>
-              <p className="text-xs text-green-500">Employed</p>
-            </div>
-            <div className="text-center p-3 bg-red-50 rounded-2xl border border-red-100">
-              <p className="text-lg font-bold text-red-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.employmentStatus.unemployed} /> : "0"}
-              </p>
-              <p className="text-xs text-red-500">Unemployed</p>
-            </div>
-          </div>
-        </DemographicCard>
       </div>
 
-      {/* Second Row - Detailed Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {/* Age & Gender Distribution */}
+      {/* Second Row - 2 Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 3. Age & Gender Distribution */}
         <DemographicCard
           icon="senior.png"
           title="Age & Gender Distribution"
@@ -1501,13 +1371,32 @@ export default function DemographicCharts() {
           </div>
         </DemographicCard>
 
-        {/* Education Progress Line Chart */}
+        {/* 4. Household Types */}
+        <DemographicCard
+          icon="household.png"
+          title="Household Types"
+          subtitle="Family composition"
+          data={demographicsData.households}
+          ChartComponent={HouseholdChart}
+        >
+          <div className="text-center p-2 bg-orange-50 rounded-xl border border-orange-100 mt-2">
+            <p className="text-sm font-bold text-orange-600">
+              {startAnimation ? <AnimatedCounter value={demographicsData.households.averageSize} decimals={1} /> : "0"}
+            </p>
+            <p className="text-xs text-orange-500">Average Size</p>
+          </div>
+        </DemographicCard>
+      </div>
+
+      {/* Third Row - 3 Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* 5. Educational Level */}
         <DemographicCard
           icon="educ-icon.png"
-          title="Education Progress"
+          title="Educational Level"
           subtitle="Completion rate by level"
           data={demographicsData.education}
-          ChartComponent={EducationProgressChart}
+          ChartComponent={EducationChart}
         >
           <div className="grid grid-cols-2 gap-2 mt-4">
             <div className="text-center p-2 bg-green-50 rounded-xl border border-green-100">
@@ -1521,7 +1410,58 @@ export default function DemographicCharts() {
           </div>
         </DemographicCard>
 
-        {/* Special Programs Bar Chart */}
+        {/* 6. Employment Rate */}
+        <DemographicCard
+          icon="users.png"
+          title="Employment Rate"
+          subtitle="Working age employment"
+          data={demographicsData.employmentStatus}
+          ChartComponent={EmploymentStatusChart}
+        >
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="text-center p-2 bg-green-50 rounded-xl border border-green-100">
+              <p className="text-sm font-bold text-green-600">
+                {startAnimation ? <AnimatedCounter value={demographicsData.employmentStatus.employed} /> : "0"}
+              </p>
+              <p className="text-xs text-green-500">Employed</p>
+            </div>
+            <div className="text-center p-2 bg-red-50 rounded-xl border border-red-100">
+              <p className="text-sm font-bold text-red-600">
+                {startAnimation ? <AnimatedCounter value={demographicsData.employmentStatus.unemployed} /> : "0"}
+              </p>
+              <p className="text-xs text-red-500">Unemployed</p>
+            </div>
+          </div>
+        </DemographicCard>
+
+        {/* 7. Voters & Non-Voters */}
+        <DemographicCard
+          icon="fingerprint.png"
+          title="Voters & Non-Voters"
+          subtitle="Registration progress"
+          data={demographicsData.voters}
+          ChartComponent={VotersChart}
+        >
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="text-center p-2 bg-green-50 rounded-xl border border-green-100">
+              <p className="text-sm font-bold text-green-600">
+                {startAnimation ? <AnimatedCounter value={demographicsData.voters.registered} /> : "0"}
+              </p>
+              <p className="text-xs text-green-500">Registered</p>
+            </div>
+            <div className="text-center p-2 bg-red-50 rounded-xl border border-red-100">
+              <p className="text-sm font-bold text-red-600">
+                {startAnimation ? <AnimatedCounter value={demographicsData.voters.unregistered} /> : "0"}
+              </p>
+              <p className="text-xs text-red-500">Unregistered</p>
+            </div>
+          </div>
+        </DemographicCard>
+      </div>
+
+      {/* Fourth Row - 2 Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 8. Special Programs */}
         <DemographicCard
           icon="social-welfare.png"
           title="Special Programs"
@@ -1556,99 +1496,8 @@ export default function DemographicCharts() {
             </div>
           </div>
         </DemographicCard>
-      </div>
 
-      {/* Third Row - Additional Demographics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
-        {/* Civil Status Donut */}
-        <DemographicCard
-          icon="fingerprint.png"
-          title="Civil Status"
-          subtitle="Marital status distribution"
-          data={demographicsData.civilStatus}
-          ChartComponent={CivilStatusChart}
-        >
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <div className="text-center p-2 bg-green-50 rounded-xl border border-green-100">
-              <p className="text-sm font-bold text-green-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.civilStatus.status.married} /> : "0"}
-              </p>
-              <p className="text-xs text-green-500">Married</p>
-            </div>
-            <div className="text-center p-2 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-sm font-bold text-blue-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.civilStatus.status.single} /> : "0"}
-              </p>
-              <p className="text-xs text-blue-500">Single</p>
-            </div>
-          </div>
-        </DemographicCard>
-
-        {/* Household Statistics */}
-        <DemographicCard
-          icon="household.png"
-          title="Household Types"
-          subtitle="Family composition"
-          data={demographicsData.households}
-          ChartComponent={HouseholdChart}
-        >
-          <div className="text-center p-3 bg-orange-50 rounded-2xl border border-orange-100 mt-4">
-            <p className="text-lg font-bold text-orange-600">
-              {startAnimation ? <AnimatedCounter value={demographicsData.households.averageSize} decimals={1} /> : "0"}
-            </p>
-            <p className="text-xs text-orange-500">Average Size</p>
-          </div>
-        </DemographicCard>
-
-        {/* PWD by Age Group */}
-        <DemographicCard
-          icon="users.png"
-          title="PWD Distribution"
-          subtitle="By age groups"
-          data={demographicsData.specialPrograms.pwd}
-          ChartComponent={PWDByAgeChart}
-        >
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <div className="text-center p-2 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-sm font-bold text-blue-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.specialPrograms.pwd.ageGroups.adults} /> : "0"}
-              </p>
-              <p className="text-xs text-blue-500">Adults</p>
-            </div>
-            <div className="text-center p-2 bg-purple-50 rounded-xl border border-purple-100">
-              <p className="text-sm font-bold text-purple-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.specialPrograms.pwd.ageGroups.seniors} /> : "0"}
-              </p>
-              <p className="text-xs text-purple-500">Seniors</p>
-            </div>
-          </div>
-        </DemographicCard>
-
-        {/* TUPAD Program */}
-        <DemographicCard
-          icon="users.png"
-          title="TUPAD Program"
-          subtitle="Temporary employment"
-          data={demographicsData.specialPrograms.tupad}
-          ChartComponent={TupadAgeChart}
-        >
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <div className="text-center p-2 bg-green-50 rounded-xl border border-green-100">
-              <p className="text-sm font-bold text-green-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.specialPrograms.tupad.male} /> : "0"}
-              </p>
-              <p className="text-xs text-green-500">Male</p>
-            </div>
-            <div className="text-center p-2 bg-emerald-50 rounded-xl border border-emerald-100">
-              <p className="text-sm font-bold text-emerald-600">
-                {startAnimation ? <AnimatedCounter value={demographicsData.specialPrograms.tupad.female} /> : "0"}
-              </p>
-              <p className="text-xs text-emerald-500">Female</p>
-            </div>
-          </div>
-        </DemographicCard>
-
-        {/* Religious Affiliation */}
+        {/* 9. Religious Groups */}
         <DemographicCard
           icon="gov.png"
           title="Religious Groups"
@@ -1656,14 +1505,15 @@ export default function DemographicCharts() {
           data={demographicsData.religiousAffiliation}
           ChartComponent={ReligiousAffiliationChart}
         >
-          <div className="text-center p-3 bg-blue-50 rounded-2xl border border-blue-100 mt-4">
-            <p className="text-lg font-bold text-blue-600">
+          <div className="text-center p-2 bg-blue-50 rounded-xl border border-blue-100 mt-2">
+            <p className="text-sm font-bold text-blue-600">
               {startAnimation ? <AnimatedCounter value={demographicsData.religiousAffiliation.affiliations.catholic} /> : "0"}
             </p>
             <p className="text-xs text-blue-500">Catholic (Majority)</p>
           </div>
         </DemographicCard>
       </div>
+
     </div>
   );
 } 
