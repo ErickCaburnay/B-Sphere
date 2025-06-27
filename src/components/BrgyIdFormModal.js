@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Search } from "lucide-react";
+import { X, Search, CreditCard, User, Calendar, MapPin, Camera } from "lucide-react";
 
 export default function BrgyIdFormModal({ isOpen, onClose }) {
   const [uniqueId, setUniqueId] = useState("");
@@ -9,8 +9,8 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
   const [age, setAge] = useState("");
   const [address, setAddress] = useState("");
   const [issueDate, setIssueDate] = useState("");
-  const [contactNumber, setcontactNo] = useState("");
-  const [bloodType, setBloodType] = useState("");
+  const [emergencyContact, setEmergencyContact] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
 
   if (!isOpen) return null;
 
@@ -26,17 +26,15 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
 
       if (response.ok) {
         setFullName(`${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`);
-        setAge(String(new Date().getFullYear() - new Date(data.birthdate).getFullYear())); // Calculate age
-        setAddress(data.address || data.household?.address || "No address found");
-        setcontactNo(data.contactNumber || ""); // Assuming contactNo might be directly on Resident or fetched separately
-        setBloodType(data.bloodType || ""); // Assuming bloodType might be directly on Resident or fetched separately
+        setAge(data.age || "");
+        setAddress(data.address || "Address will be fetched from household data if available.");
+        setEmergencyContact(data.contactNumber || "");
       } else {
         alert(data.message || "No matching data found for this ID.");
         setFullName("");
         setAge("");
         setAddress("");
-        setcontactNumber("");
-        setBloodType("");
+        setEmergencyContact("");
       }
     } catch (error) {
       console.error("Error fetching resident data:", error);
@@ -44,13 +42,19 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
       setFullName("");
       setAge("");
       setAddress("");
-      setcontactNumber("");
-      setBloodType("");
+      setEmergencyContact("");
+    }
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhotoFile(file);
     }
   };
 
   const handlePrint = () => {
-    alert("Printing Barangay ID Form...");
+    alert("Printing Barangay ID...");
     onClose();
   };
 
@@ -59,129 +63,247 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white p-6 rounded-lg shadow-xl relative w-full max-w-lg mx-4">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-        >
-          <X size={24} />
-        </button>
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Barangay ID Form</h2>
-
-        {/* Unique ID with Fetch Data */}
-        <div className="mb-4">
-          <label htmlFor="uniqueId" className="block text-sm font-medium text-gray-700 mb-2">
-            Unique ID (optional)
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              id="uniqueId"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={uniqueId}
-              onChange={(e) => setUniqueId(e.target.value)}
-              placeholder="Enter ID"
-            />
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="w-full max-w-3xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-8 py-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-600/20"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                <CreditCard className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Barangay ID</h2>
+                <p className="text-green-100 text-sm">Official barangay identification card</p>
+              </div>
+            </div>
             <button
-              onClick={handleFetchData}
-              className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+              onClick={onClose}
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
             >
-              <Search size={20} />
+              <X className="h-6 w-6" />
             </button>
           </div>
         </div>
 
-        {/* Form Fields */}
-        <div className="space-y-4 mb-6">
-          <div>
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
-            </label>
-            <input
-              type="text"
-              id="fullName"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-2">
-              Age
-            </label>
-            <input
-              type="number"
-              id="age"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-              Address
-            </label>
-            <input
-              type="text"
-              id="address"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="contactNo" className="block text-sm font-medium text-gray-700 mb-2">
-              Contact No.
-            </label>
-            <input
-              type="text"
-              id="contactNo"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={contactNumber}
-              onChange={(e) => setcontactNumber(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="bloodType" className="block text-sm font-medium text-gray-700 mb-2">
-              Blood Type
-            </label>
-            <input
-              type="text"
-              id="bloodType"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={bloodType}
-              onChange={(e) => setBloodType(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="issueDate" className="block text-sm font-medium text-gray-700 mb-2">
-              Issue Date
-            </label>
-            <input
-              type="date"
-              id="issueDate"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-            />
+        {/* Form Content */}
+        <div className="px-8 py-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
+          <div className="space-y-8">
+            
+            {/* ID Lookup Section */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="bg-green-100 rounded-full p-2">
+                  <Search className="h-5 w-5 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Resident Lookup</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="uniqueId" className="block text-sm font-medium text-gray-700 text-left">
+                    Unique ID (optional)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      id="uniqueId"
+                      className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      value={uniqueId}
+                      onChange={(e) => setUniqueId(e.target.value)}
+                      placeholder="Enter resident ID"
+                    />
+                    <button
+                      onClick={handleFetchData}
+                      className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2"
+                    >
+                      <Search className="h-4 w-4" />
+                      <span>Fetch</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">Enter the resident's ID to auto-fill their information</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Personal Information Section */}
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="bg-emerald-100 rounded-full p-2">
+                  <User className="h-5 w-5 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Personal Information</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Full Name</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="fullName"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="age" className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Age</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="age"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="Enter age"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Address</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="address"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Enter complete address"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="emergencyContact" className="block text-sm font-medium text-gray-700 text-left">
+                    Emergency Contact
+                  </label>
+                  <input
+                    type="text"
+                    id="emergencyContact"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    value={emergencyContact}
+                    onChange={(e) => setEmergencyContact(e.target.value)}
+                    placeholder="+63 XXX XXX XXXX"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="issueDate" className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Issue Date</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    id="issueDate"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    value={issueDate}
+                    onChange={(e) => setIssueDate(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Photo Upload Section */}
+            <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="bg-teal-100 rounded-full p-2">
+                  <Camera className="h-5 w-5 text-teal-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Photo Upload</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="photo" className="block text-sm font-medium text-gray-700 text-left">
+                    <span>ID Photo</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        id="photo"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                        required
+                      />
+                    </div>
+                    {photoFile && (
+                      <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm font-medium">
+                        ✓ Photo uploaded
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">Upload a clear 2x2 photo for the ID card (JPG, PNG format)</p>
+                </div>
+
+                {/* Photo Preview */}
+                {photoFile && (
+                  <div className="mt-4">
+                    <div className="w-32 h-32 border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                      <img
+                        src={URL.createObjectURL(photoFile)}
+                        alt="ID Photo Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Photo preview</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Information Note */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-start space-x-2">
+                  <div className="bg-blue-100 rounded-full p-1 mt-0.5">
+                    <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-800">ID Requirements</h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      The Barangay ID serves as an official identification document for residents. Please ensure all information is accurate and the photo is clear and recent.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition"
-          >
-            Print
-          </button>
+        {/* Footer Actions */}
+        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
+          <div className="flex justify-end space-x-4">
+            <button
+              onClick={handleCancel}
+              className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </button>
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              Generate ID
+            </button>
+          </div>
         </div>
       </div>
     </div>

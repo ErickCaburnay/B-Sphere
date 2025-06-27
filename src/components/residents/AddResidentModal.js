@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { X } from 'lucide-react';
+import { X, User, MapPin, Calendar, Phone, Mail, Briefcase, GraduationCap, Users, Heart, CheckCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 
@@ -32,7 +32,7 @@ export function AddResidentModal({ isOpen, onClose, onSubmit }) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} />
+          <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -46,321 +46,674 @@ export function AddResidentModal({ isOpen, onClose, onSubmit }) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title
-                  as="div"
-                  className="flex items-center justify-between mb-6"
-                >
-                  <h3 className="text-xl font-semibold leading-6 text-gray-900">
-                    Add New Resident
-                  </h3>
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-500"
-                    onClick={onClose}
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </Dialog.Title>
-
-                <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        {...register('firstName', { required: 'First name is required' })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                      {errors.firstName && (
-                        <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
-                      )}
+              <Dialog.Panel className="w-full max-w-5xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
+                {/* Header Section */}
+                <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-8 py-6 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-600/20"></div>
+                  <div className="relative flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                        <User className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <Dialog.Title className="text-2xl font-bold text-white">
+                          Add New Resident
+                        </Dialog.Title>
+                        <p className="text-green-100 text-sm">Fill in the information below to register a new resident</p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+                      onClick={onClose}
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Middle Name
-                      </label>
-                      <input
-                        type="text"
-                        {...register('middleName')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        {...register('lastName', { required: 'Last name is required' })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                      {errors.lastName && (
-                        <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Suffix
-                      </label>
-                      <input
-                        type="text"
-                        {...register('suffix')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Address
-                      </label>
-                      <input
-                        type="text"
-                        {...register('address')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                    </div>
-
+                {/* Form Content */}
+                <div className="px-8 py-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
+                  <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
                     
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Citizenship
-                      </label>
-                      <input
-                        type="text"
-                        {...register('citizenship')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Birthdate
-                      </label>
-                      <input
-                        type="date"
-                        {...register('birthdate', { required: 'Birthdate is required' })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      />
-                      {errors.birthdate && (
-                        <p className="mt-1 text-sm text-red-600">{errors.birthdate.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Birthplace
-                      </label>
-                      <input
-                        type="text"
-                        {...register('birthplace')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Gender
-                      </label>
-                      <select
-                        {...register('gender', { required: 'Gender is required' })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                      >
-                        <option value="">SELECT GENDER</option>
-                        <option value="MALE">MALE</option>
-                        <option value="FEMALE">FEMALE</option>
-                      </select>
-                      {errors.gender && (
-                        <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Voter Status
-                      </label>
-                      <select
-                        {...register('voterStatus', { required: 'Voter status is required' })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                      >
-                        <option value="">SELECT STATUS</option>
-                        <option value="REGISTERED">REGISTERED</option>
-                        <option value="NOT REGISTERED">NOT REGISTERED</option>
-                      </select>
-                      {errors.voterStatus && (
-                        <p className="mt-1 text-sm text-red-600">{errors.voterStatus.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Marital Status
-                      </label>
-                      <select
-                        {...register('maritalStatus', { required: 'Marital status is required' })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                      >
-                        <option value="">SELECT STATUS</option>
-                        <option value="SINGLE">SINGLE</option>
-                        <option value="MARRIED">MARRIED</option>
-                        <option value="WIDOWED">WIDOWED</option>
-                        <option value="SEPARATED">SEPARATED</option>
-                      </select>
-                      {errors.maritalStatus && (
-                        <p className="mt-1 text-sm text-red-600">{errors.maritalStatus.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Employment Status
-                      </label>
-                      <select
-                        {...register('employmentStatus')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                      >
-                        <option value="">SELECT EMPLOYMENT STATUS</option>
-                        <option value="EMPLOYED">EMPLOYED</option>
-                        <option value="UNEMPLOYED">UNEMPLOYED</option>
-                        <option value="SELF-EMPLOYED">SELF-EMPLOYED</option>
-                        <option value="STUDENT">STUDENT</option>
-                        <option value="RETIRED">RETIRED</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Educational Attainment
-                      </label>
-                      <select
-                        {...register('educationalAttainment')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                      >
-                        <option value="">SELECT EDUCATION LEVEL</option>
-                        <option value="NO FORMAL EDUCATION">NO FORMAL EDUCATION</option>
-                        <option value="ELEMENTARY LEVEL">ELEMENTARY LEVEL</option>
-                        <option value="ELEMENTARY GRADUATE">ELEMENTARY GRADUATE</option>
-                        <option value="HIGH SCHOOL LEVEL">HIGH SCHOOL LEVEL</option>
-                        <option value="HIGH SCHOOL GRADUATE">HIGH SCHOOL GRADUATE</option>
-                        <option value="VOCATIONAL/TECHNICAL GRADUATE">VOCATIONAL/TECHNICAL GRADUATE</option>
-                        <option value="COLLEGE LEVEL">COLLEGE LEVEL</option>
-                        <option value="COLLEGE GRADUATE">COLLEGE GRADUATE</option>
-                        <option value="POST GRADUATE">POST GRADUATE</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Contact No.
-                      </label>
-                      <input
-                        type="text"
-                        {...register('contactNunmber')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        {...register('email')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm lowercase"
-                        onInput={(e) => e.target.value = e.target.value.toLowerCase()}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Occupation
-                      </label>
-                      <input
-                        type="text"
-                        {...register('occupation')}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase"
-                        onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Programs & Status</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          {...register('isTUPAD')}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label className="ml-2 block text-sm text-gray-700">
-                          TUPAD
-                        </label>
+                    {/* Personal Information Section */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
+                      <div className="flex items-center space-x-2 mb-6">
+                        <div className="bg-green-100 rounded-full p-2">
+                          <User className="h-5 w-5 text-green-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">Personal Information</h3>
                       </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          {...register('is4Ps')}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label className="ml-2 block text-sm text-gray-700">
-                          4Ps
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          {...register('isPWD')}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label className="ml-2 block text-sm text-gray-700">
-                          PWD
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          {...register('isSoloParent')}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label className="ml-2 block text-sm text-gray-700">
-                          Solo Parent
-                        </label>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <span>First Name</span>
+                            <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            {...register('firstName', { 
+                              required: 'First name is required',
+                              pattern: {
+                                value: /^[A-Za-z\s]+$/,
+                                message: 'First name should only contain letters and spaces'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Enter first name"
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                          {errors.firstName && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.firstName.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            Middle Name
+                          </label>
+                          <input
+                            type="text"
+                            {...register('middleName', {
+                              pattern: {
+                                value: /^[A-Za-z\s]*$/,
+                                message: 'Middle name should only contain letters and spaces'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Enter middle name"
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                          {errors.middleName && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.middleName.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <span>Last Name</span>
+                            <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            {...register('lastName', { 
+                              required: 'Last name is required',
+                              pattern: {
+                                value: /^[A-Za-z\s]+$/,
+                                message: 'Last name should only contain letters and spaces'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Enter last name"
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                          {errors.lastName && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.lastName.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            Suffix
+                          </label>
+                          <input
+                            type="text"
+                            {...register('suffix', {
+                              pattern: {
+                                value: /^[A-Za-z.\s]*$/,
+                                message: 'Suffix should only contain letters, dots, and spaces'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Jr., Sr., III, etc."
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                          {errors.suffix && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.suffix.message}</span>
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="mt-6 flex justify-end space-x-3">
+                    {/* Basic Details Section */}
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-gray-100">
+                      <div className="flex items-center space-x-2 mb-6">
+                        <div className="bg-emerald-100 rounded-full p-2">
+                          <Calendar className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">Basic Details</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <Calendar className="h-4 w-4 inline mr-1" />
+                            <span>Birthdate</span>
+                            <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            {...register('birthdate', { 
+                              required: 'Birthdate is required',
+                              validate: {
+                                notFuture: value => {
+                                  const today = new Date();
+                                  const birthDate = new Date(value);
+                                  return birthDate <= today || 'Birthdate cannot be in the future';
+                                },
+                                validAge: value => {
+                                  const today = new Date();
+                                  const birthDate = new Date(value);
+                                  const age = today.getFullYear() - birthDate.getFullYear();
+                                  return age <= 150 || 'Please enter a valid birthdate';
+                                }
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          />
+                          {errors.birthdate && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.birthdate.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <MapPin className="h-4 w-4 inline mr-1" />
+                            <span>Birthplace</span>
+                          </label>
+                          <input
+                            type="text"
+                            {...register('birthplace', {
+                              pattern: {
+                                value: /^[A-Za-z\s,.-]*$/,
+                                message: 'Birthplace should only contain letters, spaces, and common punctuation'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Enter birthplace"
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                          {errors.birthplace && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.birthplace.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <Users className="h-4 w-4 inline mr-1" />
+                            <span>Gender</span>
+                            <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <select
+                            {...register('gender', { required: 'Gender is required' })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          >
+                            <option value="">Select Gender</option>
+                            <option value="MALE">MALE</option>
+                            <option value="FEMALE">FEMALE</option>
+                          </select>
+                          {errors.gender && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.gender.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            Citizenship
+                          </label>
+                          <input
+                            type="text"
+                            {...register('citizenship', {
+                              pattern: {
+                                value: /^[A-Za-z\s]*$/,
+                                message: 'Citizenship should only contain letters and spaces'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Enter citizenship"
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                          {errors.citizenship && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.citizenship.message}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Address & Contact Section */}
+                    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-6 border border-gray-100">
+                      <div className="flex items-center space-x-2 mb-6">
+                        <div className="bg-teal-100 rounded-full p-2">
+                          <MapPin className="h-5 w-5 text-teal-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">Address & Contact Information</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <MapPin className="h-4 w-4 inline mr-1" />
+                            <span>Address</span>
+                          </label>
+                          <input
+                            type="text"
+                            {...register('address')}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Enter complete address"
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <Phone className="h-4 w-4 inline mr-1" />
+                            <span>Contact Number</span>
+                          </label>
+                          <input
+                            type="text"
+                            {...register('contactNunmber', {
+                              pattern: {
+                                value: /^\+63\s\d{3}\s\d{3}\s\d{4}$/,
+                                message: 'Contact number must be in format: +63 XXX XXX XXXX'
+                              },
+                              validate: {
+                                correctFormat: (value) => {
+                                  if (!value) return true; // Allow empty (optional field)
+                                  const isValid = /^\+63\s\d{3}\s\d{3}\s\d{4}$/.test(value);
+                                  if (!isValid) {
+                                    toast.error('Contact number must be in format: +63 XXX XXX XXXX');
+                                    return 'Contact number must be in format: +63 XXX XXX XXXX';
+                                  }
+                                  return true;
+                                }
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                            placeholder="+63 XXX XXX XXXX"
+                            onInput={(e) => {
+                              // Remove all non-digits first
+                              let numbers = e.target.value.replace(/\D/g, '');
+                              
+                              // Limit to 11 digits (63 + 9 digits)
+                              if (numbers.length > 11) {
+                                numbers = numbers.substring(0, 11);
+                              }
+                              
+                              // If user starts typing without +63, add it
+                              if (numbers.length > 0 && !numbers.startsWith('63')) {
+                                // If they start with 9, assume it's a Philippine mobile number
+                                if (numbers.startsWith('9')) {
+                                  numbers = '63' + numbers;
+                                } else if (numbers.length >= 2 && numbers.substring(0, 2) !== '63') {
+                                  // If it doesn't start with 63, prepend it
+                                  numbers = '63' + numbers;
+                                }
+                              }
+                              
+                              // Format the number
+                              let formatted = '';
+                              if (numbers.length >= 2) {
+                                // Remove the 63 prefix for formatting
+                                const phoneNumber = numbers.substring(2);
+                                if (phoneNumber.length > 0) {
+                                  if (phoneNumber.length <= 3) {
+                                    formatted = `+63 ${phoneNumber}`;
+                                  } else if (phoneNumber.length <= 6) {
+                                    formatted = `+63 ${phoneNumber.substring(0, 3)} ${phoneNumber.substring(3)}`;
+                                  } else {
+                                    formatted = `+63 ${phoneNumber.substring(0, 3)} ${phoneNumber.substring(3, 6)} ${phoneNumber.substring(6, 10)}`;
+                                  }
+                                }
+                              } else if (numbers.length > 0) {
+                                formatted = `+${numbers}`;
+                              }
+                              
+                              e.target.value = formatted;
+                            }}
+                            onBlur={(e) => {
+                              const value = e.target.value.trim();
+                              if (value && !(/^\+63\s\d{3}\s\d{3}\s\d{4}$/.test(value))) {
+                                toast.error('Please enter contact number in correct format: +63 XXX XXX XXXX');
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              // Allow backspace, delete, tab, escape, enter
+                              if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                                // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                                (e.keyCode === 65 && e.ctrlKey === true) ||
+                                (e.keyCode === 67 && e.ctrlKey === true) ||
+                                (e.keyCode === 86 && e.ctrlKey === true) ||
+                                (e.keyCode === 88 && e.ctrlKey === true) ||
+                                // Allow home, end, left, right
+                                (e.keyCode >= 35 && e.keyCode <= 39)) {
+                                return;
+                              }
+                              // Ensure that it is a number and stop the keypress
+                              if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                                e.preventDefault();
+                                toast.error('Only numbers are allowed for contact number');
+                              }
+                            }}
+                          />
+                          {errors.contactNunmber && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.contactNunmber.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <Mail className="h-4 w-4 inline mr-1" />
+                            <span>Email Address</span>
+                          </label>
+                          <input
+                            type="email"
+                            {...register('email', {
+                              pattern: {
+                                value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/,
+                                message: 'Email must be in format: example@domain.com'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md lowercase placeholder:normal-case"
+                            placeholder="example@domain.com"
+                            onInput={(e) => e.target.value = e.target.value.toLowerCase()}
+                          />
+                          {errors.email && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.email.message}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status & Classification Section */}
+                    <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-2xl p-6 border border-gray-100">
+                      <div className="flex items-center space-x-2 mb-6">
+                        <div className="bg-green-100 rounded-full p-2">
+                          <Heart className="h-5 w-5 text-green-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">Status & Classification</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <CheckCircle className="h-4 w-4 inline mr-1" />
+                            <span>Voter Status</span>
+                            <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <select
+                            {...register('voterStatus', { required: 'Voter status is required' })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          >
+                            <option value="">Select Voter Status</option>
+                            <option value="REGISTERED">REGISTERED</option>
+                            <option value="NOT REGISTERED">NOT REGISTERED</option>
+                          </select>
+                          {errors.voterStatus && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.voterStatus.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <Heart className="h-4 w-4 inline mr-1" />
+                            <span>Marital Status</span>
+                            <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <select
+                            {...register('maritalStatus', { required: 'Marital status is required' })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          >
+                            <option value="">Select Marital Status</option>
+                            <option value="SINGLE">SINGLE</option>
+                            <option value="MARRIED">MARRIED</option>
+                            <option value="WIDOWED">WIDOWED</option>
+                            <option value="SEPARATED">SEPARATED</option>
+                          </select>
+                          {errors.maritalStatus && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.maritalStatus.message}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Professional Information Section */}
+                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl p-6 border border-gray-100">
+                      <div className="flex items-center space-x-2 mb-6">
+                        <div className="bg-emerald-100 rounded-full p-2">
+                          <Briefcase className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">Professional Information</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <Briefcase className="h-4 w-4 inline mr-1" />
+                            <span>Employment Status</span>
+                          </label>
+                          <select
+                            {...register('employmentStatus')}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          >
+                            <option value="">Select Employment Status</option>
+                            <option value="EMPLOYED">EMPLOYED</option>
+                            <option value="UNEMPLOYED">UNEMPLOYED</option>
+                            <option value="SELF-EMPLOYED">SELF-EMPLOYED</option>
+                            <option value="STUDENT">STUDENT</option>
+                            <option value="RETIRED">RETIRED</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <Briefcase className="h-4 w-4 inline mr-1" />
+                            <span>Occupation</span>
+                          </label>
+                          <input
+                            type="text"
+                            {...register('occupation', {
+                              pattern: {
+                                value: /^[A-Za-z\s.-]*$/,
+                                message: 'Occupation should only contain letters, spaces, dots, and hyphens'
+                              }
+                            })}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                            placeholder="Enter occupation"
+                            onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                          />
+                          {errors.occupation && (
+                            <p className="text-sm text-red-600 flex items-center space-x-1">
+                              <span>⚠</span>
+                              <span>{errors.occupation.message}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 text-left">
+                            <GraduationCap className="h-4 w-4 inline mr-1" />
+                            <span>Educational Attainment</span>
+                          </label>
+                          <select
+                            {...register('educationalAttainment')}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          >
+                            <option value="">Select Education Level</option>
+                            <option value="NO FORMAL EDUCATION">NO FORMAL EDUCATION</option>
+                            <option value="ELEMENTARY LEVEL">ELEMENTARY LEVEL</option>
+                            <option value="ELEMENTARY GRADUATE">ELEMENTARY GRADUATE</option>
+                            <option value="HIGH SCHOOL LEVEL">HIGH SCHOOL LEVEL</option>
+                            <option value="HIGH SCHOOL GRADUATE">HIGH SCHOOL GRADUATE</option>
+                            <option value="VOCATIONAL/TECHNICAL GRADUATE">VOCATIONAL/TECHNICAL GRADUATE</option>
+                            <option value="COLLEGE LEVEL">COLLEGE LEVEL</option>
+                            <option value="COLLEGE GRADUATE">COLLEGE GRADUATE</option>
+                            <option value="POST GRADUATE">POST GRADUATE</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Programs & Benefits Section */}
+                    <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
+                      <div className="flex items-center space-x-2 mb-6">
+                        <div className="bg-teal-100 rounded-full p-2">
+                          <CheckCircle className="h-5 w-5 text-teal-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">Programs & Benefits</h3>
+                        <span className="text-sm text-gray-500">(Check all that apply)</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-teal-300 transition-all duration-200">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                {...register('isTUPAD')}
+                                className="sr-only"
+                                id="tupad-checkbox"
+                              />
+                              <label
+                                htmlFor="tupad-checkbox"
+                                className="flex items-center justify-center w-6 h-6 border-2 border-gray-300 rounded-full cursor-pointer transition-all duration-200 hover:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
+                              >
+                                <div className="w-3 h-3 bg-teal-500 rounded-full opacity-0 transition-opacity duration-200 checkbox-checked:opacity-100"></div>
+                              </label>
+                            </div>
+                            <label htmlFor="tupad-checkbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+                              TUPAD
+                            </label>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-teal-300 transition-all duration-200">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                {...register('is4Ps')}
+                                className="sr-only"
+                                id="4ps-checkbox"
+                              />
+                              <label
+                                htmlFor="4ps-checkbox"
+                                className="flex items-center justify-center w-6 h-6 border-2 border-gray-300 rounded-full cursor-pointer transition-all duration-200 hover:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
+                              >
+                                <div className="w-3 h-3 bg-teal-500 rounded-full opacity-0 transition-opacity duration-200 checkbox-checked:opacity-100"></div>
+                              </label>
+                            </div>
+                            <label htmlFor="4ps-checkbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+                              4Ps
+                            </label>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-teal-300 transition-all duration-200">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                {...register('isPWD')}
+                                className="sr-only"
+                                id="pwd-checkbox"
+                              />
+                              <label
+                                htmlFor="pwd-checkbox"
+                                className="flex items-center justify-center w-6 h-6 border-2 border-gray-300 rounded-full cursor-pointer transition-all duration-200 hover:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
+                              >
+                                <div className="w-3 h-3 bg-teal-500 rounded-full opacity-0 transition-opacity duration-200 checkbox-checked:opacity-100"></div>
+                              </label>
+                            </div>
+                            <label htmlFor="pwd-checkbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+                              PWD
+                            </label>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-teal-300 transition-all duration-200">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                {...register('isSoloParent')}
+                                className="sr-only"
+                                id="solo-parent-checkbox"
+                              />
+                              <label
+                                htmlFor="solo-parent-checkbox"
+                                className="flex items-center justify-center w-6 h-6 border-2 border-gray-300 rounded-full cursor-pointer transition-all duration-200 hover:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
+                              >
+                                <div className="w-3 h-3 bg-teal-500 rounded-full opacity-0 transition-opacity duration-200 checkbox-checked:opacity-100"></div>
+                              </label>
+                            </div>
+                            <label htmlFor="solo-parent-checkbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+                              Solo Parent
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
+                  <div className="flex justify-end space-x-4">
                     <button
                       type="button"
                       onClick={reset}
-                      className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
                     >
-                      Clear
+                      <X className="h-4 w-4 mr-2" />
+                      Clear Form
                     </button>
                     <button
                       type="submit"
-                      className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      onClick={handleSubmit(handleFormSubmit)}
+                      className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
                     >
+                      <CheckCircle className="h-4 w-4 mr-2" />
                       Add Resident
                     </button>
                   </div>
-                </form>
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

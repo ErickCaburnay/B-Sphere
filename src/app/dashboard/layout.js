@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from '@/components/ui/ThemeContext';
 import PerformanceMonitor from '@/components/ui/PerformanceMonitor';
+import AccountMenu from '@/components/AccountMenu';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true); // Default to true for desktop
@@ -154,8 +155,7 @@ export default function DashboardLayout({ children }) {
             <div className="text-lg font-semibold text-green-700">{formatTime(currentTime)}</div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden md:block text-sm font-medium text-gray-700">Juan Dela Cruz</span>            
-            <UserCircle size={28} className="text-green-700" />
+            <AccountMenu />
             <MessageCircle size={24} className="text-green-700" />
             <Bell size={24} className="text-green-700" />
             {/* Neumorphic Toggle Switch for Dark Mode with icon inside thumb */}

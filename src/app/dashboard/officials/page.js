@@ -453,191 +453,264 @@ const AddOfficialModal = ({ isOpen, onClose, newOfficial, handleAddOfficialChang
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl overflow-y-auto max-h-[90vh]">
-        <h3 className="text-xl font-bold mb-6 text-center">Add New Official</h3>
-        <form onSubmit={handleAddOfficialSubmit} className="space-y-4">
-          {/* Resident Search Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="searchFirstName" className="block text-sm font-medium text-gray-700">Search Resident First Name</label>
-              <input
-                type="text"
-                id="searchFirstName"
-                name="firstName"
-                value={newOfficial.firstName}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
-                placeholder="Enter first name..."
-                required
-              />
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="w-full max-w-4xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-8 py-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-600/20"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white">Add New Official</h3>
+                <p className="text-green-100 text-sm">Search and assign a resident as a barangay official</p>
+              </div>
             </div>
-            <div>
-              <label htmlFor="searchLastName" className="block text-sm font-medium text-gray-700">Search Resident Last Name</label>
-              <input
-                type="text"
-                id="searchLastName"
-                name="lastName"
-                value={newOfficial.lastName}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 uppercase"
-                placeholder="Enter last name..."
-                required
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label htmlFor="searchBirthdate" className="block text-sm font-medium text-gray-700">Search Resident Birthdate (Optional)</label>
-              <input
-                type="date"
-                id="searchBirthdate"
-                name="birthdate"
-                value={newOfficial.birthdate}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
-              />
-            </div>
+            <button
+              type="button"
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+              onClick={onClose}
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSearchResident}
-            className="w-full py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition duration-300"
-          >
-            Search Resident
-          </button>
+        </div>
 
-          {searchResults.length > 0 && (
-            <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-40 overflow-y-auto">
-              <h3 className="font-semibold mb-2">Search Results:</h3>
-              {searchResults.map(resident => (
-                <div key={resident.id} className="flex justify-between items-center p-2 hover:bg-gray-100 rounded-md cursor-pointer border-b last:border-b-0"
-                  onClick={() => handleSelectResident(resident)}
-                >
-                  <span>{`${resident.firstName} ${resident.lastName} (${new Date(resident.birthdate).toLocaleDateString()})`}</span>
-                  <span className="text-sm text-blue-600">Select</span>
+        {/* Form Content */}
+        <div className="px-8 py-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
+          <form onSubmit={handleAddOfficialSubmit} className="space-y-8">
+            
+            {/* Resident Search Section */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="bg-green-100 rounded-full p-2">
+                  <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </div>
-              ))}
-            </div>
-          )}
+                <h3 className="text-lg font-semibold text-gray-800">Search Resident</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>First Name</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={newOfficial.firstName}
+                    onChange={handleAddOfficialChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                    placeholder="Enter first name"
+                    required
+                  />
+                </div>
 
-          {newOfficial.residentId && (
-            <div className="space-y-4 p-4 border border-blue-300 rounded-lg bg-blue-50">
-              <h3 className="text-lg font-semibold">Selected Resident Details:</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">ID:</label>
-                  <input type="text" value={newOfficial.residentId} readOnly className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 cursor-not-allowed" />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Last Name</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={newOfficial.lastName}
+                    onChange={handleAddOfficialChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase placeholder:normal-case"
+                    placeholder="Enter last name"
+                    required
+                  />
                 </div>
+
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Full Name:</label>
-                  <input type="text" value={`${newOfficial.firstName} ${newOfficial.middleName ? newOfficial.middleName + ' ' : ''}${newOfficial.lastName}`} readOnly className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 cursor-not-allowed" />
+                  <button
+                    type="button"
+                    onClick={handleSearchResident}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span>Search Resident</span>
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Birthdate:</label>
-                  <input type="text" value={newOfficial.birthdate} readOnly className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 cursor-not-allowed" />
+              </div>
+
+              {/* Search Results */}
+              {searchResults && searchResults.length > 0 && (
+                <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-700">Search Results</h4>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {searchResults.map((resident, index) => (
+                      <div
+                        key={index}
+                        className="px-4 py-3 hover:bg-green-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-200"
+                        onClick={() => handleSelectResident(resident)}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`}
+                            </p>
+                            <p className="text-sm text-gray-500">ID: {resident.id}</p>
+                          </div>
+                          <button
+                            type="button"
+                            className="text-green-600 hover:text-green-800 text-sm font-medium"
+                          >
+                            Select
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Official Details Section */}
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="bg-emerald-100 rounded-full p-2">
+                  <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h6m-6 4h6m-2 4h2" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Official Details</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Position</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <select
+                    name="position"
+                    value={newOfficial.position}
+                    onChange={handleAddOfficialChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  >
+                    <option value="">Select Position</option>
+                    <option value="Barangay Captain">Barangay Captain</option>
+                    <option value="Barangay Kagawad">Barangay Kagawad</option>
+                    <option value="SK Chairman">SK Chairman</option>
+                    <option value="Barangay Secretary">Barangay Secretary</option>
+                    <option value="Barangay Treasurer">Barangay Treasurer</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    Chairmanship
+                  </label>
+                  <select
+                    name="chairmanship"
+                    value={newOfficial.chairmanship}
+                    onChange={handleAddOfficialChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  >
+                    <option value="">Select Chairmanship</option>
+                    <option value="Peace and Order">Peace and Order</option>
+                    <option value="Education">Education</option>
+                    <option value="Health">Health</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Agriculture">Agriculture</option>
+                    <option value="Youth and Sports">Youth and Sports</option>
+                    <option value="Women and Family">Women and Family</option>
+                    <option value="Finance">Finance</option>
+                    <option value="None">None</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Term Start</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="termStart"
+                    value={newOfficial.termStart}
+                    onChange={handleAddOfficialChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Term End</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="termEnd"
+                    value={newOfficial.termEnd}
+                    onChange={handleAddOfficialChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Status</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <select
+                    name="status"
+                    value={newOfficial.status}
+                    onChange={handleAddOfficialChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
                 </div>
               </div>
             </div>
-          )}
+          </form>
+        </div>
 
-          {/* Official Specific Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="position" className="block text-sm font-medium text-gray-700">Position</label>
-              <select
-                id="position"
-                name="position"
-                value={newOfficial.position}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                required
-              >
-                <option value="">Select Position</option>
-                <option value="Barangay Captain">Barangay Captain</option>
-                <option value="Barangay Kagawad">Barangay Kagawad</option>
-                <option value="Barangay Secretary">Barangay Secretary</option>
-                <option value="Barangay Treasurer">Barangay Treasurer</option>
-                <option value="SK Chairperson">SK Chairperson</option>
-                <option value="SK Kagawad">SK Kagawad</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="termStart" className="block text-sm font-medium text-gray-700">Term Start</label>
-              <input
-                type="date"
-                id="termStart"
-                name="termStart"
-                value={newOfficial.termStart}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="termEnd" className="block text-sm font-medium text-gray-700">Term End</label>
-              <input
-                type="date"
-                id="termEnd"
-                name="termEnd"
-                value={newOfficial.termEnd}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="chairmanship" className="block text-sm font-medium text-gray-700">Chairmanship</label>
-              <select
-                id="chairmanship"
-                name="chairmanship"
-                value={newOfficial.chairmanship}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                required
-              >
-                <option value="">Select Chairmanship</option>
-                <option value="Peace and Order">Peace and Order</option>
-                <option value="Education">Education</option>
-                <option value="Health">Health</option>
-                <option value="Infrastructure">Infrastructure</option>
-                <option value="Agriculture">Agriculture</option>
-                <option value="Youth and Sports">Youth and Sports</option>
-                <option value="Women and Family">Women and Family</option>
-                <option value="Finance">Finance</option>
-                <option value="None">None</option>
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
-              <select
-                id="status"
-                name="status"
-                value={newOfficial.status}
-                onChange={handleAddOfficialChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                required
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
+        {/* Footer Actions */}
+        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
+          <div className="flex justify-end space-x-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
+              className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
             >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700"
+              onClick={handleAddOfficialSubmit}
+              className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
             >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
               Add Official
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

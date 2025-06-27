@@ -5,11 +5,19 @@ import Image from "next/image";
 import Link from "next/link";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import LoadingAnimation from '@/components/ui/LoadingAnimation';
 
 const LoginPage = () => {
     const pathname = usePathname();
+    const router = useRouter();
     const [userType, setUserType] = useState(null); // null, 'resident', or 'admin'
+    const [formData, setFormData] = useState({
+      email: '',
+      password: ''
+    });
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
   useEffect(() => {
     AOS.init({
@@ -20,14 +28,69 @@ const LoginPage = () => {
 
   const handleUserTypeSelect = (type) => {
     setUserType(type);
+    setError(''); // Clear any previous errors
   };
 
   const handleBackToSelection = () => {
     setUserType(null);
+    setFormData({ email: '', password: '' });
+    setError('');
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setError(''); // Clear error when user types
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          userType: userType
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store token in localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userType', data.userType);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Small delay to ensure cookie is set, then redirect
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 100);
+      } else {
+        setError(data.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="font-sans text-gray-900 overflow-x-hidden">
+      {/* Loading Animation */}
+      {isLoading && <LoadingAnimation message="Signing you in..." />}
       {/* Navbar */}
       <header className="fixed w-full z-50 bg-white/90 backdrop-blur-sm shadow-sm transition-all duration-300">
         <div className="container mx-auto flex justify-between items-center py-4 px-6">
@@ -167,14 +230,23 @@ const LoginPage = () => {
                       {userType === 'resident' ? 'Resident Login' : 'Admin Login'}
                     </h3>
                     
-                    <form className="space-y-4">
+                    {error && (
+                      <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-100 text-sm">
+                        {error}
+                      </div>
+                    )}
+                    
+                    <form className="space-y-4" onSubmit={handleSubmit}>
                       <div>
                         <label className="block text-sm font-medium text-white/90 mb-1">Email Address</label>
                         <input
                           type="email"
                           name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
                           placeholder="you@example.com"
                           className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          required
                         />
                       </div>
                       <div>
@@ -182,8 +254,11 @@ const LoginPage = () => {
                         <input
                           type="password"
                           name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
                           placeholder="••••••••"
                           className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          required
                         />
                       </div>
                       <div className="flex justify-between items-center">
@@ -203,13 +278,23 @@ const LoginPage = () => {
                       </div>
                       <button
                         type="submit"
+                        disabled={isLoading}
                         className={`w-full py-3 text-white rounded-lg font-medium transition duration-300 shadow-lg ${
-                          userType === 'resident' 
-                            ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' 
-                            : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                          isLoading 
+                            ? 'bg-gray-500 cursor-not-allowed' 
+                            : userType === 'resident' 
+                              ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' 
+                              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
                         }`}
                       >
-                        Log In as {userType === 'resident' ? 'Resident' : 'Admin'}
+                        {isLoading ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                            Logging in...
+                          </div>
+                        ) : (
+                          `Log In as ${userType === 'resident' ? 'Resident' : 'Admin'}`
+                        )}
                       </button>
                     </form>
                     <p className="mt-4 text-center text-white/90 text-sm">

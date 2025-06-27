@@ -535,90 +535,139 @@ export function HouseholdManager({ residents, onUpdateHousehold }) {
 
       {/* Create/Edit Household Modal */}
       {showCreateHouseholdModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingHousehold ? 'Edit Household' : 'Create New Household'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowCreateHouseholdModal(false);
-                  setEditingHousehold(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const newAddress = formData.get('address');
-              const headOfHouseholdId = formData.get('headOfHousehold');
-              const headOfHousehold = residents.find(r => r.id === parseInt(headOfHouseholdId));
-
-              if (editingHousehold) {
-                await handleUpdateHousehold({
-                  id: editingHousehold.id,
-                  address: newAddress,
-                  headOfHousehold
-                });
-              } else {
-                await handleCreateHousehold({
-                  address: newAddress,
-                  headOfHousehold
-                });
-              }
-            }} className="space-y-4">
-              <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  defaultValue={editingHousehold?.address || ''}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              {!editingHousehold && ( // Only show for creation
-                <div>
-                  <label htmlFor="headOfHousehold" className="block text-sm font-medium text-gray-700">Head of Household</label>
-                  <select
-                    id="headOfHousehold"
-                    name="headOfHousehold"
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    required
-                  >
-                    <option value="">Select a resident</option>
-                    {residents.filter(r => !r.householdId || r.householdId === editingHousehold?.id).map(resident => (
-                      <option key={resident.id} value={resident.id}>
-                        {`${resident.firstName} ${resident.lastName}`}
-                      </option>
-                    ))}
-                  </select>
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
+            {/* Header Section */}
+            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-8 py-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-600/20"></div>
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                    <Home className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {editingHousehold ? 'Edit Household' : 'Create New Household'}
+                    </h3>
+                    <p className="text-green-100 text-sm">
+                      {editingHousehold ? 'Update household information' : 'Add a new household to the barangay'}
+                    </p>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-end gap-4">
+                <button
+                  type="button"
+                  className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+                  onClick={() => {
+                    setShowCreateHouseholdModal(false);
+                    setEditingHousehold(null);
+                  }}
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <div className="px-8 py-6">
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const newAddress = formData.get('address');
+                const headOfHouseholdId = formData.get('headOfHousehold');
+                const headOfHousehold = residents.find(r => r.id === parseInt(headOfHouseholdId));
+
+                if (editingHousehold) {
+                  await handleUpdateHousehold({
+                    id: editingHousehold.id,
+                    address: newAddress,
+                    headOfHousehold
+                  });
+                } else {
+                  await handleCreateHousehold({
+                    address: newAddress,
+                    headOfHousehold
+                  });
+                }
+              }} className="space-y-8">
+                
+                {/* Household Information Section */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
+                  <div className="flex items-center space-x-2 mb-6">
+                    <div className="bg-green-100 rounded-full p-2">
+                      <Home className="h-5 w-5 text-green-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800">Household Information</h3>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label htmlFor="address" className="block text-sm font-medium text-gray-700 text-left">
+                        <span>Household Address</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="address"
+                        name="address"
+                        defaultValue={editingHousehold?.address || ''}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                        placeholder="Enter complete household address"
+                        required
+                      />
+                    </div>
+
+                    {!editingHousehold && (
+                      <div className="space-y-2">
+                        <label htmlFor="headOfHousehold" className="block text-sm font-medium text-gray-700 text-left">
+                          <span>Head of Household</span>
+                          <span className="text-red-500 ml-1">*</span>
+                        </label>
+                        <select
+                          id="headOfHousehold"
+                          name="headOfHousehold"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          required
+                        >
+                          <option value="">Select a resident to be the head</option>
+                          {residents.filter(r => !r.householdId || r.householdId === editingHousehold?.id).map(resident => (
+                            <option key={resident.id} value={resident.id}>
+                              {`${resident.firstName} ${resident.lastName}`}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Only residents without existing household assignments are shown
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
+              <div className="flex justify-end space-x-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowCreateHouseholdModal(false);
                     setEditingHousehold(null);
                   }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
                 >
+                  <X className="h-4 w-4 mr-2" />
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                  className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
                 >
+                  <Home className="h-4 w-4 mr-2" />
                   {editingHousehold ? 'Save Changes' : 'Create Household'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
