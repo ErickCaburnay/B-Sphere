@@ -43,8 +43,8 @@ export function ResidentsClientComponent({ initialResidents }) {
   const refreshResidents = async () => {
     const res = await fetch('/api/residents');
     const data = await res.json();
-    setResidents(data);
-    setFilteredResidents(data);
+    setResidents(data.data || data);
+    setFilteredResidents(data.data || data);
   };
 
   const fetchSearchResults = async (query) => {
@@ -1088,6 +1088,7 @@ export function ResidentsClientComponent({ initialResidents }) {
       {showEditModal && (
         <EditResidentModal
           resident={selectedResident}
+          isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
             setSelectedResident(null);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import { X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Loader, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
@@ -9,6 +9,8 @@ export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
+  const [debugInfo, setDebugInfo] = useState([]);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (event) => {
@@ -81,6 +83,8 @@ export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
     setIsUploading(true);
     setValidationErrors([]);
     setUploadResult(null);
+    setDebugInfo([]);
+    setShowDebugInfo(false);
 
     try {
       const formData = new FormData();
@@ -96,8 +100,18 @@ export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
       if (!response.ok) {
         if (result.details && Array.isArray(result.details)) {
           setValidationErrors(result.details);
+        }
+        
+        // Store debug information if available
+        if (result.debug && Array.isArray(result.debug)) {
+          setDebugInfo(result.debug);
+        }
+        
+        // Show specific error message
+        if (result.error) {
+          toast.error(result.error);
         } else {
-          throw new Error(result.error || 'Upload failed');
+          toast.error('Upload failed');
         }
         return;
       }
@@ -122,6 +136,8 @@ export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
     setSelectedFile(null);
     setValidationErrors([]);
     setUploadResult(null);
+    setDebugInfo([]);
+    setShowDebugInfo(false);
     setIsUploading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -237,6 +253,39 @@ export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
             )}
           </div>
 
+          {/* Debug Information */}
+          {debugInfo.length > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Info className="w-5 h-5 text-yellow-600" />
+                  <h3 className="font-medium text-yellow-900">Processing Information</h3>
+                </div>
+                <button
+                  onClick={() => setShowDebugInfo(!showDebugInfo)}
+                  className="text-yellow-600 hover:text-yellow-800 text-sm"
+                >
+                  {showDebugInfo ? 'Hide Details' : 'Show Details'}
+                </button>
+              </div>
+              
+              {showDebugInfo && (
+                <div className="max-h-60 overflow-y-auto">
+                  <ul className="text-sm text-yellow-800 space-y-1 font-mono">
+                    {debugInfo.map((info, index) => (
+                      <li key={index}>• {info}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              <div className="mt-2 text-sm text-yellow-800">
+                <p>This information can help identify why no data was processed.</p>
+                <p>Common issues: Empty rows, missing required fields, or incorrect file format.</p>
+              </div>
+            </div>
+          )}
+
           {/* Validation Errors */}
           {validationErrors.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -301,4 +350,7 @@ export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
       </div>
     </div>
   );
-} 
+}
+
+// Add default export for lazy loading compatibility
+export default BatchUploadModal; 

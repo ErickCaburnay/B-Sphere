@@ -1,5 +1,6 @@
-import prisma from '@/lib/prisma';
+import { adminDb } from '@/lib/firebase-admin';
 import { NextResponse } from 'next/server';
+import { Timestamp } from 'firebase-admin/firestore';
 
 // Utility function to clean contact number for database storage
 const cleanContactNumber = (contactNumber) => {
@@ -14,18 +15,27 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') || '10', 10);
-    const skip = (page - 1) * pageSize;
-    const take = pageSize;
 
-    // Fetch paginated residents
-    const [residents, total] = await Promise.all([
-      prisma.resident.findMany({
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take,
-      }),
-      prisma.resident.count(),
-    ]);
+    // Get all residents (we'll implement pagination later)
+    const querySnapshot = await adminDb.collection('residents')
+      .orderBy('createdAt', 'desc')
+      .limit(pageSize)
+      .get();
+    
+    const total = querySnapshot.size;
+    const residents = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      // Convert Firestore timestamps to JavaScript dates (but keep birthdate as string)
+      residents.push({
+        ...data,
+        id: doc.id,
+        birthdate: data.birthdate, // Keep birthdate as string
+        createdAt: data.createdAt?.toDate?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+      });
+    });
 
     const response = NextResponse.json({ data: residents, total });
     
@@ -43,48 +53,67 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
+    
     // Batch insert support
     if (Array.isArray(body.batch)) {
       const batch = body.batch;
+      
       // Get the latest resident to determine the next ID
-      let latestResident = await prisma.resident.findFirst({ orderBy: { id: 'desc' } });
-      let lastNumber = latestResident ? parseInt(latestResident.id.split('-')[1]) : 0;
+      const latestSnapshot = await adminDb.collection('residents')
+        .orderBy('id', 'desc')
+        .limit(1)
+        .get();
+      
+      let lastNumber = 0;
+      if (!latestSnapshot.empty) {
+        const latestResident = latestSnapshot.docs[0].data();
+        lastNumber = parseInt(latestResident.id.split('-')[1]);
+      }
+      
+      const firestoreBatch = adminDb.batch();
       const createdResidents = [];
+      
       for (const r of batch) {
         // Generate new ID
         lastNumber++;
         const newId = `SF-${String(lastNumber).padStart(5, '0')}`;
-        // Required fields fallback
-        const newResident = await prisma.resident.create({
-          data: {
-            id: newId,
-            firstName: r.firstName || '',
-            middleName: r.middleName || null,
-            lastName: r.lastName || '',
-            suffix: r.suffix || null,
-            address: r.address || '',
-            birthdate: r.birthdate ? new Date(r.birthdate) : new Date(),
-            birthplace: r.birthplace || '',
-            citizenship: r.citizenship || '',
-            maritalStatus: r.maritalStatus || '',
-            gender: r.gender || '',
-            voterStatus: r.voterStatus || '',
-            employmentStatus: r.employmentStatus || null,
-            educationalAttainment: r.educationalAttainment || null,
-            occupation: r.occupation || null,
-            contactNumber: cleanContactNumber(r.contactNumber),
-            email: r.email || null,
-            isTUPAD: r.isTUPAD || false,
-            isPWD: r.isPWD || false,
-            is4Ps: r.is4Ps || false,
-            isSoloParent: r.isSoloParent || false
-          }
-        });
-        createdResidents.push(newResident);
+        const docRef = adminDb.collection('residents').doc(newId);
+        
+        const residentData = {
+          id: newId,
+          firstName: r.firstName || '',
+          middleName: r.middleName || null,
+          lastName: r.lastName || '',
+          suffix: r.suffix || null,
+          address: r.address || '',
+          birthdate: r.birthdate || '',
+          birthplace: r.birthplace || '',
+          citizenship: r.citizenship || '',
+          maritalStatus: r.maritalStatus || '',
+          gender: r.gender || '',
+          voterStatus: r.voterStatus || '',
+          employmentStatus: r.employmentStatus || null,
+          educationalAttainment: r.educationalAttainment || null,
+          occupation: r.occupation || null,
+          contactNumber: cleanContactNumber(r.contactNumber),
+          email: r.email || null,
+          isTUPAD: r.isTUPAD || false,
+          isPWD: r.isPWD || false,
+          is4Ps: r.is4Ps || false,
+          isSoloParent: r.isSoloParent || false,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        };
+        
+        firestoreBatch.set(docRef, residentData);
+        createdResidents.push({ ...residentData, id: newId });
       }
+      
+      await firestoreBatch.commit();
       return NextResponse.json(createdResidents, { status: 201 });
     }
-    // ... existing single create logic ...
+
+    // Single resident creation
     const { 
       firstName, 
       middleName, 
@@ -114,51 +143,52 @@ export async function POST(request) {
     }
 
     // Get the latest resident to determine the next ID
-    const latestResident = await prisma.resident.findFirst({
-      orderBy: { id: 'desc' },
-    });
-
-    // Generate new ID
+    const latestSnapshot = await adminDb.collection('residents')
+      .orderBy('id', 'desc')
+      .limit(1)
+      .get();
+    
     let newId;
-    if (!latestResident) {
+    if (latestSnapshot.empty) {
       newId = 'SF-00001';
     } else {
+      const latestResident = latestSnapshot.docs[0].data();
       const lastNumber = parseInt(latestResident.id.split('-')[1]);
       newId = `SF-${String(lastNumber + 1).padStart(5, '0')}`;
     }
 
-    const newResident = await prisma.resident.create({
-      data: {
-        id: newId,
-        firstName,
-        middleName: middleName || null,
-        lastName,
-        suffix: suffix || null,
-        address,
-        birthdate: new Date(birthdate),
-        birthplace,
-        citizenship,
-        maritalStatus,
-        gender,
-        voterStatus,
-        employmentStatus: employmentStatus || null,
-        educationalAttainment: educationalAttainment || null,
-        occupation: occupation || null,
-        contactNumber: cleanContactNumber(contactNumber),
-        email: email || null,
-        isTUPAD: isTUPAD || false,
-        isPWD: isPWD || false,
-        is4Ps: is4Ps || false,
-        isSoloParent: isSoloParent || false
-      },
-    });
-    return NextResponse.json(newResident, { status: 201 });
+    const residentData = {
+      id: newId,
+      firstName,
+      middleName: middleName || null,
+      lastName,
+      suffix: suffix || null,
+      address,
+      birthdate: birthdate,
+      birthplace,
+      citizenship,
+      maritalStatus,
+      gender,
+      voterStatus,
+      employmentStatus: employmentStatus || null,
+      educationalAttainment: educationalAttainment || null,
+      occupation: occupation || null,
+      contactNumber: cleanContactNumber(contactNumber),
+      email: email || null,
+      isTUPAD: isTUPAD || false,
+      isPWD: isPWD || false,
+      is4Ps: is4Ps || false,
+      isSoloParent: isSoloParent || false,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    };
+
+    const docRef = adminDb.collection('residents').doc(newId);
+    await docRef.set(residentData);
+    
+    return NextResponse.json({ ...residentData, id: newId }, { status: 201 });
   } catch (error) {
     console.error('Error adding resident:', error);
-    // Check for unique constraint violation (e.g., duplicate ID)
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'Resident with this ID already exists' }, { status: 409 });
-    }
     return NextResponse.json({ error: 'Failed to add resident' }, { status: 500 });
   }
 }
@@ -195,37 +225,51 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const updatedResident = await prisma.resident.update({
-      where: { id },
-      data: {
-        firstName,
-        middleName: middleName || null,
-        lastName,
-        suffix: suffix || null,
-        address,
-        birthdate: new Date(birthdate),
-        birthplace,
-        citizenship,
-        maritalStatus,
-        gender,
-        voterStatus,
-        employmentStatus: employmentStatus || null,
-        educationalAttainment: educationalAttainment || null,
-        occupation: occupation || null,
-        contactNumber: cleanContactNumber(contactNumber),
-        email: email || null,
-        isTUPAD: isTUPAD || false,
-        isPWD: isPWD || false,
-        is4Ps: is4Ps || false,
-        isSoloParent: isSoloParent || false
-      },
-    });
+    const docRef = adminDb.collection('residents').doc(id);
+    const docSnap = await docRef.get();
+    
+    if (!docSnap.exists) {
+      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
+    }
+
+    const updateData = {
+      firstName,
+      middleName: middleName || null,
+      lastName,
+      suffix: suffix || null,
+      address,
+      birthdate: birthdate,
+      birthplace,
+      citizenship,
+      maritalStatus,
+      gender,
+      voterStatus,
+      employmentStatus: employmentStatus || null,
+      educationalAttainment: educationalAttainment || null,
+      occupation: occupation || null,
+      contactNumber: cleanContactNumber(contactNumber),
+      email: email || null,
+      isTUPAD: isTUPAD || false,
+      isPWD: isPWD || false,
+      is4Ps: is4Ps || false,
+      isSoloParent: isSoloParent || false,
+      updatedAt: Timestamp.now()
+    };
+
+    await docRef.update(updateData);
+    
+    const updatedDoc = await docRef.get();
+    const updatedResident = {
+      ...updatedDoc.data(),
+      id: updatedDoc.id,
+      birthdate: updatedDoc.data().birthdate, // Keep birthdate as string
+      createdAt: updatedDoc.data().createdAt?.toDate?.() || updatedDoc.data().createdAt,
+      updatedAt: updatedDoc.data().updatedAt?.toDate?.() || updatedDoc.data().updatedAt,
+    };
+    
     return NextResponse.json(updatedResident);
   } catch (error) {
     console.error('Error updating resident:', error);
-    if (error.code === 'P2025') {
-      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
-    }
     return NextResponse.json({ error: 'Failed to update resident' }, { status: 500 });
   }
 }
@@ -233,22 +277,25 @@ export async function PUT(request) {
 // DELETE /api/residents - Delete a resident
 export async function DELETE(request) {
   try {
-    const { id } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json({ error: 'Resident ID is required' }, { status: 400 });
     }
 
-    await prisma.resident.delete({
-      where: { id },
-    });
+    const docRef = adminDb.collection('residents').doc(id);
+    const docSnap = await docRef.get();
+    
+    if (!docSnap.exists) {
+      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
+    }
 
+    await docRef.delete();
+    
     return NextResponse.json({ message: 'Resident deleted successfully' });
   } catch (error) {
     console.error('Error deleting resident:', error);
-    if (error.code === 'P2025') {
-      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
-    }
     return NextResponse.json({ error: 'Failed to delete resident' }, { status: 500 });
   }
 } 
