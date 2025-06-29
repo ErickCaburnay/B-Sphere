@@ -62,12 +62,12 @@ export async function POST(request) {
       );
     }
 
-    // Check for unique positions
+    // Check for unique positions - these positions can only have one active official
     const uniquePositions = [
       "Barangay Captain",
+      "Barangay Secretary", 
       "Barangay Treasurer",
-      "Barangay Secretary",
-      "SK Chairperson"
+      "SK Chairman"
     ];
 
     if (uniquePositions.includes(position)) {
@@ -85,7 +85,7 @@ export async function POST(request) {
         return NextResponse.json(
           { 
             error: "Position already taken",
-            message: `The position of ${position} is currently held by ${existingPositionHolder.resident.firstName} ${existingPositionHolder.resident.lastName}. Please remove the current official from this position first.`
+            message: `The position of ${position} is currently occupied by ${existingPositionHolder.resident.firstName} ${existingPositionHolder.resident.lastName}. Only one person can hold this position at a time. Please set the current official to inactive or remove them before assigning this position to another resident.`
           },
           { status: 400 }
         );
@@ -157,12 +157,12 @@ export async function PUT(request) {
       );
     }
 
-    // Check for unique positions (similar to POST)
+    // Check for unique positions - these positions can only have one active official
     const uniquePositions = [
       "Barangay Captain",
+      "Barangay Secretary", 
       "Barangay Treasurer",
-      "Barangay Secretary",
-      "SK Chairperson"
+      "SK Chairman"
     ];
 
     if (uniquePositions.includes(position)) {
@@ -184,7 +184,7 @@ export async function PUT(request) {
         return NextResponse.json(
           { 
             error: "Position already taken",
-            message: `The position of ${position} is currently held by ${existingPositionHolder.resident.firstName} ${existingPositionHolder.resident.lastName}. Please remove the current official from this position first.`
+            message: `The position of ${position} is currently occupied by ${existingPositionHolder.resident.firstName} ${existingPositionHolder.resident.lastName}. Only one person can hold this position at a time. Please set the current official to inactive or remove them before assigning this position to another resident.`
           },
           { status: 400 }
         );

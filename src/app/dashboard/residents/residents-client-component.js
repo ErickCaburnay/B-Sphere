@@ -8,6 +8,7 @@ import { EditResidentModal } from '@/components/residents/EditResidentModal';
 import { DeleteResidentModal } from '@/components/residents/DeleteResidentModal';
 import { toast } from "react-hot-toast";
 import Pagination from '@/components/ui/Pagination';
+import { formatContactNumberDisplay } from '@/components/ui/ContactNumberInput';
 
 // Utility function to calculate age from birthdate
 const calculateAge = (birthdate) => {
@@ -173,8 +174,28 @@ export function ResidentsClientComponent({ initialResidents }) {
   const handleAddResidentChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Force uppercase for text inputs except email
-    if (type === 'text' && name !== 'email') {
+    if (name === 'contactNumber') {
+      // Format contact number as user types
+      const numbers = value.replace(/\D/g, '');
+      let formatted = '';
+      
+      if (numbers.length > 11) {
+        return; // Don't allow more than 11 digits
+      }
+      
+      if (numbers.length > 0) {
+        if (numbers.length <= 4) {
+          formatted = numbers;
+        } else if (numbers.length <= 7) {
+          formatted = `${numbers.substring(0, 4)} ${numbers.substring(4)}`;
+        } else {
+          formatted = `${numbers.substring(0, 4)} ${numbers.substring(4, 7)} ${numbers.substring(7, 11)}`;
+        }
+      }
+      
+      setNewResident({ ...newResident, [name]: formatted });
+    } else if (type === 'text' && name !== 'email') {
+      // Force uppercase for text inputs except email and contactNumber
       setNewResident({ ...newResident, [name]: value.toUpperCase() });
     } else {
       setNewResident({ ...newResident, [name]: value });
@@ -721,11 +742,28 @@ export function ResidentsClientComponent({ initialResidents }) {
                 <div>
                   <label htmlFor="contactNumber" className="block text-sm font-medium text-gray-700">Contact Number</label>
                   <input
-                    type="tel"
+                    type="text"
                     name="contactNumber"
-                    placeholder="Contact Number"
+                    placeholder="0921 234 5678"
                     value={newResident.contactNumber}
                     onChange={handleAddResidentChange}
+                    onKeyDown={(e) => {
+                      // Allow backspace, delete, tab, escape, enter, arrow keys
+                      if ([8, 9, 27, 13, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+                        // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                        (e.keyCode === 65 && e.ctrlKey === true) ||
+                        (e.keyCode === 67 && e.ctrlKey === true) ||
+                        (e.keyCode === 86 && e.ctrlKey === true) ||
+                        (e.keyCode === 88 && e.ctrlKey === true) ||
+                        // Allow home, end
+                        (e.keyCode >= 35 && e.keyCode <= 36)) {
+                        return;
+                      }
+                      // Ensure that it is a number and stop the keypress
+                      if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                        e.preventDefault();
+                      }
+                    }}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
@@ -985,7 +1023,7 @@ export function ResidentsClientComponent({ initialResidents }) {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500">Contact Number</p>
-                    <p className="mt-1 text-gray-900">{selectedResidentForView.contactNumber || 'Not specified'}</p>
+                    <p className="mt-1 text-gray-900">{formatContactNumberDisplay(selectedResidentForView.contactNumber) || 'Not specified'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500">Email</p>

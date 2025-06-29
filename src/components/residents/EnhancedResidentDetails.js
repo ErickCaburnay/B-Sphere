@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Tab } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
+import { formatContactNumberDisplay } from '../ui/ContactNumberInput';
 
 export function EnhancedResidentDetails({ resident, onClose, onEdit, onDelete }) {
   const [activeTab, setActiveTab] = useState(0);
@@ -93,7 +94,7 @@ export function EnhancedResidentDetails({ resident, onClose, onEdit, onDelete })
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Phone className="h-5 w-5 mr-2" />
-                  <span>{resident.contactNumber || 'No contact number'}</span>
+                  <span>{formatContactNumberDisplay(resident.contactNumber) || 'No contact number'}</span>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Mail className="h-5 w-5 mr-2" />

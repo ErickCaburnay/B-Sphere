@@ -46,18 +46,24 @@ const OfficialsPage = () => {
   const [startIndex, setStartIndex] = useState(0);
   const [endIndex, setEndIndex] = useState(0);
 
-  // Fetch officials on component mount
+  // Fetch officials on component mount and when pagination changes
   useEffect(() => {
     fetchOfficials();
   }, []);
+
+  useEffect(() => {
+    // Update pagination when officials data or pagination settings change
+    if (officials.length > 0) {
+      setTotalPages(Math.ceil(officials.length / rowsPerPage));
+      setStartIndex((currentPage - 1) * rowsPerPage);
+      setEndIndex(Math.min((currentPage - 1) * rowsPerPage + rowsPerPage, officials.length));
+    }
+  }, [officials, currentPage, rowsPerPage]);
 
   const fetchOfficials = async () => {
     try {
       const data = await cachedFetch('/api/officials', {}, 300000); // Cache for 5 minutes
       setOfficials(Array.isArray(data) ? data : []);
-      setTotalPages(Math.ceil(data.length / rowsPerPage));
-      setStartIndex((currentPage - 1) * rowsPerPage);
-      setEndIndex(Math.min(startIndex + rowsPerPage, data.length));
     } catch (error) {
       console.error('Error fetching officials:', error);
       setOfficials([]);
@@ -226,14 +232,24 @@ const OfficialsPage = () => {
         console.log('Official updated successfully!');
         setIsEditModalOpen(false);
         setOfficialToEdit(null);
-        fetchOfficials(); // Refresh the list
+        
+        // Invalidate cache and refresh the list
+        await invalidateCache('/api/officials');
+        await fetchOfficials();
+        
+        // Show success message
+        setMessageModalTitle("Success");
+        setMessageModalContent('Official updated successfully!');
+        setIsMessageModalOpen(true);
       } else {
         const errorData = await res.json();
-        alert(`Failed to update official: ${errorData.error}`);
+        setErrorMessage(`Failed to update official: ${errorData.error}`);
+        setIsErrorModalOpen(true);
       }
     } catch (error) {
       console.error('Error updating official:', error);
-      alert('An error occurred while updating official.');
+      setErrorMessage('An error occurred while updating official.');
+      setIsErrorModalOpen(true);
     }
   };
 
@@ -277,7 +293,7 @@ const OfficialsPage = () => {
           </thead>
           <tbody>
             {Array.isArray(officials) && officials.length > 0 ? (
-              officials.map((official) => (
+              officials.slice(startIndex, endIndex).map((official) => (
                 <tr key={official.residentId} className="hover:bg-blue-50 transition-colors border-t border-gray-100 cursor-pointer" onClick={() => handleViewClick(official)}>
                   <td className="p-4">{official.residentId}</td>
                   <td className="p-4">{`${official.resident.firstName} ${official.resident.middleName ? official.resident.middleName + ' ' : ''}${official.resident.lastName}`}</td>
@@ -297,16 +313,22 @@ const OfficialsPage = () => {
                     </span>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="p-2 rounded-full hover:bg-gray-200 transition text-blue-600"
-                        onClick={() => handleEditClick(official)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(official);
+                        }}
                       >
                         <Pencil size={18} />
                       </button>
                       <button
                         className="p-2 rounded-full hover:bg-gray-200 transition text-red-600"
-                        onClick={() => handleDeleteClick(official)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(official);
+                        }}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -330,7 +352,7 @@ const OfficialsPage = () => {
         rowsPerPage={rowsPerPage}
         rowsPerPageOptions={[10, 20, 50]}
         totalEntries={officials.length}
-        startEntry={startIndex + 1}
+        startEntry={officials.length > 0 ? startIndex + 1 : 0}
         endEntry={Math.min(endIndex, officials.length)}
         onPageChange={setCurrentPage}
         onRowsPerPageChange={v => { setRowsPerPage(v); setCurrentPage(1); }}
@@ -603,12 +625,16 @@ const AddOfficialModal = ({ isOpen, onClose, newOfficial, handleAddOfficialChang
                     required
                   >
                     <option value="">Select Position</option>
-                    <option value="Barangay Captain">Barangay Captain</option>
+                    <option value="Barangay Captain">Barangay Captain ⭐ (Unique Position)</option>
+                    <option value="Barangay Secretary">Barangay Secretary ⭐ (Unique Position)</option>
+                    <option value="Barangay Treasurer">Barangay Treasurer ⭐ (Unique Position)</option>
+                    <option value="SK Chairman">SK Chairman ⭐ (Unique Position)</option>
                     <option value="Barangay Kagawad">Barangay Kagawad</option>
-                    <option value="SK Chairman">SK Chairman</option>
-                    <option value="Barangay Secretary">Barangay Secretary</option>
-                    <option value="Barangay Treasurer">Barangay Treasurer</option>
+                    <option value="SK Kagawad">SK Kagawad</option>
                   </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    ⭐ Unique positions can only have one active official at a time
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -753,177 +779,217 @@ const EditOfficialModal = ({ isOpen, onClose, official, onUpdate }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await fetch(`/api/officials`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editedOfficial),
-      });
-      if (res.ok) {
-        console.log('Official updated successfully!');
-        onClose();
-        onUpdate(editedOfficial); // Refresh the list
-      } else {
-        const errorData = await res.json();
-        if (errorData.error === "Position already taken") {
-          setErrorMessage(errorData.message);
-          setIsErrorModalOpen(true);
-        } else {
-          setErrorMessage(`Failed to update official: ${errorData.error}`);
-          setIsErrorModalOpen(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error updating official:', error);
-      setErrorMessage('An error occurred while updating official.');
-      setIsErrorModalOpen(true);
-    }
+    onUpdate(editedOfficial);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full overflow-y-auto max-h-[90vh]">
-        <h2 className="text-2xl font-bold mb-4">Edit Official</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Resident ID:</label>
-            <input type="text" value={editedOfficial.residentId} readOnly className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed" />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-1">Full Name:</label>
-            <input
-              type="text"
-              value={`${official.resident.firstName} ${official.resident.middleName ? official.resident.middleName + ' ' : ''}${official.resident.lastName}`}
-              readOnly
-              className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-            />
-          </div>
-          <div>
-            <label htmlFor="editPosition" className="block text-gray-700 font-medium mb-1">Position:</label>
-            <select
-              id="editPosition"
-              name="position"
-              value={editedOfficial.position}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">Select Position</option>
-              <option value="Barangay Captain">Barangay Captain</option>
-              <option value="Barangay Kagawad">Barangay Kagawad</option>
-              <option value="Barangay Secretary">Barangay Secretary</option>
-              <option value="Barangay Treasurer">Barangay Treasurer</option>
-              <option value="SK Chairperson">SK Chairperson</option>
-              <option value="SK Kagawad">SK Kagawad</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="editTermStart" className="block text-gray-700 font-medium mb-1">Term Start:</label>
-            <input
-              type="date"
-              id="editTermStart"
-              name="termStart"
-              value={editedOfficial.termStart}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="editTermEnd" className="block text-gray-700 font-medium mb-1">Term End:</label>
-            <input
-              type="date"
-              id="editTermEnd"
-              name="termEnd"
-              value={editedOfficial.termEnd}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="editChairmanship" className="block text-gray-700 font-medium mb-1">Chairmanship:</label>
-            <select
-              id="editChairmanship"
-              name="chairmanship"
-              value={editedOfficial.chairmanship}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">Select Chairmanship</option>
-              <option value="Peace and Order">Peace and Order</option>
-              <option value="Education">Education</option>
-              <option value="Health">Health</option>
-              <option value="Infrastructure">Infrastructure</option>
-              <option value="Agriculture">Agriculture</option>
-              <option value="Youth and Sports">Youth and Sports</option>
-              <option value="Women and Family">Women and Family</option>
-              <option value="Finance">Finance</option>
-              <option value="None">None</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="editStatus" className="block text-gray-700 font-medium mb-1">Status:</label>
-            <select
-              id="editStatus"
-              name="status"
-              value={editedOfficial.status}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="w-full max-w-3xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-8 py-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                <Pencil className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white">Edit Official</h3>
+                <p className="text-blue-100 text-sm">Update official information and position details</p>
+              </div>
+            </div>
             <button
               type="button"
-              className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-5 py-3 rounded-lg shadow-md"
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
               onClick={onClose}
             >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="px-8 py-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            
+            {/* Resident Information Section */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="bg-blue-100 rounded-full p-2">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Resident Information</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    Resident ID
+                  </label>
+                  <input
+                    type="text"
+                    value={editedOfficial.residentId}
+                    readOnly
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={`${official.resident.firstName} ${official.resident.middleName ? official.resident.middleName + ' ' : ''}${official.resident.lastName}`}
+                    readOnly
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed shadow-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Official Details Section */}
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6 border border-gray-100">
+              <div className="flex items-center space-x-2 mb-6">
+                <div className="bg-indigo-100 rounded-full p-2">
+                  <svg className="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h6m-6 4h6m-2 4h2" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Official Details</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Position</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <select
+                    name="position"
+                    value={editedOfficial.position}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  >
+                    <option value="">Select Position</option>
+                    <option value="Barangay Captain">Barangay Captain ⭐ (Unique Position)</option>
+                    <option value="Barangay Secretary">Barangay Secretary ⭐ (Unique Position)</option>
+                    <option value="Barangay Treasurer">Barangay Treasurer ⭐ (Unique Position)</option>
+                    <option value="SK Chairman">SK Chairman ⭐ (Unique Position)</option>
+                    <option value="Barangay Kagawad">Barangay Kagawad</option>
+                    <option value="SK Kagawad">SK Kagawad</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    ⭐ Unique positions can only have one active official at a time
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Chairmanship</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <select
+                    name="chairmanship"
+                    value={editedOfficial.chairmanship}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  >
+                    <option value="">Select Chairmanship</option>
+                    <option value="Peace and Order">Peace and Order</option>
+                    <option value="Education">Education</option>
+                    <option value="Health">Health</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Agriculture">Agriculture</option>
+                    <option value="Youth and Sports">Youth and Sports</option>
+                    <option value="Women and Family">Women and Family</option>
+                    <option value="Finance">Finance</option>
+                    <option value="None">None</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Term Start</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="termStart"
+                    value={editedOfficial.termStart}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Term End</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="termEnd"
+                    value={editedOfficial.termEnd}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Status</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <select
+                    name="status"
+                    value={editedOfficial.status}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    required
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md"
+              onClick={handleSubmit}
+              className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
             >
+              <Pencil className="h-4 w-4 mr-2" />
               Update Official
             </button>
           </div>
-        </form>
-
-        {/* Error Modal for Edit Official */}
-        {isErrorModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-800">Error</h3>
-                <button
-                  onClick={() => setIsErrorModalOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-gray-700 mb-6">{errorMessage}</p>
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setIsErrorModalOpen(false)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -966,48 +1032,164 @@ const ViewOfficialModal = ({ isOpen, onClose, official }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4 overflow-y-auto max-h-[90vh]">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-800">Official Details</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="space-y-3 text-gray-700 mb-6">
-          <p><span className="font-semibold">ID:</span> {official.residentId}</p>
-          <p><span className="font-semibold">Full Name:</span> {`${official.resident.firstName} ${official.resident.middleName ? official.resident.middleName + ' ' : ''}${official.resident.lastName}`}</p>
-          <p><span className="font-semibold">Birthdate:</span> {new Date(official.resident.birthdate).toLocaleDateString()}</p>
-          <p><span className="font-semibold">Position:</span> {official.position}</p>
-          <p><span className="font-semibold">Term Start:</span> {new Date(official.termStart).toLocaleDateString()}</p>
-          <p><span className="font-semibold">Term End:</span> {new Date(official.termEnd).toLocaleDateString()}</p>
-          <p><span className="font-semibold">Chairmanship:</span> {official.chairmanship}</p>
-          <p>
-            <span className="font-semibold">Status:</span> 
-            <span
-              className={`px-2 py-1 text-xs rounded-full font-semibold ml-2 ${
-                official.status === "Active"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-gray-200 text-gray-600"
-              }`}
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-8 py-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-cyan-600/20"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white">Official Details</h3>
+                <p className="text-emerald-100 text-sm">View barangay official information</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
             >
-              {official.status}
-            </span>
-          </p>
-          <p><span className="font-semibold">Date Added:</span> {new Date(official.createdAt).toLocaleDateString()}</p>
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Close
-          </button>
+
+        {/* Content */}
+        <div className="px-8 py-6">
+          {/* Personal Information Section */}
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-gray-100 mb-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="bg-emerald-100 rounded-full p-2">
+                <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-gray-800">Personal Information</h4>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Resident ID</p>
+                <p className="text-lg font-semibold text-gray-900">{official.residentId}</p>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Full Name</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {`${official.resident.firstName} ${official.resident.middleName ? official.resident.middleName + ' ' : ''}${official.resident.lastName}`}
+                </p>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 shadow-sm md:col-span-2">
+                <p className="text-sm font-medium text-gray-500 mb-1">Birthdate</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {new Date(official.resident.birthdate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Official Information Section */}
+          <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-6 border border-gray-100 mb-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="bg-teal-100 rounded-full p-2">
+                <svg className="h-5 w-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h6m-6 4h6m-2 4h2" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-gray-800">Official Information</h4>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Position</p>
+                <p className="text-lg font-semibold text-gray-900">{official.position}</p>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Chairmanship</p>
+                <p className="text-lg font-semibold text-gray-900">{official.chairmanship}</p>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Term Start</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {new Date(official.termStart).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Term End</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {new Date(official.termEnd).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Status</p>
+                <div className="flex items-center">
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      official.status === "Active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full mr-2 ${
+                        official.status === "Active" ? "bg-green-500" : "bg-gray-500"
+                      }`}
+                    ></span>
+                    {official.status}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Date Added</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {new Date(official.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>

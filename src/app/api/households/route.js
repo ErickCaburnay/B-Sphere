@@ -1,6 +1,12 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+// Utility function to clean contact number for database storage
+const cleanContactNumber = (contactNumber) => {
+  if (!contactNumber) return null;
+  return contactNumber.replace(/\s/g, ''); // Remove spaces for storage
+};
+
 // GET /api/households - Fetch all households
 export async function GET() {
   try {
@@ -29,6 +35,7 @@ export async function POST(request) {
     const household = await prisma.household.create({
       data: {
         ...data,
+        contactNumber: cleanContactNumber(data.contactNumber),
         head: {
           connect: { id: data.headId }
         }
@@ -52,6 +59,7 @@ export async function PUT(request) {
       where: { id: data.id },
       data: {
         ...data,
+        contactNumber: cleanContactNumber(data.contactNumber),
         head: {
           connect: { id: data.headId }
         }

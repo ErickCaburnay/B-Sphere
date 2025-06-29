@@ -28,7 +28,7 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
         setFullName(`${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`);
         setAge(data.age || "");
         setAddress(data.address || "Address will be fetched from household data if available.");
-        setEmergencyContact(data.contactNumber || "");
+        setEmergencyContact(data.contactNumber ? data.contactNumber.replace(/\s/g, '') : "");
       } else {
         alert(data.message || "No matching data found for this ID.");
         setFullName("");
@@ -195,7 +195,7 @@ export default function BrgyIdFormModal({ isOpen, onClose }) {
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={emergencyContact}
                     onChange={(e) => setEmergencyContact(e.target.value)}
-                    placeholder="+63 XXX XXX XXXX"
+                    placeholder="0921 234 5678"
                   />
                 </div>
 

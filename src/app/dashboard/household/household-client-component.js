@@ -5,6 +5,7 @@ import { MoreVertical, Pencil, Trash2, Plus, Search, Filter, Download, Upload, T
 import CustomSelect from "@/components/CustomSelect";
 import { Menu, Transition } from '@headlessui/react';
 import { cachedFetch, invalidateCache } from '@/components/ui/ClientCache';
+import { formatContactNumberDisplay } from '@/components/ui/ContactNumberInput';
 
 export function HouseholdClientComponent({ initialHouseholds }) {
   const [households, setHouseholds] = useState(initialHouseholds);
@@ -220,7 +221,7 @@ export function HouseholdClientComponent({ initialHouseholds }) {
                 <td className="p-4">{`${household.head.firstName} ${household.head.middleName ? household.head.middleName + ' ' : ''}${household.head.lastName}`}</td>
                 <td className="p-4">{household.totalMembers}</td>
                 <td className="p-4">{household.address}</td>
-                <td className="p-4">{household.contactNumber}</td>
+                <td className="p-4">{formatContactNumberDisplay(household.contactNumber)}</td>
                 <td className="p-4">
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -358,7 +359,7 @@ export function HouseholdClientComponent({ initialHouseholds }) {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Contact Number</p>
-                <p className="mt-1">{selectedHouseholdForView.contactNumber}</p>
+                <p className="mt-1">{formatContactNumberDisplay(selectedHouseholdForView.contactNumber)}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-sm font-medium text-gray-500">Address</p>
@@ -447,10 +448,36 @@ const AddHouseholdModal = ({ isOpen, onClose, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name === 'contactNumber') {
+      // Format contact number as user types
+      const numbers = value.replace(/\D/g, '');
+      let formatted = '';
+      
+      if (numbers.length > 11) {
+        return; // Don't allow more than 11 digits
+      }
+      
+      if (numbers.length > 0) {
+        if (numbers.length <= 4) {
+          formatted = numbers;
+        } else if (numbers.length <= 7) {
+          formatted = `${numbers.substring(0, 4)} ${numbers.substring(4)}`;
+        } else {
+          formatted = `${numbers.substring(0, 4)} ${numbers.substring(4, 7)} ${numbers.substring(7, 11)}`;
+        }
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = (e) => {
@@ -562,7 +589,24 @@ const AddHouseholdModal = ({ isOpen, onClose, onSubmit }) => {
                     value={formData.contactNumber}
                     onChange={handleChange}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    placeholder="+63 XXX XXX XXXX"
+                    placeholder="0921 234 5678"
+                    onKeyDown={(e) => {
+                      // Allow backspace, delete, tab, escape, enter, arrow keys
+                      if ([8, 9, 27, 13, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+                        // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                        (e.keyCode === 65 && e.ctrlKey === true) ||
+                        (e.keyCode === 67 && e.ctrlKey === true) ||
+                        (e.keyCode === 86 && e.ctrlKey === true) ||
+                        (e.keyCode === 88 && e.ctrlKey === true) ||
+                        // Allow home, end
+                        (e.keyCode >= 35 && e.keyCode <= 36)) {
+                        return;
+                      }
+                      // Ensure that it is a number and stop the keypress
+                      if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                        e.preventDefault();
+                      }
+                    }}
                     required
                   />
                 </div>

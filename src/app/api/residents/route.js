@@ -1,6 +1,12 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+// Utility function to clean contact number for database storage
+const cleanContactNumber = (contactNumber) => {
+  if (!contactNumber) return null;
+  return contactNumber.replace(/\s/g, ''); // Remove spaces for storage
+};
+
 // GET /api/residents - Fetch paginated residents
 export async function GET(request) {
   try {
@@ -66,7 +72,7 @@ export async function POST(request) {
             employmentStatus: r.employmentStatus || null,
             educationalAttainment: r.educationalAttainment || null,
             occupation: r.occupation || null,
-            contactNumber: r.contactNumber || null,
+            contactNumber: cleanContactNumber(r.contactNumber),
             email: r.email || null,
             isTUPAD: r.isTUPAD || false,
             isPWD: r.isPWD || false,
@@ -138,7 +144,7 @@ export async function POST(request) {
         employmentStatus: employmentStatus || null,
         educationalAttainment: educationalAttainment || null,
         occupation: occupation || null,
-        contactNumber: contactNumber || null,
+        contactNumber: cleanContactNumber(contactNumber),
         email: email || null,
         isTUPAD: isTUPAD || false,
         isPWD: isPWD || false,
@@ -206,7 +212,7 @@ export async function PUT(request) {
         employmentStatus: employmentStatus || null,
         educationalAttainment: educationalAttainment || null,
         occupation: occupation || null,
-        contactNumber: contactNumber || null,
+        contactNumber: cleanContactNumber(contactNumber),
         email: email || null,
         isTUPAD: isTUPAD || false,
         isPWD: isPWD || false,

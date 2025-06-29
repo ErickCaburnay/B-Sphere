@@ -43,7 +43,7 @@ const LandingIntroSection = () => {
                 <FormInput label="Full Name" type="text" placeholder="Juan Dela Cruz" />
                 <FormInput label="Barangay Zone / Purok" type="text" placeholder="Purok 4, Barangay Maunlad" />
                 <FormInput label="Email Address" type="email" placeholder="you@example.com" />
-                <FormInput label="Phone Number" type="tel" placeholder="+63 XXX XXX XXXX" />
+                <FormInput label="Phone Number" type="tel" placeholder="0921 234 5678" />
 
                 <button
                   type="submit"

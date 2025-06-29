@@ -249,11 +249,49 @@ const SignupPage = () => {
                   <div>
                     <label className="block text-sm font-medium text-white/90 mb-1">Phone Number *</label>
                     <input
-                      type="tel"
+                      type="text"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      placeholder="+63 912 345 6789"
+                      placeholder="0921 234 5678"
+                      onInput={(e) => {
+                        const numbers = e.target.value.replace(/\D/g, '');
+                        let formatted = '';
+                        
+                        if (numbers.length > 11) {
+                          e.target.value = e.target.value.slice(0, -1);
+                          return;
+                        }
+                        
+                        if (numbers.length > 0) {
+                          if (numbers.length <= 4) {
+                            formatted = numbers;
+                          } else if (numbers.length <= 7) {
+                            formatted = `${numbers.substring(0, 4)} ${numbers.substring(4)}`;
+                          } else {
+                            formatted = `${numbers.substring(0, 4)} ${numbers.substring(4, 7)} ${numbers.substring(7, 11)}`;
+                          }
+                        }
+                        
+                        e.target.value = formatted;
+                      }}
+                      onKeyDown={(e) => {
+                        // Allow backspace, delete, tab, escape, enter, arrow keys
+                        if ([8, 9, 27, 13, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+                          // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                          (e.keyCode === 65 && e.ctrlKey === true) ||
+                          (e.keyCode === 67 && e.ctrlKey === true) ||
+                          (e.keyCode === 86 && e.ctrlKey === true) ||
+                          (e.keyCode === 88 && e.ctrlKey === true) ||
+                          // Allow home, end
+                          (e.keyCode >= 35 && e.keyCode <= 36)) {
+                          return;
+                        }
+                        // Ensure that it is a number and stop the keypress
+                        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                          e.preventDefault();
+                        }
+                      }}
                       className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
                         errors.phone ? 'border-red-500' : 'border-white/30'
                       }`}

@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { formatContactNumberDisplay, cleanContactNumber } from '../ui/ContactNumberInput';
 
 export function EditResidentModal({ resident, onClose, onUpdate }) {
   const [formData, setFormData] = useState({
@@ -29,23 +30,55 @@ export function EditResidentModal({ resident, onClose, onUpdate }) {
     if (resident) {
       setFormData({
         ...resident,
-        birthdate: new Date(resident.birthdate).toISOString().split('T')[0]
+        birthdate: new Date(resident.birthdate).toISOString().split('T')[0],
+        contactNumber: formatContactNumberDisplay(resident.contactNumber)
       });
     }
   }, [resident]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    
+    if (name === 'contactNumber') {
+      // Format contact number as user types
+      const numbers = value.replace(/\D/g, '');
+      let formatted = '';
+      
+      if (numbers.length > 11) {
+        return; // Don't allow more than 11 digits
+      }
+      
+      if (numbers.length > 0) {
+        if (numbers.length <= 4) {
+          formatted = numbers;
+        } else if (numbers.length <= 7) {
+          formatted = `${numbers.substring(0, 4)} ${numbers.substring(4)}`;
+        } else {
+          formatted = `${numbers.substring(0, 4)} ${numbers.substring(4, 7)} ${numbers.substring(7, 11)}`;
+        }
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await onUpdate(resident.id, formData);
+      // Clean contact number for database storage
+      const cleanedData = {
+        ...formData,
+        contactNumber: cleanContactNumber(formData.contactNumber)
+      };
+      await onUpdate(resident.id, cleanedData);
       onClose();
     } catch (error) {
       console.error('Error updating resident:', error);
@@ -213,10 +246,28 @@ export function EditResidentModal({ resident, onClose, onUpdate }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Contact Number</label>
                 <input
-                  type="tel"
+                  type="text"
                   name="contactNumber"
                   value={formData.contactNumber}
                   onChange={handleChange}
+                  placeholder="0921 234 5678"
+                  onKeyDown={(e) => {
+                    // Allow backspace, delete, tab, escape, enter, arrow keys
+                    if ([8, 9, 27, 13, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+                      // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                      (e.keyCode === 65 && e.ctrlKey === true) ||
+                      (e.keyCode === 67 && e.ctrlKey === true) ||
+                      (e.keyCode === 86 && e.ctrlKey === true) ||
+                      (e.keyCode === 88 && e.ctrlKey === true) ||
+                      // Allow home, end
+                      (e.keyCode >= 35 && e.keyCode <= 36)) {
+                      return;
+                    }
+                    // Ensure that it is a number and stop the keypress
+                    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>

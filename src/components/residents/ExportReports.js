@@ -48,7 +48,7 @@ export function ExportReports({ data, type = 'residents' }) {
       r.birthplace || '',
       r.citizenship,
       r.address,
-      r.contactNumber || '',
+              r.contactNumber ? r.contactNumber.replace(/\s/g, '') : '',
       r.email || '',
       r.occupation || '',
       r.employmentStatus || '',

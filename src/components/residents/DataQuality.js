@@ -48,10 +48,13 @@ export function DataQuality({ residents }) {
         }
       }
 
-      // Contact number format
-      if (resident.contactNumber && !/^(\+63|0)9\d{9}$/.test(resident.contactNumber)) {
+          // Contact number format
+    if (resident.contactNumber) {
+      const cleanNumber = resident.contactNumber.replace(/\s/g, '');
+      if (!/^09\d{9}$/.test(cleanNumber)) {
         issues.push('Invalid contact number format');
       }
+    }
 
       // Email format
       if (resident.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resident.email)) {

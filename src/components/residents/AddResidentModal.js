@@ -5,13 +5,19 @@ import { Dialog, Transition } from '@headlessui/react';
 import { X, User, MapPin, Calendar, Phone, Mail, Briefcase, GraduationCap, Users, Heart, CheckCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { ContactNumberInput, cleanContactNumber } from '../ui/ContactNumberInput';
 
 export function AddResidentModal({ isOpen, onClose, onSubmit }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const handleFormSubmit = async (data) => {
     try {
-      await onSubmit(data);
+      // Clean contact number for database storage
+      const cleanedData = {
+        ...data,
+        contactNumber: cleanContactNumber(data.contactNumber)
+      };
+      await onSubmit(cleanedData);
       reset();
       onClose();
       toast.success('Resident added successfully!');
@@ -329,104 +335,13 @@ export function AddResidentModal({ isOpen, onClose, onSubmit }) {
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700 text-left">
-                            <Phone className="h-4 w-4 inline mr-1" />
-                            <span>Contact Number</span>
-                          </label>
-                          <input
-                            type="text"
-                            {...register('contactNunmber', {
-                              pattern: {
-                                value: /^\+63\s\d{3}\s\d{3}\s\d{4}$/,
-                                message: 'Contact number must be in format: +63 XXX XXX XXXX'
-                              },
-                              validate: {
-                                correctFormat: (value) => {
-                                  if (!value) return true; // Allow empty (optional field)
-                                  const isValid = /^\+63\s\d{3}\s\d{3}\s\d{4}$/.test(value);
-                                  if (!isValid) {
-                                    toast.error('Contact number must be in format: +63 XXX XXX XXXX');
-                                    return 'Contact number must be in format: +63 XXX XXX XXXX';
-                                  }
-                                  return true;
-                                }
-                              }
-                            })}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                            placeholder="+63 XXX XXX XXXX"
-                            onInput={(e) => {
-                              // Remove all non-digits first
-                              let numbers = e.target.value.replace(/\D/g, '');
-                              
-                              // Limit to 11 digits (63 + 9 digits)
-                              if (numbers.length > 11) {
-                                numbers = numbers.substring(0, 11);
-                              }
-                              
-                              // If user starts typing without +63, add it
-                              if (numbers.length > 0 && !numbers.startsWith('63')) {
-                                // If they start with 9, assume it's a Philippine mobile number
-                                if (numbers.startsWith('9')) {
-                                  numbers = '63' + numbers;
-                                } else if (numbers.length >= 2 && numbers.substring(0, 2) !== '63') {
-                                  // If it doesn't start with 63, prepend it
-                                  numbers = '63' + numbers;
-                                }
-                              }
-                              
-                              // Format the number
-                              let formatted = '';
-                              if (numbers.length >= 2) {
-                                // Remove the 63 prefix for formatting
-                                const phoneNumber = numbers.substring(2);
-                                if (phoneNumber.length > 0) {
-                                  if (phoneNumber.length <= 3) {
-                                    formatted = `+63 ${phoneNumber}`;
-                                  } else if (phoneNumber.length <= 6) {
-                                    formatted = `+63 ${phoneNumber.substring(0, 3)} ${phoneNumber.substring(3)}`;
-                                  } else {
-                                    formatted = `+63 ${phoneNumber.substring(0, 3)} ${phoneNumber.substring(3, 6)} ${phoneNumber.substring(6, 10)}`;
-                                  }
-                                }
-                              } else if (numbers.length > 0) {
-                                formatted = `+${numbers}`;
-                              }
-                              
-                              e.target.value = formatted;
-                            }}
-                            onBlur={(e) => {
-                              const value = e.target.value.trim();
-                              if (value && !(/^\+63\s\d{3}\s\d{3}\s\d{4}$/.test(value))) {
-                                toast.error('Please enter contact number in correct format: +63 XXX XXX XXXX');
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              // Allow backspace, delete, tab, escape, enter
-                              if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-                                // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                                (e.keyCode === 65 && e.ctrlKey === true) ||
-                                (e.keyCode === 67 && e.ctrlKey === true) ||
-                                (e.keyCode === 86 && e.ctrlKey === true) ||
-                                (e.keyCode === 88 && e.ctrlKey === true) ||
-                                // Allow home, end, left, right
-                                (e.keyCode >= 35 && e.keyCode <= 39)) {
-                                return;
-                              }
-                              // Ensure that it is a number and stop the keypress
-                              if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-                                e.preventDefault();
-                                toast.error('Only numbers are allowed for contact number');
-                              }
-                            }}
-                          />
-                          {errors.contactNunmber && (
-                            <p className="text-sm text-red-600 flex items-center space-x-1">
-                              <span>⚠</span>
-                              <span>{errors.contactNunmber.message}</span>
-                            </p>
-                          )}
-                        </div>
+                        <ContactNumberInput
+                          register={register}
+                          errors={errors}
+                          name="contactNumber"
+                          label="Contact Number"
+                          required={false}
+                        />
 
                         <div className="space-y-2">
                           <label className="block text-sm font-medium text-gray-700 text-left">

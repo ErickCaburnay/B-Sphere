@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Users, UserPlus, UserMinus, Home, Link2, Unlink, Eye, X, Edit, Trash2, Plus, Filter, Search, BarChart2 } from 'lucide-react';
+import { formatContactNumberDisplay } from '../ui/ContactNumberInput';
 
 export function HouseholdManager({ residents, onUpdateHousehold }) {
   const [selectedHousehold, setSelectedHousehold] = useState(null);
@@ -302,7 +303,7 @@ export function HouseholdManager({ residents, onUpdateHousehold }) {
                       {household.address}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {household.members.find(m => m.isHeadOfHousehold)?.contactNumber || 'N/A'}
+                      {formatContactNumberDisplay(household.members.find(m => m.isHeadOfHousehold)?.contactNumber) || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center gap-2">

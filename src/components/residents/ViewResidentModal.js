@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { formatContactNumberDisplay } from '../ui/ContactNumberInput';
 
 export function ViewResidentModal({ resident, onClose }) {
   if (!resident) return null;
@@ -53,7 +54,7 @@ export function ViewResidentModal({ resident, onClose }) {
             </div>
             <div>
               <h4 className="text-sm font-medium text-gray-500">Contact Information</h4>
-              <p className="mt-1">Phone: {resident.contactNumber}</p>
+              <p className="mt-1">Phone: {formatContactNumberDisplay(resident.contactNumber) || 'Not specified'}</p>
               <p className="mt-1">Email: {resident.email}</p>
             </div>
           </div>
