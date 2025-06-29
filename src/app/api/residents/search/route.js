@@ -1,6 +1,6 @@
 // /app/api/residents/search/route.js
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
@@ -9,33 +9,50 @@ export async function GET(request) {
 
     if (!keyword) {
       // If no keyword, return all residents (or empty array if you prefer)
-      const allResidents = await prisma.resident.findMany({
-        orderBy: { lastName: 'asc' },
-      });
+      const allResidentsSnapshot = await adminDb.collection('residents')
+        .orderBy('lastName', 'asc')
+        .get();
+      
+      const allResidents = allResidentsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
       const formatted = allResidents.map(r => ({
         ...r,
-        birthdate: r.birthdate.toISOString(),
+        birthdate: r.birthdate?.toDate?.()?.toISOString() || r.birthdate,
       }));
       return NextResponse.json(formatted);
     }
 
-    // Flexible search: match on name or ID (case-insensitive)
-    const residents = await prisma.resident.findMany({
-      where: {
-        OR: [
-          { firstName: { contains: keyword, mode: 'insensitive' } },
-          { middleName: { contains: keyword, mode: 'insensitive' } },
-          { lastName: { contains: keyword, mode: 'insensitive' } },
-          { suffix: { contains: keyword, mode: 'insensitive' } },
-          { id: { contains: keyword, mode: 'insensitive' } },
-        ],
-      },
-      orderBy: { lastName: 'asc' },
+    // Flexible search: get all residents and filter in memory (Firestore doesn't support OR queries with multiple fields)
+    const allResidentsSnapshot = await adminDb.collection('residents')
+      .orderBy('lastName', 'asc')
+      .get();
+    
+    const allResidents = allResidentsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Filter residents based on keyword
+    const residents = allResidents.filter(resident => {
+      const searchFields = [
+        resident.firstName,
+        resident.middleName,
+        resident.lastName,
+        resident.suffix,
+        resident.id
+      ].filter(Boolean);
+      
+      return searchFields.some(field => 
+        field.toLowerCase().includes(keyword.toLowerCase())
+      );
     });
 
     const formattedResidents = residents.map(resident => ({
       ...resident,
-      birthdate: resident.birthdate.toISOString(),
+      birthdate: resident.birthdate?.toDate?.()?.toISOString() || resident.birthdate,
     }));
 
     return NextResponse.json(formattedResidents);

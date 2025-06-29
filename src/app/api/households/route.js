@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma';
+import { adminDb } from '@/lib/firebase-admin';
 import { NextResponse } from 'next/server';
 
 // Utility function to clean contact number for database storage
@@ -10,12 +10,24 @@ const cleanContactNumber = (contactNumber) => {
 // GET /api/households - Fetch all households
 export async function GET() {
   try {
-    const households = await prisma.household.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        head: true,
+    const householdsSnapshot = await adminDb.collection('households')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const households = [];
+    for (const doc of householdsSnapshot.docs) {
+      const householdData = { id: doc.id, ...doc.data() };
+      
+      // Get head resident data
+      if (householdData.headId) {
+        const headDoc = await adminDb.collection('residents').doc(householdData.headId).get();
+        if (headDoc.exists) {
+          householdData.head = { id: headDoc.id, ...headDoc.data() };
+        }
       }
-    });
+      
+      households.push(householdData);
+    }
     const response = NextResponse.json(households);
     
     // Add caching headers
@@ -32,18 +44,30 @@ export async function GET() {
 export async function POST(request) {
   try {
     const data = await request.json();
-    const household = await prisma.household.create({
-      data: {
-        ...data,
-        contactNumber: cleanContactNumber(data.contactNumber),
-        head: {
-          connect: { id: data.headId }
-        }
-      },
-      include: {
-        head: true
+    const householdData = {
+      ...data,
+      contactNumber: cleanContactNumber(data.contactNumber),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const docRef = await adminDb.collection('households').add(householdData);
+    
+    // Get head resident data
+    let head = null;
+    if (data.headId) {
+      const headDoc = await adminDb.collection('residents').doc(data.headId).get();
+      if (headDoc.exists) {
+        head = { id: headDoc.id, ...headDoc.data() };
       }
-    });
+    }
+    
+    const household = {
+      id: docRef.id,
+      ...householdData,
+      head
+    };
+    
     return NextResponse.json(household);
   } catch (error) {
     console.error('Error creating household:', error);
@@ -55,19 +79,29 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const data = await request.json();
-    const household = await prisma.household.update({
-      where: { id: data.id },
-      data: {
-        ...data,
-        contactNumber: cleanContactNumber(data.contactNumber),
-        head: {
-          connect: { id: data.headId }
-        }
-      },
-      include: {
-        head: true
+    const updateData = {
+      ...data,
+      contactNumber: cleanContactNumber(data.contactNumber),
+      updatedAt: new Date()
+    };
+    
+    await adminDb.collection('households').doc(data.id).update(updateData);
+    
+    // Get head resident data
+    let head = null;
+    if (data.headId) {
+      const headDoc = await adminDb.collection('residents').doc(data.headId).get();
+      if (headDoc.exists) {
+        head = { id: headDoc.id, ...headDoc.data() };
       }
-    });
+    }
+    
+    const household = {
+      id: data.id,
+      ...updateData,
+      head
+    };
+    
     return NextResponse.json(household);
   } catch (error) {
     console.error('Error updating household:', error);
@@ -79,9 +113,7 @@ export async function PUT(request) {
 export async function DELETE(request) {
   try {
     const data = await request.json();
-    await prisma.household.delete({
-      where: { id: data.id }
-    });
+    await adminDb.collection('households').doc(data.id).delete();
     return NextResponse.json({ message: 'Household deleted successfully' });
   } catch (error) {
     console.error('Error deleting household:', error);

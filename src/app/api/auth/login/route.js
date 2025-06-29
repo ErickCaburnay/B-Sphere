@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '@/lib/prisma';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(request) {
   try {
@@ -18,16 +18,19 @@ export async function POST(request) {
     // Handle admin login
     if (userType === 'admin') {
       // Find admin by email
-      const admin = await prisma.admin.findUnique({
-        where: { email: email.toLowerCase() }
-      });
+      const adminSnapshot = await adminDb.collection('admins')
+        .where('email', '==', email.toLowerCase())
+        .limit(1)
+        .get();
 
-      if (!admin) {
+      if (adminSnapshot.empty) {
         return NextResponse.json(
           { error: 'Invalid credentials' },
           { status: 401 }
         );
       }
+
+      const admin = { id: adminSnapshot.docs[0].id, ...adminSnapshot.docs[0].data() };
 
       // Verify password
       const isValidPassword = await bcrypt.compare(password, admin.password);
