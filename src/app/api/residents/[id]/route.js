@@ -1,16 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+import { adminDb } from '@/lib/firebase-admin';
 import { NextResponse } from 'next/server';
-
-const prisma = new PrismaClient();
 
 // GET /api/residents/[id]
 export async function GET(request, { params }) {
   const { id } = params;
   try {
-    const resident = await prisma.resident.findUnique({
-      where: { id: String(id) },
-    });
-    if (resident) {
+    const residentDoc = await adminDb.collection('residents').doc(String(id)).get();
+    
+    if (residentDoc.exists) {
+      const resident = { id: residentDoc.id, ...residentDoc.data() };
       return NextResponse.json(resident, { status: 200 });
     } else {
       return NextResponse.json({ message: 'Resident not found' }, { status: 404 });
@@ -26,19 +24,25 @@ export async function PUT(request, { params }) {
   const { id } = params;
   const data = await request.json();
   try {
-    const updatedResident = await prisma.resident.update({
-      where: { id: String(id) },
-      data: {
-        ...data,
-        birthdate: data.birthdate ? new Date(data.birthdate) : undefined,
-      },
-    });
+    // Check if resident exists
+    const residentDoc = await adminDb.collection('residents').doc(String(id)).get();
+    
+    if (!residentDoc.exists) {
+      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
+    }
+
+    const updateData = {
+      ...data,
+      birthdate: data.birthdate ? new Date(data.birthdate) : undefined,
+      updatedAt: new Date(),
+    };
+
+    await adminDb.collection('residents').doc(String(id)).update(updateData);
+    
+    const updatedResident = { id: String(id), ...residentDoc.data(), ...updateData };
     return NextResponse.json(updatedResident, { status: 200 });
   } catch (error) {
     console.error("Error updating resident:", error);
-    if (error.code === 'P2025') {
-      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
-    }
     return NextResponse.json({ error: 'Failed to update resident' }, { status: 500 });
   }
 }
@@ -47,15 +51,17 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   const { id } = params;
   try {
-    await prisma.resident.delete({
-      where: { id: String(id) },
-    });
+    // Check if resident exists
+    const residentDoc = await adminDb.collection('residents').doc(String(id)).get();
+    
+    if (!residentDoc.exists) {
+      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
+    }
+
+    await adminDb.collection('residents').doc(String(id)).delete();
     return NextResponse.json({ message: 'Resident deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error("Error deleting resident:", error);
-    if (error.code === 'P2025') {
-      return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
-    }
     return NextResponse.json({ error: 'Failed to delete resident' }, { status: 500 });
   }
 }
