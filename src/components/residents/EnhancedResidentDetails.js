@@ -86,7 +86,7 @@ export function EnhancedResidentDetails({ resident, onClose, onEdit, onDelete })
               <h3 className="text-2xl font-bold text-gray-900">
                 {resident.firstName} {resident.middleName} {resident.lastName}
               </h3>
-              <p className="text-gray-500">ID: {resident.id}</p>
+                              <p className="text-gray-500">ID: {resident.uniqueId || resident.id}</p>
               <div className="mt-4 flex flex-wrap gap-4">
                 <div className="flex items-center text-gray-600">
                   <MapPin className="h-5 w-5 mr-2" />

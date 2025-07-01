@@ -1,4 +1,4 @@
-import { adminDb } from '@/lib/firebase-admin';
+import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 import { NextResponse } from 'next/server';
 
 // Utility function to clean contact number for database storage
@@ -10,6 +10,10 @@ const cleanContactNumber = (contactNumber) => {
 // GET /api/households - Fetch all households
 export async function GET() {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const householdsSnapshot = await adminDb.collection('households')
       .orderBy('createdAt', 'desc')
       .get();
@@ -43,6 +47,10 @@ export async function GET() {
 // POST /api/households - Create a new household
 export async function POST(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const data = await request.json();
     const householdData = {
       ...data,
@@ -78,6 +86,10 @@ export async function POST(request) {
 // PUT /api/households - Update a household
 export async function PUT(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const data = await request.json();
     const updateData = {
       ...data,
@@ -112,6 +124,10 @@ export async function PUT(request) {
 // DELETE /api/households - Delete a household
 export async function DELETE(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const data = await request.json();
     await adminDb.collection('households').doc(data.id).delete();
     return NextResponse.json({ message: 'Household deleted successfully' });

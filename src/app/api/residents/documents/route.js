@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { adminDb } from '@/lib/firebase-admin';
+import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 
 // Helper function to create directory if it doesn't exist
 async function createDirIfNotExists(dirPath) {
@@ -28,6 +28,10 @@ async function deleteFileIfExists(filePath) {
 
 export async function POST(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const formData = await request.formData();
     const file = formData.get('file');
     const residentId = formData.get('residentId');
@@ -85,6 +89,10 @@ export async function POST(request) {
 
 export async function DELETE(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get('id');
 

@@ -316,7 +316,7 @@ export async function GET() {
       '• Date errors: Any common date format works (YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY)',
       '• Contact number errors: Must be 11 digits starting with 09',
       '',
-      'The system will automatically generate unique resident IDs (SF-00001, SF-00002, etc.)'
+      'The system will automatically generate unique resident IDs (SF-000001, SF-000002, etc.)'
     ];
 
     instructions.forEach((instruction, index) => {

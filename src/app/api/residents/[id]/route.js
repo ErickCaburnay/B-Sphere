@@ -1,10 +1,14 @@
-import { adminDb } from '@/lib/firebase-admin';
+import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 import { NextResponse } from 'next/server';
 
 // GET /api/residents/[id]
 export async function GET(request, { params }) {
   const { id } = params;
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const residentDoc = await adminDb.collection('residents').doc(String(id)).get();
     
     if (residentDoc.exists) {
@@ -24,6 +28,10 @@ export async function PUT(request, { params }) {
   const { id } = params;
   const data = await request.json();
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     // Check if resident exists
     const residentDoc = await adminDb.collection('residents').doc(String(id)).get();
     
@@ -51,6 +59,10 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   const { id } = params;
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     // Check if resident exists
     const residentDoc = await adminDb.collection('residents').doc(String(id)).get();
     

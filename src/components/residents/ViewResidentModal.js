@@ -88,7 +88,7 @@ export function ViewResidentModal({ resident, onClose }) {
               <div>
                 <h2 className="text-xl font-bold">{fullName}</h2>
                 <div className="flex items-center space-x-2 mt-1">
-                  <p className="text-blue-100 text-sm">ID: {resident.id}</p>
+                  <p className="text-blue-100 text-sm">ID: {resident.uniqueId || resident.id}</p>
                   <span className="text-blue-200">•</span>
                   <p className="text-blue-100 text-sm">{age} years old</p>
                   <span className="text-blue-200">•</span>

@@ -1,9 +1,13 @@
 // /app/api/residents/search/route.js
 import { NextResponse } from "next/server";
-import { adminDb } from '@/lib/firebase-admin';
+import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 
 export async function GET(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const { searchParams } = new URL(request.url);
     const keyword = searchParams.get("q")?.trim();
 

@@ -23,7 +23,7 @@ export async function POST(request) {
 
     const getRow = entry => isResident
       ? [
-          entry.id,
+          entry.uniqueId || entry.id,
           `${entry.firstName} ${entry.lastName}`,
           entry.gender,
           entry.address,

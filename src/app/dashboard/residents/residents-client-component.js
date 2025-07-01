@@ -488,7 +488,7 @@ export function ResidentsClientComponent({ initialResidents }) {
                     key={resident.id}
                     className="hover:bg-green-50 transition-colors border-t border-gray-100"
                   >
-                    <td className="p-4">{resident.id}</td>
+                    <td className="p-4">{resident.uniqueId || resident.id}</td>
                     <td className="p-4">{`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`}</td>
                     <td className="p-4">{calculateAge(resident.birthdate)}</td>
                     <td className="p-4">{resident.maritalStatus}</td>
@@ -955,7 +955,7 @@ export function ResidentsClientComponent({ initialResidents }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Unique ID</p>
-                    <p className="mt-1 text-gray-900">{selectedResidentForView.id}</p>
+                    <p className="mt-1 text-gray-900">{selectedResidentForView.uniqueId || selectedResidentForView.id}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500">Full Name</p>

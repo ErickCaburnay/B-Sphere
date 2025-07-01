@@ -19,6 +19,7 @@ const SignupPage = () => {
     middleName: '',
     email: '',
     phone: '',
+    birthdate: '',
     password: '',
     confirmPassword: ''
   });
@@ -79,6 +80,16 @@ const SignupPage = () => {
       newErrors.email = 'Email is invalid';
     }
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+    if (!formData.birthdate.trim()) {
+      newErrors.birthdate = 'Birth date is required';
+    } else {
+      const birthDate = new Date(formData.birthdate);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      if (age < 13 || (age === 13 && today < new Date(birthDate.setFullYear(birthDate.getFullYear() + 13)))) {
+        newErrors.birthdate = 'You must be at least 13 years old';
+      }
+    }
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
@@ -97,11 +108,47 @@ const SignupPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      // Handle form submission here
-      console.log('Form submitted:', formData);
+      setIsSubmitting(true);
+      try {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            middleName: formData.middleName,
+            email: formData.email,
+            phone: formData.phone,
+            birthdate: formData.birthdate,
+            password: formData.password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Success - store user data and redirect to resident dashboard
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('token', data.token || 'temp-token');
+          alert('Account created successfully! Welcome to B-Sphere.');
+          window.location.href = '/resident-dashboard';
+        } else {
+          // Error - show error message
+          setErrors({ submit: data.error || 'Failed to create account' });
+        }
+      } catch (error) {
+        console.error('Signup error:', error);
+        setErrors({ submit: 'Network error. Please try again.' });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -298,6 +345,20 @@ const SignupPage = () => {
                     />
                     {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white/90 mb-1">Birth Date *</label>
+                    <input
+                      type="date"
+                      name="birthdate"
+                      value={formData.birthdate}
+                      onChange={handleInputChange}
+                      max={new Date(new Date().setFullYear(new Date().getFullYear() - 13)).toISOString().split('T')[0]}
+                      className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                        errors.birthdate ? 'border-red-500' : 'border-white/30'
+                      }`}
+                    />
+                    {errors.birthdate && <p className="text-red-400 text-xs mt-1">{errors.birthdate}</p>}
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-white/90 mb-1">Password *</label>
@@ -350,11 +411,21 @@ const SignupPage = () => {
                       {errors.terms && <p className="text-red-400 text-xs mt-1">{errors.terms}</p>}
                     </div>
                   </div>
+                  {errors.submit && (
+                    <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                      <p className="text-red-400 text-sm">{errors.submit}</p>
+                    </div>
+                  )}
                   <button
                     type="submit"
-                    className="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition duration-300 shadow-lg"
+                    disabled={isSubmitting}
+                    className={`w-full py-3 rounded-lg font-medium transition duration-300 shadow-lg ${
+                      isSubmitting
+                        ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
+                    }`}
                   >
-                    Sign Up
+                    {isSubmitting ? 'Creating Account...' : 'Sign Up'}
                   </button>
                 </form>
                 <p className="mt-4 text-center text-white/90 text-sm">

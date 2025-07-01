@@ -72,7 +72,7 @@ export default function ServicesPage() {
     {
       transactionNo: "INDG-000012",
       dateFiled: "Dec 16, 2024",
-      nameOfApplicant: "USER TESTER",
+      nameOfApplicant: "Maria Santos",
       purpose: "MEDICAL ASSISTANCE",
       type: "Indigency",
       status: "Printed",

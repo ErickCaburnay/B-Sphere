@@ -12,6 +12,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from '@/components/ui/ThemeContext';
 import PerformanceMonitor from '@/components/ui/PerformanceMonitor';
 import AccountMenu from '@/components/AccountMenu';
+import { NotificationProvider } from '@/components/ui/NotificationContext';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true); // Default to true for desktop
@@ -71,7 +73,10 @@ export default function DashboardLayout({ children }) {
     const originalPush = router.push;
     router.push = (...args) => {
       handleStart();
-      return originalPush.apply(router, args).finally(handleComplete);
+      const result = originalPush.apply(router, args);
+      // Handle navigation completion after a delay since App Router doesn't return a promise
+      setTimeout(handleComplete, 500);
+      return result;
     };
 
     return () => {
@@ -124,9 +129,10 @@ export default function DashboardLayout({ children }) {
   const sidebarWidth = getSidebarWidth();
 
   return (
-    <div className="font-sans text-gray-900 min-h-screen flex flex-col">
-      {/* Performance Monitor */}
-      <PerformanceMonitor />
+    <NotificationProvider>
+      <div className="font-sans text-gray-900 min-h-screen flex flex-col">
+        {/* Performance Monitor */}
+        <PerformanceMonitor />
       
       {/* Navigation Loading Indicator */}
       {isNavigating && (
@@ -157,7 +163,7 @@ export default function DashboardLayout({ children }) {
           <div className="flex items-center gap-3">
             <AccountMenu />
             <MessageCircle size={24} className="text-green-700" />
-            <Bell size={24} className="text-green-700" />
+            <NotificationBell />
             {/* Neumorphic Toggle Switch for Dark Mode with icon inside thumb */}
             <button
               onClick={toggleDarkMode}
@@ -300,6 +306,7 @@ export default function DashboardLayout({ children }) {
         {children}
       </main>
     </div>
+    </NotificationProvider>
   );
 }
 

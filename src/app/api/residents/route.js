@@ -1,6 +1,7 @@
-import { adminDb } from '@/lib/firebase-admin';
+import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 import { NextResponse } from 'next/server';
 import { Timestamp } from 'firebase-admin/firestore';
+import { generateNextResidentId } from '@/lib/utils';
 
 // Utility function to clean contact number for database storage
 const cleanContactNumber = (contactNumber) => {
@@ -11,6 +12,10 @@ const cleanContactNumber = (contactNumber) => {
 // GET /api/residents - Fetch paginated residents
 export async function GET(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     // Parse query params for pagination
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -30,7 +35,8 @@ export async function GET(request) {
       // Convert Firestore timestamps to JavaScript dates (but keep birthdate as string)
       residents.push({
         ...data,
-        id: doc.id,
+        id: doc.id, // Keep document ID for compatibility
+        uniqueId: data.uniqueId, // Include the unique ID field
         birthdate: data.birthdate, // Keep birthdate as string
         createdAt: data.createdAt?.toDate?.() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
@@ -52,35 +58,32 @@ export async function GET(request) {
 // POST /api/residents - Create a new resident
 export async function POST(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const body = await request.json();
     
     // Batch insert support
     if (Array.isArray(body.batch)) {
       const batch = body.batch;
       
-      // Get the latest resident to determine the next ID
-      const latestSnapshot = await adminDb.collection('residents')
-        .orderBy('id', 'desc')
-        .limit(1)
-        .get();
-      
-      let lastNumber = 0;
-      if (!latestSnapshot.empty) {
-        const latestResident = latestSnapshot.docs[0].data();
-        lastNumber = parseInt(latestResident.id.split('-')[1]);
-      }
+      // Get the next starting ID using the utility function
+      let currentId = await generateNextResidentId(adminDb);
+      let currentNumber = parseInt(currentId.split('-')[1]);
       
       const firestoreBatch = adminDb.batch();
       const createdResidents = [];
       
       for (const r of batch) {
-        // Generate new ID
-        lastNumber++;
-        const newId = `SF-${String(lastNumber).padStart(5, '0')}`;
+        // Use current ID and increment for next iteration
+        const newId = `SF-${String(currentNumber).padStart(6, '0')}`;
+        currentNumber++;
         const docRef = adminDb.collection('residents').doc(newId);
         
         const residentData = {
-          id: newId,
+          uniqueId: newId,
+          firebaseUid: null, // Will be set when resident creates Firebase Auth account
           firstName: r.firstName || '',
           middleName: r.middleName || null,
           lastName: r.lastName || '',
@@ -101,12 +104,15 @@ export async function POST(request) {
           isPWD: r.isPWD || false,
           is4Ps: r.is4Ps || false,
           isSoloParent: r.isSoloParent || false,
+          role: 'resident',
+          accountStatus: 'approved', // Admin-added residents are automatically approved
+          updateRequest: null,
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now()
         };
         
         firestoreBatch.set(docRef, residentData);
-        createdResidents.push({ ...residentData, id: newId });
+        createdResidents.push({ ...residentData, uniqueId: newId });
       }
       
       await firestoreBatch.commit();
@@ -142,23 +148,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get the latest resident to determine the next ID
-    const latestSnapshot = await adminDb.collection('residents')
-      .orderBy('id', 'desc')
-      .limit(1)
-      .get();
-    
-    let newId;
-    if (latestSnapshot.empty) {
-      newId = 'SF-00001';
-    } else {
-      const latestResident = latestSnapshot.docs[0].data();
-      const lastNumber = parseInt(latestResident.id.split('-')[1]);
-      newId = `SF-${String(lastNumber + 1).padStart(5, '0')}`;
-    }
+    // Generate the next resident ID using the utility function
+    const newId = await generateNextResidentId(adminDb);
 
     const residentData = {
-      id: newId,
+      uniqueId: newId,
+      firebaseUid: null, // Will be set when resident creates Firebase Auth account
       firstName,
       middleName: middleName || null,
       lastName,
@@ -179,6 +174,9 @@ export async function POST(request) {
       isPWD: isPWD || false,
       is4Ps: is4Ps || false,
       isSoloParent: isSoloParent || false,
+      role: 'resident',
+      accountStatus: 'approved', // Admin-added residents are automatically approved
+      updateRequest: null,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
@@ -186,7 +184,7 @@ export async function POST(request) {
     const docRef = adminDb.collection('residents').doc(newId);
     await docRef.set(residentData);
     
-    return NextResponse.json({ ...residentData, id: newId }, { status: 201 });
+    return NextResponse.json({ ...residentData, uniqueId: newId }, { status: 201 });
   } catch (error) {
     console.error('Error adding resident:', error);
     return NextResponse.json({ error: 'Failed to add resident' }, { status: 500 });
@@ -196,6 +194,10 @@ export async function POST(request) {
 // PUT /api/residents - Update a resident
 export async function PUT(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const { 
       id, 
       firstName, 
@@ -277,6 +279,10 @@ export async function PUT(request) {
 // DELETE /api/residents - Delete a resident
 export async function DELETE(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

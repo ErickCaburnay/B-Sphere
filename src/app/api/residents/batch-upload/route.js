@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 import { Timestamp } from 'firebase-admin/firestore';
+import { generateNextResidentId } from '@/lib/utils';
 import ExcelJS from 'exceljs';
 
 // Helper function to clean contact number
@@ -103,6 +104,10 @@ const parseDate = (dateValue) => {
 
 export async function POST(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const formData = await request.formData();
     const file = formData.get('file');
 
@@ -131,17 +136,9 @@ export async function POST(request) {
     const errors = [];
     const debugInfo = [];
     
-    // Get the latest resident to determine the next ID
-    const latestSnapshot = await adminDb.collection('residents')
-      .orderBy('id', 'desc')
-      .limit(1)
-      .get();
-    
-    let lastNumber = 0;
-    if (!latestSnapshot.empty) {
-      const latestResident = latestSnapshot.docs[0].data();
-      lastNumber = parseInt(latestResident.id.split('-')[1]);
-    }
+    // Get the next starting ID using the utility function
+    let currentId = await generateNextResidentId(adminDb);
+    let currentNumber = parseInt(currentId.split('-')[1]);
 
     // Debug: Log worksheet info
     debugInfo.push(`Worksheet name: ${worksheet.name}`);
@@ -255,8 +252,8 @@ export async function POST(request) {
         }
 
         // Generate new ID
-        lastNumber++;
-        const newId = `SF-${String(lastNumber).padStart(5, '0')}`;
+        const newId = `SF-${String(currentNumber).padStart(6, '0')}`;
+        currentNumber++;
 
         // Format birthdate as string for consistency with Firebase storage
         const birthdateString = birthdate instanceof Date 
@@ -264,7 +261,8 @@ export async function POST(request) {
           : birthdate;
 
         residents.push({
-          id: newId,
+          uniqueId: newId,
+          firebaseUid: null, // Will be set when resident creates Firebase Auth account
           firstName,
           middleName,
           lastName,
@@ -285,6 +283,9 @@ export async function POST(request) {
           isPWD,
           is4Ps,
           isSoloParent,
+          role: 'resident',
+          accountStatus: 'approved', // Admin-added residents are automatically approved
+          updateRequest: null,
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now()
         });
@@ -323,7 +324,7 @@ export async function POST(request) {
     const createdResidents = [];
 
     for (const resident of residents) {
-      const docRef = adminDb.collection('residents').doc(resident.id);
+      const docRef = adminDb.collection('residents').doc(resident.uniqueId);
       firestoreBatch.set(docRef, resident);
       createdResidents.push(resident);
     }

@@ -18,6 +18,9 @@ const LoginPage = () => {
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
 
   useEffect(() => {
     AOS.init({
@@ -74,13 +77,53 @@ const LoginPage = () => {
         
         // Small delay to ensure cookie is set, then redirect
         setTimeout(() => {
-          router.push('/dashboard');
+          if (data.userType === 'resident') {
+            router.push('/resident-dashboard');
+          } else {
+            router.push('/dashboard');
+          }
         }, 100);
       } else {
         setError(data.error || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
+      setError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setResetMessage('');
+
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResetMessage(data.message);
+        setShowForgotPassword(false);
+        setResetEmail('');
+      } else {
+        setError(data.error || 'Failed to send reset email');
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
       setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -236,6 +279,12 @@ const LoginPage = () => {
                       </div>
                     )}
                     
+                    {resetMessage && (
+                      <div className="mb-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-100 text-sm">
+                        {resetMessage}
+                      </div>
+                    )}
+                    
                     <form className="space-y-4" onSubmit={handleSubmit}>
                       <div>
                         <label className="block text-sm font-medium text-white/90 mb-1">Email Address</label>
@@ -272,9 +321,15 @@ const LoginPage = () => {
                             Remember me
                           </label>
                         </div>
-                        <Link href="/forgot-password" className="text-sm text-green-300 hover:text-green-100 transition duration-300">
-                          Forgot Password?
-                        </Link>
+                        {userType === 'resident' && (
+                          <button
+                            type="button"
+                            onClick={() => setShowForgotPassword(true)}
+                            className="text-sm text-green-300 hover:text-green-100 transition duration-300"
+                          >
+                            Forgot Password?
+                          </button>
+                        )}
                       </div>
                       <button
                         type="submit"
@@ -310,6 +365,49 @@ const LoginPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="text-2xl font-bold mb-4 text-gray-800">Reset Password</h3>
+            <p className="text-gray-600 mb-6">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <input
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setResetEmail('');
+                  setError('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition duration-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleForgotPassword}
+                disabled={isLoading || !resetEmail}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition duration-300"
+              >
+                {isLoading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

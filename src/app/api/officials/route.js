@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { adminDb } from '@/lib/firebase-admin';
+import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 
 // GET all officials
 export async function GET() {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const officialsSnapshot = await adminDb.collection('officials')
       .orderBy('position', 'asc')
       .get();
@@ -48,6 +52,10 @@ export async function GET() {
 // POST new official
 export async function POST(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const body = await request.json();
     const { residentId, position, termStart, termEnd, chairmanship, status } = body;
 
@@ -140,6 +148,10 @@ export async function POST(request) {
 // DELETE official
 export async function DELETE(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const { searchParams } = new URL(request.url);
     const residentId = searchParams.get("residentId");
 
@@ -178,6 +190,10 @@ export async function DELETE(request) {
 // PUT update official
 export async function PUT(request) {
   try {
+    const { adminDb } = await getFirebaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
     const body = await request.json();
     const { residentId, position, termStart, termEnd, chairmanship, status } = body;
 

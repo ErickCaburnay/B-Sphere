@@ -13,7 +13,7 @@ export async function POST(request) {
     // Define columns
     worksheet.columns = isResident
       ? [
-      { header: 'ID', key: 'id', width: 15 },
+      { header: 'ID', key: 'uniqueId', width: 15 },
       { header: 'First Name', key: 'firstName', width: 20 },
       { header: 'Middle Name', key: 'middleName', width: 20 },
       { header: 'Last Name', key: 'lastName', width: 20 },

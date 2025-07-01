@@ -702,7 +702,7 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
                     <h3 className="text-lg font-medium text-gray-900 truncate">
                       {`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`}
                     </h3>
-                    <p className="text-sm text-gray-500">{resident.id}</p>
+                    <p className="text-sm text-gray-500">{resident.uniqueId || resident.id}</p>
                   </div>
                 </div>
                 
