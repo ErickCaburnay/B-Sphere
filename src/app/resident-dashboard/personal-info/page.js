@@ -98,35 +98,78 @@ export default function PersonalInfo() {
       // Also check for approval/rejection notifications
       if (user?.residentId || user?.id) {
         try {
-          const response = await fetch(`/api/notifications?residentId=${user.residentId || user.id}&type=info_update_approved,info_update_rejected&limit=1`);
+          const response = await fetch(`/api/notifications?targetRole=resident&residentId=${user.residentId || user.id}&limit=10`);
           if (response.ok) {
             const data = await response.json();
-            const approvalNotifications = data.notifications || [];
+            const notifications = data.notifications || [];
             
-            // If there's an approval notification, update user data and clear pending status
-            const approvalNotification = approvalNotifications.find(n => n.type === 'info_update_approved');
-            if (approvalNotification && userPendingUpdate) {
-              // Update user data with approved changes
-              const updatedUser = {
-                ...user,
-                ...userPendingUpdate.requestedChanges
-              };
-              localStorage.setItem('user', JSON.stringify(updatedUser));
-              setUser(updatedUser);
+            // Check for approval notifications - process all relevant ones
+            const approvalNotifications = notifications.filter(n => 
+              (n.type === 'info_update_approved' || n.type === 'info_update_rejected') && 
+              n.data && n.data.id
+            );
+            
+            // Process approval notifications
+            for (const notification of approvalNotifications) {
+              // Find matching pending update for this notification
+              const matchingPendingUpdate = pendingUpdates.find(update => 
+                update.id === notification.data.id && 
+                update.residentId === (user?.residentId || user?.id)
+              );
               
-              // Remove from pending updates
-              const filteredUpdates = pendingUpdates.filter(u => u.id !== userPendingUpdate.id);
-              localStorage.setItem('pendingUpdates', JSON.stringify(filteredUpdates));
-              setHasPendingUpdate(false);
-            }
-            
-            // If there's a rejection notification, just clear pending status
-            const rejectionNotification = approvalNotifications.find(n => n.type === 'info_update_rejected');
-            if (rejectionNotification && userPendingUpdate) {
-              // Remove from pending updates
-              const filteredUpdates = pendingUpdates.filter(u => u.id !== userPendingUpdate.id);
-              localStorage.setItem('pendingUpdates', JSON.stringify(filteredUpdates));
-              setHasPendingUpdate(false);
+              if (matchingPendingUpdate) {
+                console.log('Found matching pending update for notification:', notification.id);
+                
+                if (notification.type === 'info_update_approved') {
+                  console.log('Processing approval notification, updating user data');
+                  
+                  // Update user data with approved changes from the notification data
+                  const approvedChanges = notification.data.requestedChanges || matchingPendingUpdate.requestedChanges;
+                  const updatedUser = {
+                    ...user,
+                    ...approvedChanges
+                  };
+                  
+                  console.log('Updating user from:', user);
+                  console.log('To:', updatedUser);
+                  
+                  localStorage.setItem('user', JSON.stringify(updatedUser));
+                  setUser(updatedUser);
+                  
+                  // Update editData to reflect the approved changes
+                  setEditData({
+                    firstName: approvedChanges.firstName || '',
+                    middleName: approvedChanges.middleName || '',
+                    lastName: approvedChanges.lastName || '',
+                    email: approvedChanges.email || '',
+                    phone: approvedChanges.phone || '',
+                    birthdate: approvedChanges.birthdate || '',
+                    address: {
+                      street: approvedChanges.address?.street || '',
+                      barangay: approvedChanges.address?.barangay || '',
+                      city: approvedChanges.address?.city || '',
+                      province: approvedChanges.address?.province || '',
+                      zipCode: approvedChanges.address?.zipCode || ''
+                    }
+                  });
+                  
+                  // Remove from pending updates
+                  const filteredUpdates = pendingUpdates.filter(u => u.id !== matchingPendingUpdate.id);
+                  localStorage.setItem('pendingUpdates', JSON.stringify(filteredUpdates));
+                  setHasPendingUpdate(false);
+                  
+                  console.log('User data updated after approval');
+                  
+                } else if (notification.type === 'info_update_rejected') {
+                  console.log('Processing rejection notification, clearing pending status');
+                  // Just clear pending status, don't update user data
+                  const filteredUpdates = pendingUpdates.filter(u => u.id !== matchingPendingUpdate.id);
+                  localStorage.setItem('pendingUpdates', JSON.stringify(filteredUpdates));
+                  setHasPendingUpdate(false);
+                  
+                  console.log('Pending status cleared after rejection');
+                }
+              }
             }
           }
         } catch (apiError) {
@@ -143,6 +186,33 @@ export default function PersonalInfo() {
     if (user) {
       checkPendingUpdates();
     }
+  }, [user]);
+
+  // Set up continuous polling for approval notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const pollForApprovals = () => {
+      checkPendingUpdates();
+    };
+
+    // Initial check
+    pollForApprovals();
+
+    // Set up polling every 10 seconds for real-time updates
+    const interval = setInterval(pollForApprovals, 10000);
+
+    // Also check when window gains focus
+    const handleFocus = () => {
+      pollForApprovals();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user]);
 
   const handleInputChange = (e) => {

@@ -18,6 +18,7 @@ const NotificationBell = () => {
     notifications,
     unreadCount,
     loading,
+    error,
     markAsRead,
     markAllAsRead,
     deleteNotification,
@@ -28,12 +29,16 @@ const NotificationBell = () => {
   // Refresh notifications when component mounts and when panel opens
   useEffect(() => {
     if (isOpen) {
-      refreshNotifications();
+      refreshNotifications().catch(error => {
+        console.error('Failed to refresh notifications on panel open:', error);
+      });
       
       // Set up more frequent polling when panel is open
       const interval = setInterval(() => {
-        refreshNotifications();
-      }, 10000); // Refresh every 10 seconds when panel is open
+        refreshNotifications().catch(error => {
+          console.error('Failed to refresh notifications during polling:', error);
+        });
+      }, 30000); // Refresh every 30 seconds when panel is open (reduced from 10s)
       
       return () => clearInterval(interval);
     }
@@ -146,17 +151,17 @@ const NotificationBell = () => {
     const isResidentDashboard = window.location.pathname.startsWith('/resident-dashboard');
 
     if (isResidentDashboard) {
-      // For residents, optimize the navigation
-      // If already on notifications page, just close panel and scroll to top
-      if (window.location.pathname === '/resident-dashboard/notifications') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        // Trigger a refresh of the notifications page
-        window.location.reload();
-        return;
+      // For residents, always navigate to notifications page
+      console.log('Resident notification clicked, navigating to notifications page');
+      try {
+        // Use window.location for more reliable navigation
+        window.location.href = `/resident-dashboard/notifications?highlight=${notification.id}`;
+      } catch (navError) {
+        console.error('Navigation error:', navError);
+        // Fallback to router
+        router.push(`/resident-dashboard/notifications?highlight=${notification.id}`);
       }
-      
-      // Otherwise navigate to notifications page with the specific notification ID
-      router.push(`/resident-dashboard/notifications?highlight=${notification.id}`);
+      return;
     } else {
       // Admin dashboard routing (existing logic)
       switch (notification.type) {
@@ -217,7 +222,14 @@ const NotificationBell = () => {
       <div className="relative">
         <button
           ref={bellRef}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            const newIsOpen = !isOpen;
+            setIsOpen(newIsOpen);
+            // Refresh notifications when opening the panel
+            if (newIsOpen) {
+              refreshNotifications();
+            }
+          }}
           className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
           aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
         >
@@ -283,6 +295,17 @@ const NotificationBell = () => {
                 <div className="flex items-center justify-center p-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
                   <span className="ml-2 text-gray-600">Loading...</span>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center p-8 text-red-500">
+                  <X className="w-12 h-12 mb-2 opacity-50" />
+                  <p className="text-sm mb-2">{error}</p>
+                  <button
+                    onClick={() => refreshNotifications()}
+                    className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : recentNotifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-gray-500">
@@ -437,7 +460,11 @@ const NotificationBell = () => {
                   onClick={() => {
                     refreshNotifications();
                   }}
-                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-green-600 font-medium transition-colors"
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                    error 
+                      ? 'text-red-600 hover:text-red-700' 
+                      : 'text-gray-600 hover:text-green-600'
+                  }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -504,59 +531,46 @@ const InfoUpdateModal = ({ notification, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [notificationStatus, setNotificationStatus] = useState(notification?.status || 'pending');
 
   // Load the pending update data when modal opens
   useEffect(() => {
     const loadPendingUpdate = async () => {
       try {
-        // First check if the notification has the data embedded
-        if (notification.data) {
+        // Use the embedded notification data directly - this contains all the info we need
+        if (notification.data && notification.data.residentId) {
+          console.log('Using embedded notification data:', notification.data);
           setPendingUpdate(notification.data);
           setLoadingData(false);
           return;
         }
 
-        // Try to get from localStorage as fallback
-        const pendingUpdates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
-        const update = pendingUpdates.find(u => u.id === notification.requestId);
-        
-        if (update) {
-          setPendingUpdate(update);
-        } else {
-          // If not found, create a mock structure from notification
-          const mockUpdate = {
-            id: notification.requestId,
-            residentId: notification.senderUserId,
-            requestedBy: notification.senderUserId,
-            requestedAt: notification.createdAt,
-            status: notification.status || 'pending',
-            originalData: {
-              firstName: 'Current Data',
-              middleName: '',
-              lastName: '',
-              email: '',
-              phone: '',
-              birthdate: '',
-              address: {
-                street: '',
-                barangay: ''
-              }
-            },
-            requestedChanges: {
-              firstName: 'Updated Data Available',
-              middleName: 'Please check resident profile',
-              lastName: 'for specific changes',
-              email: '',
-              phone: '',
-              birthdate: '',
-              address: {
-                street: '',
-                barangay: ''
-              }
-            }
-          };
-          setPendingUpdate(mockUpdate);
-        }
+        // Fallback: create structure from notification fields (shouldn't be needed)
+        console.log('No embedded data found, creating fallback structure');
+        const fallbackUpdate = {
+          id: notification.requestId,
+          residentId: notification.senderUserId || notification.targetUserId,
+          requestedBy: notification.senderUserId || 'Unknown',
+          requestedAt: notification.createdAt,
+          status: notification.status || 'pending',
+          originalData: {
+            firstName: 'Data not available in notification',
+            middleName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            birthdate: ''
+          },
+          requestedChanges: {
+            firstName: 'Please check notification details',
+            middleName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            birthdate: ''
+          }
+        };
+        setPendingUpdate(fallbackUpdate);
       } catch (error) {
         console.error('Error loading pending update:', error);
       } finally {
@@ -570,34 +584,125 @@ const InfoUpdateModal = ({ notification, onClose }) => {
   const handleApprove = async () => {
     setLoading(true);
     try {
-      if (!pendingUpdate) return;
+      if (!pendingUpdate) {
+        alert('No pending update found');
+        return;
+      }
 
-      // Update the user data in localStorage (in real app, update database)
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const updatedUser = {
-        ...currentUser,
-        ...pendingUpdate.requestedChanges
-      };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      console.log('=== APPROVAL PROCESS STARTED ===');
+      console.log('Pending update:', pendingUpdate);
+      console.log('Resident ID:', pendingUpdate.residentId);
+      console.log('Requested changes:', pendingUpdate.requestedChanges);
 
-      // Remove from pending updates
-      const pendingUpdates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
-      const filteredUpdates = pendingUpdates.filter(u => u.id !== notification.requestId);
-      localStorage.setItem('pendingUpdates', JSON.stringify(filteredUpdates));
-
-      // Update the original notification status to approved
+      // Step 1: Update the resident record in the database
+      let databaseUpdateSuccess = false;
       try {
-        await fetch(`/api/notifications?id=${notification.id}&action=updateStatus&status=approved`, {
+        // First, let's check if the resident exists
+        const checkResponse = await fetch(`/api/residents/${pendingUpdate.residentId}`);
+        console.log('Check resident response status:', checkResponse.status);
+        
+        if (!checkResponse.ok) {
+          console.error('Resident not found with ID:', pendingUpdate.residentId);
+          throw new Error(`Resident not found: ${pendingUpdate.residentId}`);
+        }
+        
+        const existingResident = await checkResponse.json();
+        console.log('Existing resident data:', existingResident);
+        
+        // Now update the resident
+        const updateData = { ...pendingUpdate.requestedChanges };
+        
+        // Map field names if necessary (phone -> contactNumber)
+        if (updateData.phone && !updateData.contactNumber) {
+          updateData.contactNumber = updateData.phone;
+          delete updateData.phone;
+        }
+        
+        // Handle empty address object - don't send it if all fields are empty
+        if (updateData.address && typeof updateData.address === 'object') {
+          const addressValues = Object.values(updateData.address).filter(val => val && val.trim());
+          if (addressValues.length === 0) {
+            // All address fields are empty, remove the address from update
+            delete updateData.address;
+            console.log('Removed empty address object from update data');
+          }
+        }
+        
+        console.log('Final data to update (after field mapping):', updateData);
+        
+        const updateResponse = await fetch(`/api/residents/${pendingUpdate.residentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updateData)
+        });
+
+        console.log('Update response status:', updateResponse.status);
+        
+        if (updateResponse.ok) {
+          const updatedResident = await updateResponse.json();
+          console.log('Database update successful:', updatedResident);
+          databaseUpdateSuccess = true;
+        } else {
+          const errorData = await updateResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Database update failed:', errorData);
+          throw new Error(`Database update failed: ${JSON.stringify(errorData)}`);
+        }
+      } catch (dbError) {
+        console.error('Database update error:', dbError);
+        alert(`Database update failed: ${dbError.message}. Please check the console for details.`);
+        return; // Don't continue if database update fails
+      }
+
+      // Step 2: Update localStorage for immediate UI feedback (only for the resident)
+      try {
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        if (currentUser.id === pendingUpdate.residentId || currentUser.uniqueId === pendingUpdate.residentId) {
+          const updatedUser = {
+            ...currentUser,
+            ...pendingUpdate.requestedChanges
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          console.log('LocalStorage updated for current user');
+        } else {
+          console.log('Current user is not the resident being updated, skipping localStorage update');
+        }
+      } catch (localStorageError) {
+        console.error('LocalStorage update error:', localStorageError);
+      }
+
+      // Step 4: Update the original notification status
+      try {
+        console.log('Updating notification status to approved for ID:', notification.id);
+        const statusResponse = await fetch(`/api/notifications?id=${notification.id}&action=updateStatus&status=approved`, {
           method: 'PATCH'
         });
-        console.log('Original notification status updated to approved');
+        
+        const responseData = await statusResponse.json();
+        console.log('Status update response:', responseData);
+        
+        if (statusResponse.ok) {
+          console.log('Original notification status updated to approved');
+          // Update the notification object directly
+          notification.status = 'approved';
+          // Also update embedded data status if it exists
+          if (notification.data) {
+            notification.data.status = 'approved';
+          }
+          // Update local state to trigger re-render
+          setNotificationStatus('approved');
+          console.log('Local notification object updated:', notification);
+        } else {
+          console.error('Failed to update notification status:', statusResponse.status, responseData);
+        }
       } catch (statusError) {
         console.error('Failed to update notification status:', statusError);
       }
 
-      // Create notification for the resident about approval
+      // Step 5: Create notification for the resident
       try {
-        await fetch('/api/notifications', {
+        const notificationResponse = await fetch('/api/notifications', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -611,20 +716,60 @@ const InfoUpdateModal = ({ notification, onClose }) => {
             requestId: `approval_${notification.requestId}`,
             priority: 'medium',
             redirectTarget: 'page',
-            status: 'completed'
+            status: 'completed',
+            data: {
+              id: notification.requestId,
+              residentId: pendingUpdate.residentId,
+              requestedBy: pendingUpdate.requestedBy,
+              requestedAt: pendingUpdate.requestedAt,
+              approvedAt: new Date().toISOString(),
+              status: 'approved',
+              originalData: pendingUpdate.originalData,
+              requestedChanges: pendingUpdate.requestedChanges
+            }
           })
         });
-        console.log('Approval notification sent to resident');
+        
+        if (notificationResponse.ok) {
+          console.log('Approval notification sent to resident');
+        } else {
+          console.error('Failed to send approval notification:', notificationResponse.status);
+        }
       } catch (notificationError) {
         console.error('Failed to send approval notification:', notificationError);
       }
 
-      console.log('Info update approved for:', pendingUpdate.residentId);
-      alert('Information update approved successfully! Resident has been notified.');
-      onClose();
+      // Step 6: Trigger refresh events for admin side
+      if (typeof window !== 'undefined') {
+        const refreshEvent = new CustomEvent('residentDataUpdated', {
+          detail: { 
+            residentId: pendingUpdate.residentId,
+            updatedData: pendingUpdate.requestedChanges
+          }
+        });
+        window.dispatchEvent(refreshEvent);
+        console.log('Refresh event dispatched');
+        
+        // Also trigger a general admin refresh event
+        const adminRefreshEvent = new CustomEvent('adminDataRefresh', {
+          detail: { type: 'resident_updated', residentId: pendingUpdate.residentId }
+        });
+        window.dispatchEvent(adminRefreshEvent);
+        console.log('Admin refresh event dispatched');
+      }
+
+      console.log('=== APPROVAL PROCESS COMPLETED ===');
+      
+      // Force refresh the notifications list to update the status
+      if (typeof window !== 'undefined' && window.notificationContext) {
+        window.notificationContext.refreshNotifications();
+      }
+      
+      // Don't close modal - let user see the updated status
+      alert('Information update approved successfully! Resident has been notified and database updated.');
     } catch (error) {
-      console.error('Error approving info update:', error);
-      alert('Failed to approve update. Please try again.');
+      console.error('Error in approval process:', error);
+      alert(`Failed to approve update: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -635,22 +780,37 @@ const InfoUpdateModal = ({ notification, onClose }) => {
     try {
       if (!pendingUpdate) return;
 
-      // Remove from pending updates
-      const pendingUpdates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
-      const filteredUpdates = pendingUpdates.filter(u => u.id !== notification.requestId);
-      localStorage.setItem('pendingUpdates', JSON.stringify(filteredUpdates));
+      // No need to remove from localStorage since we're using notification data directly
 
       // Update the original notification status to rejected
       try {
-        await fetch(`/api/notifications?id=${notification.id}&action=updateStatus&status=rejected`, {
+        console.log('Updating notification status to rejected for ID:', notification.id);
+        const statusResponse = await fetch(`/api/notifications?id=${notification.id}&action=updateStatus&status=rejected`, {
           method: 'PATCH'
         });
-        console.log('Original notification status updated to rejected');
+        
+        const responseData = await statusResponse.json();
+        console.log('Status update response:', responseData);
+        
+        if (statusResponse.ok) {
+          console.log('Original notification status updated to rejected');
+          // Update the notification object directly
+          notification.status = 'rejected';
+          // Also update embedded data status if it exists
+          if (notification.data) {
+            notification.data.status = 'rejected';
+          }
+          // Update local state to trigger re-render
+          setNotificationStatus('rejected');
+          console.log('Local notification object updated:', notification);
+        } else {
+          console.error('Failed to update notification status:', statusResponse.status, responseData);
+        }
       } catch (statusError) {
         console.error('Failed to update notification status:', statusError);
       }
 
-      // Create notification for the resident about rejection
+      // Create notification for the resident about rejection with embedded data
       try {
         await fetch('/api/notifications', {
           method: 'POST',
@@ -666,7 +826,17 @@ const InfoUpdateModal = ({ notification, onClose }) => {
             requestId: `rejection_${notification.requestId}`,
             priority: 'medium',
             redirectTarget: 'page',
-            status: 'completed'
+            status: 'completed',
+            data: {
+              id: notification.requestId,
+              residentId: pendingUpdate.residentId,
+              requestedBy: pendingUpdate.requestedBy,
+              requestedAt: pendingUpdate.requestedAt,
+              rejectedAt: new Date().toISOString(),
+              status: 'rejected',
+              originalData: pendingUpdate.originalData,
+              requestedChanges: pendingUpdate.requestedChanges
+            }
           })
         });
         console.log('Rejection notification sent to resident');
@@ -674,9 +844,15 @@ const InfoUpdateModal = ({ notification, onClose }) => {
         console.error('Failed to send rejection notification:', notificationError);
       }
 
+      // Force refresh the notifications list to update the status
+      if (typeof window !== 'undefined' && window.notificationContext) {
+        window.notificationContext.refreshNotifications();
+      }
+
       console.log('Info update rejected for:', pendingUpdate.residentId);
+      
+      // Don't close modal - let user see the updated status
       alert('Information update rejected. Resident has been notified.');
-      onClose();
     } catch (error) {
       console.error('Error rejecting info update:', error);
       alert('Failed to reject update. Please try again.');
@@ -708,7 +884,7 @@ const InfoUpdateModal = ({ notification, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -757,8 +933,12 @@ const InfoUpdateModal = ({ notification, onClose }) => {
                   </div>
                   <div>
                     <span className="text-blue-700">Status:</span> 
-                    <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
-                      {pendingUpdate.status}
+                    <span className={`ml-1 px-2 py-1 rounded-full text-xs ${
+                      notificationStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                      notificationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {notificationStatus}
                     </span>
                   </div>
                 </div>
@@ -814,29 +994,59 @@ const InfoUpdateModal = ({ notification, onClose }) => {
           )}
         </div>
 
-        {/* Actions */}
+                {/* Actions */}
         {!loadingData && pendingUpdate && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleReject}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Processing...' : 'Reject'}
-            </button>
-            <button
-              onClick={handleApprove}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Processing...' : 'Approve'}
-            </button>
+          <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-200 bg-gray-50">
+            {/* Left side: Status info for processed requests */}
+            {(notificationStatus !== 'pending') && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Request Status:</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  notificationStatus === 'approved' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {notificationStatus}
+                </span>
+                {(notificationStatus === 'approved') && (
+                  <span className="text-sm text-gray-500">• Changes have been applied</span>
+                )}
+              </div>
+            )}
+            
+            {/* Spacer for pending requests to push buttons to the right */}
+            {(notificationStatus === 'pending') && <div className="flex-1"></div>}
+            
+            {/* Right side: Action buttons */}
+            <div className="flex items-center gap-3">
+              {/* Only show approve/reject buttons if status is pending */}
+              {(notificationStatus === 'pending') && (
+                <>
+                  <button
+                    onClick={handleReject}
+                    disabled={loading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Processing...' : 'Reject'}
+                  </button>
+                  <button
+                    onClick={handleApprove}
+                    disabled={loading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Processing...' : 'Approve'}
+                  </button>
+                </>
+              )}
+              
+              {/* Close button - always visible */}
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
       </div>

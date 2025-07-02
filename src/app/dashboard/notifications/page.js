@@ -30,6 +30,11 @@ export default function NotificationsPage() {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   const {
     notifications,
@@ -109,7 +114,7 @@ export default function NotificationsPage() {
   };
 
   // Filter notifications based on search and filters
-  const filteredNotifications = notifications.filter(notification => {
+  const allFilteredNotifications = notifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          notification.message.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -121,6 +126,46 @@ export default function NotificationsPage() {
     
     return matchesSearch && matchesType && matchesPriority && matchesStatus;
   });
+
+  // Calculate pagination
+  const totalFilteredItems = allFilteredNotifications.length;
+  const calculatedTotalPages = Math.ceil(totalFilteredItems / itemsPerPage);
+  
+  // Update total pages when filtered notifications change
+  useEffect(() => {
+    setTotalPages(calculatedTotalPages);
+    if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [calculatedTotalPages, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, filterPriority, filterStatus]);
+
+  // Get notifications for current page
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedNotifications = allFilteredNotifications.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    setSelectedNotifications([]); // Clear selections when changing pages
+    setShowBulkActions(false);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
 
   const handleSelectNotification = (notificationId) => {
     setSelectedNotifications(prev => {
@@ -134,7 +179,7 @@ export default function NotificationsPage() {
   };
 
   const handleSelectAll = () => {
-    const allIds = filteredNotifications.map(n => n.id);
+    const allIds = paginatedNotifications.map(n => n.id);
     setSelectedNotifications(allIds);
     setShowBulkActions(allIds.length > 0);
   };
@@ -342,15 +387,18 @@ export default function NotificationsPage() {
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">
-              Notifications ({filteredNotifications.length})
+              Notifications ({totalFilteredItems})
             </h3>
             <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">
+                Showing {startIndex + 1}-{Math.min(endIndex, totalFilteredItems)} of {totalFilteredItems}
+              </span>
               <button
-                onClick={filteredNotifications.length > 0 ? handleSelectAll : undefined}
-                disabled={filteredNotifications.length === 0}
+                onClick={paginatedNotifications.length > 0 ? handleSelectAll : undefined}
+                disabled={paginatedNotifications.length === 0}
                 className="text-sm text-green-600 hover:text-green-700 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
-                Select All
+                Select All on Page
               </button>
             </div>
           </div>
@@ -363,7 +411,7 @@ export default function NotificationsPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
               <span className="ml-3 text-gray-600">Loading notifications...</span>
             </div>
-          ) : filteredNotifications.length === 0 ? (
+          ) : totalFilteredItems === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-gray-500">
               <Bell className="w-16 h-16 mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">No notifications found</h3>
@@ -375,7 +423,7 @@ export default function NotificationsPage() {
               </p>
             </div>
           ) : (
-            filteredNotifications.map((notification) => (
+            paginatedNotifications.map((notification) => (
               <div
                 key={notification.id}
                 className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
@@ -465,6 +513,64 @@ export default function NotificationsPage() {
             ))
           )}
         </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Page {currentPage} of {totalPages} • {totalFilteredItems} total notifications
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-green-600 text-white'
+                            : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Notification Detail Modal */}
@@ -533,7 +639,7 @@ const NotificationDetailModal = ({ notification, onClose, onMarkAsRead, onDelete
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-green-50">

@@ -278,6 +278,7 @@ export default function DashboardLayout({ children }) {
             <SidebarLink icon={<Users size={18} />} label="Resident Records" href="/dashboard/residents" collapsed={sidebarCollapsed} />
             <SidebarLink icon={<Home size={18} />} label="Households" href="/dashboard/household" collapsed={sidebarCollapsed} />
             <SidebarLink icon={<Settings size={18} />} label="Services" href="/dashboard/services" collapsed={sidebarCollapsed} />
+            <SidebarLink icon={<Bell size={18} />} label="Notifications" href="/dashboard/notifications" collapsed={sidebarCollapsed} />
             <SidebarLink icon={<Folder size={18} />} label="Complaints" href="/dashboard/complaints" collapsed={sidebarCollapsed} />
             <SidebarLink icon={<FileText size={18} />} label="Reports" href="/dashboard/reports" collapsed={sidebarCollapsed} />          
             <SidebarLink icon={<Activity size={18} />} label="Logs" href="/dashboard/logs" collapsed={sidebarCollapsed} />

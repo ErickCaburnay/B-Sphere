@@ -32,6 +32,7 @@ export default function ResidentNotifications() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Get user data
@@ -54,6 +55,30 @@ export default function ResidentNotifications() {
         }
       }, 1000);
     }
+
+    // Simple highlight handling on page load
+    const handleHighlight = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const highlightId = urlParams.get('highlight');
+      
+      if (highlightId && notifications.length > 0) {
+        console.log('Looking for notification to highlight:', highlightId);
+        const notification = notifications.find(n => n.id === highlightId);
+        if (notification) {
+          console.log('Found notification to highlight:', notification);
+          setTimeout(() => {
+            handleNotificationClick(notification);
+            // Clear the URL parameter
+            window.history.replaceState({}, '', '/resident-dashboard/notifications');
+          }, 500);
+        }
+      }
+    };
+
+    // Handle highlight after notifications load
+    if (notifications.length > 0) {
+      handleHighlight();
+    }
   }, []);
 
   useEffect(() => {
@@ -61,8 +86,11 @@ export default function ResidentNotifications() {
     const urlParams = new URLSearchParams(window.location.search);
     const highlightId = urlParams.get('highlight');
     if (highlightId && notifications.length > 0) {
+      console.log('Handling highlight from URL:', highlightId);
       const notification = notifications.find(n => n.id === highlightId);
       if (notification) {
+        console.log('Found notification for highlight:', notification);
+        
         // Mark as read if not already read
         if (!notification.seen) {
           markAsRead(notification.id);
@@ -74,6 +102,8 @@ export default function ResidentNotifications() {
         
         // Clear the URL parameter
         window.history.replaceState({}, '', '/resident-dashboard/notifications');
+      } else {
+        console.log('Notification not found for highlight ID:', highlightId);
       }
     }
   }, [notifications.length]); // Only depend on length to avoid infinite loops
@@ -81,11 +111,12 @@ export default function ResidentNotifications() {
   const loadNotifications = async () => {
     try {
       setLoading(true);
+      setError(null);
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const residentId = userData.residentId || userData.id;
 
       if (!residentId) {
-        console.log('No resident ID found');
+        setError('No resident ID found. Please log in again.');
         return;
       }
 
@@ -93,11 +124,15 @@ export default function ResidentNotifications() {
       if (response.ok) {
         const data = await response.json();
         setNotifications(data.notifications || []);
+        setError(null);
       } else {
-        console.error('Failed to load notifications');
+        const errorText = await response.text();
+        console.error('Failed to load notifications:', response.status, errorText);
+        setError(`Failed to load notifications: ${response.status}`);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -105,6 +140,7 @@ export default function ResidentNotifications() {
 
   const refreshNotifications = async () => {
     setRefreshing(true);
+    setError(null);
     await loadNotifications();
     setRefreshing(false);
   };
@@ -119,9 +155,14 @@ export default function ResidentNotifications() {
         setNotifications(prev => prev.map(notif => 
           notif.id === notificationId ? { ...notif, seen: true } : notif
         ));
+        return true;
+      } else {
+        console.error('Failed to mark notification as read:', response.status);
+        return false;
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      return false;
     }
   };
 
@@ -158,14 +199,21 @@ export default function ResidentNotifications() {
   };
 
   const handleNotificationClick = async (notification) => {
-    // Mark as read if not already read
-    if (!notification.seen) {
-      await markAsRead(notification.id);
+    try {
+      // Open modal with notification details first
+      setSelectedNotification(notification);
+      setShowModal(true);
+      
+      // Mark as read if not already read (do this after opening modal)
+      if (!notification.seen) {
+        await markAsRead(notification.id);
+      }
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+      // Still open the modal even if marking as read fails
+      setSelectedNotification(notification);
+      setShowModal(true);
     }
-    
-    // Open modal with notification details
-    setSelectedNotification(notification);
-    setShowModal(true);
   };
 
   const closeModal = () => {
@@ -254,6 +302,27 @@ export default function ResidentNotifications() {
     return (
       <div className="flex items-center justify-center min-h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-64 p-8">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center max-w-md">
+          <X className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-red-900 mb-2">Error Loading Notifications</h3>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              loadNotifications();
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -508,7 +577,7 @@ export default function ResidentNotifications() {
 
       {/* Notification Detail Modal */}
       {showModal && selectedNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               {/* Modal Header */}
@@ -585,8 +654,89 @@ export default function ResidentNotifications() {
                   )}
                 </div>
 
-                {/* Additional Data */}
-                {selectedNotification.data && (
+                {/* Changes Details for Info Updates */}
+                {(selectedNotification.type === 'info_update_approved' || selectedNotification.type === 'info_update_rejected') && 
+                 selectedNotification.data && selectedNotification.data.originalData && selectedNotification.data.requestedChanges && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
+                      {selectedNotification.type === 'info_update_approved' ? 'Approved Changes' : 'Rejected Changes'}
+                    </h3>
+                    <div className="space-y-4">
+                      {/* Compare changes */}
+                      {Object.keys(selectedNotification.data.requestedChanges).map(key => {
+                        const original = selectedNotification.data.originalData[key];
+                        const requested = selectedNotification.data.requestedChanges[key];
+                        
+                        // Handle nested objects like address
+                        if (typeof requested === 'object' && requested !== null && !Array.isArray(requested)) {
+                          return (
+                            <div key={key} className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-semibold text-gray-800 mb-2 capitalize">{key}</h4>
+                              <div className="space-y-2">
+                                {Object.keys(requested).map(subKey => {
+                                  const originalValue = original?.[subKey] || '';
+                                  const requestedValue = requested[subKey] || '';
+                                  
+                                  if (originalValue !== requestedValue) {
+                                    return (
+                                      <div key={subKey} className="text-sm">
+                                        <div className="font-medium text-gray-700 capitalize">{subKey}:</div>
+                                        <div className="ml-2 space-y-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-red-600 font-medium">From:</span>
+                                            <span className="px-2 py-1 bg-red-50 text-red-800 rounded text-xs">
+                                              {originalValue || '(empty)'}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-green-600 font-medium">To:</span>
+                                            <span className="px-2 py-1 bg-green-50 text-green-800 rounded text-xs">
+                                              {requestedValue || '(empty)'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            </div>
+                          );
+                        }
+                        
+                        // Handle simple values
+                        if (original !== requested) {
+                          return (
+                            <div key={key} className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-semibold text-gray-800 mb-2 capitalize">{key}</h4>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-600 font-medium">From:</span>
+                                  <span className="px-2 py-1 bg-red-50 text-red-800 rounded text-xs">
+                                    {original || '(empty)'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-600 font-medium">To:</span>
+                                  <span className="px-2 py-1 bg-green-50 text-green-800 rounded text-xs">
+                                    {requested || '(empty)'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Data for other notification types */}
+                {selectedNotification.data && 
+                 selectedNotification.type !== 'info_update_approved' && 
+                 selectedNotification.type !== 'info_update_rejected' && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Additional Information</h3>
                     <div className="bg-gray-50 p-4 rounded-lg">

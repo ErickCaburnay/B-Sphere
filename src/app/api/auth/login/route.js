@@ -210,6 +210,14 @@ export async function POST(request) {
       }
 
       // Generate JWT token
+      if (!process.env.JWT_SECRET) {
+        console.error('JWT_SECRET environment variable is not set');
+        return NextResponse.json(
+          { error: 'Server configuration error' },
+          { status: 500 }
+        );
+      }
+
       const token = jwt.sign(
         { 
           id: admin.id, 
@@ -217,7 +225,7 @@ export async function POST(request) {
           role: admin.role || 'admin', // Default to 'admin' if role is not set
           userType: 'admin'
         },
-        process.env.JWT_SECRET || 'your-secret-key',
+        process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
 
@@ -343,6 +351,14 @@ export async function POST(request) {
       }
 
       // Generate JWT token for resident
+      if (!process.env.JWT_SECRET) {
+        console.error('JWT_SECRET environment variable is not set');
+        return NextResponse.json(
+          { error: 'Server configuration error' },
+          { status: 500 }
+        );
+      }
+
       const token = jwt.sign(
         { 
           id: resident.id,
@@ -352,7 +368,7 @@ export async function POST(request) {
           role: resident.role,
           userType: 'resident'
         },
-        process.env.JWT_SECRET || 'your-secret-key',
+        process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
 

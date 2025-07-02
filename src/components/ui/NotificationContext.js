@@ -16,6 +16,7 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Fetch notifications from API
   const fetchNotifications = useCallback(async (options = {}) => {
@@ -38,22 +39,34 @@ export const NotificationProvider = ({ children }) => {
         params.append('targetRole', 'resident');
         if (residentId) {
           params.append('residentId', residentId);
+        } else {
+          console.warn('No resident ID found for resident dashboard');
+          return { notifications: [], unreadCount: 0, pagination: { total: 0, hasMore: false } };
         }
       } else {
         // Admin notifications
         params.append('targetRole', 'admin');
       }
 
-      const response = await fetch(`/api/notifications?${params.toString()}`);
+      const url = `/api/notifications?${params.toString()}`;
+      console.log('Fetching notifications from:', url);
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch notifications: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Response not OK:', response.status, response.statusText, errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log('Notifications fetched successfully:', data.notifications?.length || 0);
       return data;
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('Error fetching notifications:', error.message);
+      console.error('Full error:', error);
+      
+      // Return empty result but don't completely fail
       return { notifications: [], unreadCount: 0, pagination: { total: 0, hasMore: false } };
     }
   }, []);
@@ -61,10 +74,18 @@ export const NotificationProvider = ({ children }) => {
   // Load initial notifications
   const loadNotifications = useCallback(async () => {
     setLoading(true);
-    const data = await fetchNotifications({ limit: 10 });
-    setNotifications(data.notifications || []);
-    setUnreadCount(data.unreadCount || 0);
-    setLoading(false);
+    setError(null);
+    try {
+      const data = await fetchNotifications({ limit: 10 });
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
+      setError(null);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+      setError('Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
   }, [fetchNotifications]);
 
   // Load more notifications (for pagination)
@@ -165,8 +186,11 @@ export const NotificationProvider = ({ children }) => {
       const data = await fetchNotifications({ limit: 10 });
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
+      setError(null);
     } catch (error) {
       console.error('Error refreshing notifications:', error);
+      setError('Failed to refresh notifications');
+      // Don't throw error, just log it to prevent UI breaking
     }
   }, [fetchNotifications]);
 
@@ -175,19 +199,52 @@ export const NotificationProvider = ({ children }) => {
     loadNotifications();
   }, []); // Empty dependency array - only run once
 
-  // Set up polling interval
+  // Set up adaptive polling interval
   useEffect(() => {
-    const interval = setInterval(() => {
+    let interval;
+    
+    const startPolling = () => {
+      // Check if page is visible and user is active
+      const isVisible = !document.hidden;
+      const pollingInterval = isVisible ? 15000 : 60000; // 15 seconds when active, 1 minute when hidden
+      
+      interval = setInterval(() => {
+        if (!document.hidden) {
+          refreshNotifications();
+        }
+      }, pollingInterval);
+    };
+    
+    // Start initial polling
+    startPolling();
+    
+    // Listen for visibility changes
+    const handleVisibilityChange = () => {
+      clearInterval(interval);
+      startPolling();
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Listen for focus events for immediate refresh
+    const handleFocus = () => {
       refreshNotifications();
-    }, 60000); // Poll every 60 seconds (reduced frequency)
+    };
+    
+    window.addEventListener('focus', handleFocus);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [refreshNotifications]);
 
   const value = {
     notifications,
     unreadCount,
     loading,
+    error,
     fetchNotifications,
     loadNotifications,
     loadMoreNotifications,
@@ -197,6 +254,21 @@ export const NotificationProvider = ({ children }) => {
     createNotification,
     refreshNotifications
   };
+
+  // Expose refreshNotifications globally for other components to use
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.notificationContext = {
+        refreshNotifications
+      };
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined' && window.notificationContext) {
+        delete window.notificationContext;
+      }
+    };
+  }, [refreshNotifications]);
 
   return (
     <NotificationContext.Provider value={value}>

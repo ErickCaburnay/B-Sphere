@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { X, User, MapPin, Phone, Mail, Calendar, Briefcase, GraduationCap, Heart, Shield, Award, Clock } from 'lucide-react';
 import { formatContactNumberDisplay } from '../ui/ContactNumberInput';
 
@@ -69,11 +70,111 @@ const isSeniorCitizen = (birthdate) => {
 };
 
 export function ViewResidentModal({ resident, onClose }) {
-  if (!resident) return null;
+  const [currentResident, setCurrentResident] = useState(resident);
 
-  const fullName = `${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}${resident.suffix ? ' ' + resident.suffix : ''}`;
-  const age = calculateAge(resident.birthdate);
-  const isSenior = isSeniorCitizen(resident.birthdate);
+  // Listen for resident data updates
+  useEffect(() => {
+    const handleResidentDataUpdate = async (event) => {
+      const { residentId, updatedData } = event.detail;
+      
+      // Check if this modal is showing the updated resident
+      // Check multiple possible ID formats
+      const residentIds = [
+        currentResident?.id,
+        currentResident?.uniqueId,
+        currentResident?.residentId
+      ].filter(Boolean);
+      
+      if (currentResident && residentIds.includes(residentId)) {
+        console.log('ViewResidentModal: Refreshing resident data for:', residentId);
+        console.log('Resident IDs to check:', residentIds);
+        
+        try {
+          // Try to fetch with the residentId first
+          let response = await fetch(`/api/residents/${residentId}`);
+          
+          // If that fails, try with the resident's current ID
+          if (!response.ok && currentResident.id !== residentId) {
+            response = await fetch(`/api/residents/${currentResident.id}`);
+          }
+          
+          // If that fails, try with uniqueId
+          if (!response.ok && currentResident.uniqueId !== residentId) {
+            response = await fetch(`/api/residents/${currentResident.uniqueId}`);
+          }
+          
+          if (response.ok) {
+            const updatedResident = await response.json();
+            setCurrentResident(updatedResident);
+            console.log('ViewResidentModal: Resident data updated successfully');
+          } else {
+            console.error('ViewResidentModal: Failed to fetch updated resident data');
+          }
+        } catch (error) {
+          console.error('ViewResidentModal: Error fetching updated resident:', error);
+        }
+      }
+    };
+
+    const handleAdminDataRefresh = async (event) => {
+      const { type, residentId } = event.detail;
+      
+      if (type === 'resident_updated' && currentResident) {
+        // Check if this modal is showing the updated resident
+        const residentIds = [
+          currentResident?.id,
+          currentResident?.uniqueId,
+          currentResident?.residentId
+        ].filter(Boolean);
+        
+        if (residentIds.includes(residentId)) {
+          console.log('ViewResidentModal: Admin refresh triggered for:', residentId);
+          
+          try {
+            // Try to fetch with the residentId first
+            let response = await fetch(`/api/residents/${residentId}`);
+            
+            // If that fails, try with the resident's current ID
+            if (!response.ok && currentResident.id !== residentId) {
+              response = await fetch(`/api/residents/${currentResident.id}`);
+            }
+            
+            // If that fails, try with uniqueId
+            if (!response.ok && currentResident.uniqueId !== residentId) {
+              response = await fetch(`/api/residents/${currentResident.uniqueId}`);
+            }
+            
+            if (response.ok) {
+              const updatedResident = await response.json();
+              setCurrentResident(updatedResident);
+              console.log('ViewResidentModal: Admin refresh completed successfully');
+            }
+          } catch (error) {
+            console.error('ViewResidentModal: Error during admin refresh:', error);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('residentDataUpdated', handleResidentDataUpdate);
+    window.addEventListener('adminDataRefresh', handleAdminDataRefresh);
+
+    return () => {
+      window.removeEventListener('residentDataUpdated', handleResidentDataUpdate);
+      window.removeEventListener('adminDataRefresh', handleAdminDataRefresh);
+    };
+  }, [currentResident]);
+
+  // Update current resident when prop changes
+  useEffect(() => {
+    setCurrentResident(resident);
+  }, [resident]);
+
+  if (!currentResident) return null;
+
+  const fullName = `${currentResident.firstName} ${currentResident.middleName ? currentResident.middleName + ' ' : ''}${currentResident.lastName}${currentResident.suffix ? ' ' + currentResident.suffix : ''}`;
+  const age = calculateAge(currentResident.birthdate);
+  const isSenior = isSeniorCitizen(currentResident.birthdate);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm p-4">
@@ -88,11 +189,11 @@ export function ViewResidentModal({ resident, onClose }) {
               <div>
                 <h2 className="text-xl font-bold">{fullName}</h2>
                 <div className="flex items-center space-x-2 mt-1">
-                  <p className="text-blue-100 text-sm">ID: {resident.uniqueId || resident.id}</p>
-                  <span className="text-blue-200">•</span>
-                  <p className="text-blue-100 text-sm">{age} years old</p>
-                  <span className="text-blue-200">•</span>
-                  <p className="text-blue-100 text-sm">{resident.gender}</p>
+                                  <p className="text-blue-100 text-sm">ID: {currentResident.uniqueId || currentResident.id}</p>
+                <span className="text-blue-200">•</span>
+                <p className="text-blue-100 text-sm">{age} years old</p>
+                <span className="text-blue-200">•</span>
+                <p className="text-blue-100 text-sm">{currentResident.gender}</p>
                   {isSenior && (
                     <>
                       <span className="text-blue-200">•</span>
@@ -127,32 +228,32 @@ export function ViewResidentModal({ resident, onClose }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">First Name</label>
-                    <p className="text-gray-900 font-medium text-sm">{resident.firstName}</p>
+                    <p className="text-gray-900 font-medium text-sm">{currentResident.firstName}</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Last Name</label>
-                    <p className="text-gray-900 font-medium text-sm">{resident.lastName}</p>
+                    <p className="text-gray-900 font-medium text-sm">{currentResident.lastName}</p>
                   </div>
                 </div>
-                {resident.middleName && (
+                {currentResident.middleName && (
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Middle Name</label>
-                    <p className="text-gray-900 font-medium text-sm">{resident.middleName}</p>
+                    <p className="text-gray-900 font-medium text-sm">{currentResident.middleName}</p>
                   </div>
                 )}
-                {resident.suffix && (
+                {currentResident.suffix && (
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Suffix</label>
-                    <p className="text-gray-900 font-medium text-sm">{resident.suffix}</p>
+                    <p className="text-gray-900 font-medium text-sm">{currentResident.suffix}</p>
                   </div>
                 )}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Marital Status</label>
-                  <p className="text-gray-900 font-medium text-sm">{resident.maritalStatus}</p>
+                  <p className="text-gray-900 font-medium text-sm">{currentResident.maritalStatus}</p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Citizenship</label>
-                  <p className="text-gray-900 font-medium text-sm">{resident.citizenship}</p>
+                  <p className="text-gray-900 font-medium text-sm">{currentResident.citizenship}</p>
                 </div>
               </div>
             </div>
@@ -166,12 +267,12 @@ export function ViewResidentModal({ resident, onClose }) {
               <div className="space-y-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Date of Birth</label>
-                  <p className="text-gray-900 font-medium text-sm">{formatDateDisplay(resident.birthdate)}</p>
+                  <p className="text-gray-900 font-medium text-sm">{formatDateDisplay(currentResident.birthdate)}</p>
                   <p className="text-gray-500 text-xs">Age: {age} years old</p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Place of Birth</label>
-                  <p className="text-gray-900 font-medium text-sm">{resident.birthplace}</p>
+                  <p className="text-gray-900 font-medium text-sm">{currentResident.birthplace}</p>
                 </div>
               </div>
             </div>
@@ -187,7 +288,7 @@ export function ViewResidentModal({ resident, onClose }) {
                   <MapPin className="h-3 w-3 text-gray-400 mr-2 mt-1" />
                   <div>
                     <label className="block text-xs font-medium text-gray-500">Address</label>
-                    <p className="text-gray-900 font-medium text-sm">{resident.address}</p>
+                    <p className="text-gray-900 font-medium text-sm">{currentResident.address}</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -195,7 +296,7 @@ export function ViewResidentModal({ resident, onClose }) {
                   <div>
                     <label className="block text-xs font-medium text-gray-500">Phone Number</label>
                     <p className="text-gray-900 font-medium text-sm">
-                      {formatContactNumberDisplay(resident.contactNumber) || 'Not specified'}
+                      {formatContactNumberDisplay(currentResident.contactNumber) || 'Not specified'}
                     </p>
                   </div>
                 </div>
@@ -203,7 +304,7 @@ export function ViewResidentModal({ resident, onClose }) {
                   <Mail className="h-3 w-3 text-gray-400 mr-2 mt-1" />
                   <div>
                     <label className="block text-xs font-medium text-gray-500">Email Address</label>
-                    <p className="text-gray-900 font-medium text-sm">{resident.email || 'Not specified'}</p>
+                    <p className="text-gray-900 font-medium text-sm">{currentResident.email || 'Not specified'}</p>
                   </div>
                 </div>
               </div>

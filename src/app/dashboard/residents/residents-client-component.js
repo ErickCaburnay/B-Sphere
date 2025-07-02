@@ -114,6 +114,55 @@ export function ResidentsClientComponent({ initialResidents }) {
     };
   }, []);
 
+  // Listen for resident data updates from approval notifications
+  useEffect(() => {
+    const handleResidentDataUpdate = async (event) => {
+      const { residentId, updatedData } = event.detail;
+      console.log('Received resident data update event:', { residentId, updatedData });
+      
+      try {
+        // Refresh the entire residents list to get the latest data
+        await refreshResidents();
+        
+        // If a modal is open showing the updated resident, refresh it too
+        if (selectedResidentForView && (selectedResidentForView.id === residentId || selectedResidentForView.uniqueId === residentId)) {
+          // Fetch the updated resident data
+          const response = await fetch(`/api/residents/${residentId}`);
+          if (response.ok) {
+            const updatedResident = await response.json();
+            setSelectedResidentForView(updatedResident);
+          }
+        }
+        
+        console.log('Residents list refreshed after approval');
+      } catch (error) {
+        console.error('Error refreshing residents after approval:', error);
+      }
+    };
+
+    const handleAdminDataRefresh = async (event) => {
+      const { type, residentId } = event.detail;
+      console.log('Received admin data refresh event:', { type, residentId });
+      
+      if (type === 'resident_updated') {
+        try {
+          await refreshResidents();
+          console.log('Admin residents list refreshed');
+        } catch (error) {
+          console.error('Error refreshing admin residents list:', error);
+        }
+      }
+    };
+
+    window.addEventListener('residentDataUpdated', handleResidentDataUpdate);
+    window.addEventListener('adminDataRefresh', handleAdminDataRefresh);
+
+    return () => {
+      window.removeEventListener('residentDataUpdated', handleResidentDataUpdate);
+      window.removeEventListener('adminDataRefresh', handleAdminDataRefresh);
+    };
+  }, [selectedResidentForView]);
+
   
 
   // Calculate pagination

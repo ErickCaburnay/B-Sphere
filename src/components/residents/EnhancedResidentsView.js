@@ -122,6 +122,43 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
     };
   }, []);
 
+  // Listen for resident data updates from approval notifications
+  useEffect(() => {
+    const handleResidentDataUpdate = async (event) => {
+      const { residentId, updatedData } = event.detail;
+      console.log('EnhancedResidentsView: Received resident data update event:', { residentId, updatedData });
+      
+      try {
+        // Refresh the residents list to get the latest data
+        const response = await fetch(`/api/residents?page=${page}&pageSize=${pageSize}`);
+        if (response.ok) {
+          const data = await response.json();
+          setResidents(data.data || data);
+          setTotalCount(data.total || 0);
+          
+          // If a modal is open showing the updated resident, refresh it too
+          if (selectedResident && (selectedResident.id === residentId || selectedResident.uniqueId === residentId)) {
+            const residentResponse = await fetch(`/api/residents/${residentId}`);
+            if (residentResponse.ok) {
+              const updatedResident = await residentResponse.json();
+              setSelectedResident(updatedResident);
+            }
+          }
+          
+          console.log('EnhancedResidentsView: Residents list refreshed after approval');
+        }
+      } catch (error) {
+        console.error('EnhancedResidentsView: Error refreshing residents after approval:', error);
+      }
+    };
+
+    window.addEventListener('residentDataUpdated', handleResidentDataUpdate);
+
+    return () => {
+      window.removeEventListener('residentDataUpdated', handleResidentDataUpdate);
+    };
+  }, [page, pageSize, selectedResident]);
+
   // Memoized age calculation function
   const calculateAge = useCallback((birthdate) => {
     if (!birthdate) return 'N/A';
