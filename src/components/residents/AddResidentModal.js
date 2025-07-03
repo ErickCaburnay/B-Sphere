@@ -18,11 +18,14 @@ export function AddResidentModal({ isOpen, onClose, onSubmit }) {
         contactNumber: cleanContactNumber(data.contactNumber)
       };
       await onSubmit(cleanedData);
+      // Only reset and close if successful
       reset();
       onClose();
-      toast.success('Resident added successfully!');
+      // Don't show success toast here - it's handled in handleAddResident
     } catch (error) {
-      toast.error('Failed to add resident. Please try again.');
+      // Don't show generic error - the specific error is already handled in handleAddResident
+      console.error('Form submission error:', error);
+      // Don't reset or close the modal so user can see the error and try again
     }
   };
 

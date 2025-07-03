@@ -107,11 +107,31 @@ export function BatchUploadModal({ isOpen, onClose, onSuccess }) {
           setDebugInfo(result.debug);
         }
         
-        // Show specific error message
-        if (result.error) {
-          toast.error(result.error);
+        // Handle duplicate residents error specifically
+        if (response.status === 409 && result.duplicates && Array.isArray(result.duplicates)) {
+          const duplicateNames = result.duplicates.map(dup => 
+            `${dup.firstName} ${dup.middleName ? dup.middleName + ' ' : ''}${dup.lastName} (Born: ${dup.birthdate})`
+          ).join(', ');
+          
+          toast.error(
+            `${result.duplicates.length} resident(s) already exist in the system: ${duplicateNames}`,
+            { duration: 8000 }
+          );
+          
+          // Store duplicate information for display
+          setValidationErrors([
+            `Found ${result.duplicates.length} duplicate resident(s):`,
+            ...result.duplicates.map(dup => 
+              `• ${dup.firstName} ${dup.middleName ? dup.middleName + ' ' : ''}${dup.lastName} (Born: ${dup.birthdate})`
+            )
+          ]);
         } else {
-          toast.error('Upload failed');
+          // Show specific error message
+          if (result.error) {
+            toast.error(result.error);
+          } else {
+            toast.error('Upload failed');
+          }
         }
         return;
       }

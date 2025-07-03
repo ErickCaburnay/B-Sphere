@@ -64,7 +64,7 @@ export function HouseholdDataQuality({ households, residents }) {
       if (issues.length > 0) {
         consistency.push({
           householdId: household.id,
-          details: `Consistency issues: ${issues.join('; '}`,
+          details: `Consistency issues: ${issues.join('; ')}`,
           severity: 'high'
         });
       }
@@ -81,7 +81,7 @@ export function HouseholdDataQuality({ households, residents }) {
       if (issues.length > 0) {
         accuracy.push({
           householdId: household.id,
-          details: `Accuracy issues: ${issues.join('; '}`,
+          details: `Accuracy issues: ${issues.join('; ')}`,
           severity: 'medium'
         });
       }

@@ -4,7 +4,7 @@ export default function Pagination({
   currentPage,
   totalPages,
   rowsPerPage,
-  rowsPerPageOptions = [10, 20, 50],
+  rowsPerPageOptions = [10, 30, 50],
   totalEntries,
   startEntry,
   endEntry,

@@ -40,19 +40,19 @@ export async function GET() {
     };
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Format the birthdate column (Column E - 5) to ensure YYYY-MM-DD format
-    worksheet.getColumn(5).numFmt = 'yyyy-mm-dd';
+    // Format the birthdate column (Column E - 5) to ensure DD-MM-YYYYformat
+    worksheet.getColumn(5).numFmt = 'dd-mm-yyyy';
     worksheet.getColumn(5).eachCell({ includeEmpty: true }, (cell, rowNumber) => {
       if (rowNumber > 1) {
-        cell.numFmt = 'yyyy-mm-dd';
+        cell.numFmt = 'dd-mm-yyyy';
         cell.dataValidation = {
           type: 'date',
           allowBlank: false,
-          formulae: [new Date('1900-01-01'), new Date()],
+          formulae: [new Date('01-01-1990'), new Date()],
           showErrorMessage: true,
           errorStyle: 'warning',
           errorTitle: 'Invalid Date',
-          error: 'Please enter a valid date. Format will auto-convert to YYYY-MM-DD'
+          error: 'Please enter a valid date. Format will auto-convert to DD-MM-YYYY'
         };
       }
     });

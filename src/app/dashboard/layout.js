@@ -120,7 +120,7 @@ export default function DashboardLayout({ children }) {
 
   // Calculate sidebar width based on state
   const getSidebarWidth = () => {
-    if (!sidebarOpen) return 0;
+    if (!sidebarOpen) return "0px";
     if (sidebarCollapsed) return "72px"; // Icon-only width for both mobile and desktop
     if (isMobile) return "200px"; // Reduced width for mobile when expanded
     return "256px"; // Full width (w-64) for desktop when expanded
@@ -199,7 +199,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-[64px] left-0 z-40 h-[calc(100vh-64px)] text-white shadow-xl transform transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`fixed top-[64px] left-0 bottom-0 text-white shadow-xl transform transition-all duration-300 ease-in-out overflow-hidden z-40 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
@@ -208,7 +208,7 @@ export default function DashboardLayout({ children }) {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed'
+          height: 'calc(100vh - 64px)'
         }}
         >
         {/* Background overlay for better text readability */}
@@ -290,9 +290,10 @@ export default function DashboardLayout({ children }) {
 
       {/* Main Content */}
       <main
-        className="pt-[96px] px-4 md:px-8 transition-all duration-300"
+        className="pt-[96px] px-4 md:px-8 transition-all duration-300 min-h-screen"
         style={{
-          marginLeft: sidebarOpen ? sidebarWidth : '0'
+          marginLeft: sidebarOpen ? (isMobile ? '0px' : sidebarWidth) : '0px',
+          paddingLeft: isMobile && sidebarOpen ? sidebarWidth : '0px'
         }}
       >
         {/* Loading overlay for navigation */}

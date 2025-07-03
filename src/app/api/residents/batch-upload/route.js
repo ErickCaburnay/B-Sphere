@@ -263,22 +263,22 @@ export async function POST(request) {
         residents.push({
           uniqueId: newId,
           firebaseUid: null, // Will be set when resident creates Firebase Auth account
-          firstName,
-          middleName,
-          lastName,
-          suffix,
+          firstName, // Already converted to uppercase above
+          middleName, // Already converted to uppercase above
+          lastName, // Already converted to uppercase above
+          suffix, // Already converted to uppercase above
           birthdate: birthdateString,
-          birthplace,
-          address,
-          citizenship,
+          birthplace, // Already converted to uppercase above
+          address, // Already converted to uppercase above
+          citizenship, // Already converted to uppercase above
           gender,
           maritalStatus,
           voterStatus,
           educationalAttainment,
           employmentStatus,
-          occupation,
+          occupation, // Already converted to uppercase above
           contactNumber,
-          email,
+          email, // Keep email case-sensitive - not converted to uppercase
           isTUPAD,
           isPWD,
           is4Ps,
@@ -319,11 +319,52 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
+    // Check for duplicates against existing residents
+    const duplicates = [];
+    const validResidents = [];
+
+    for (const resident of residents) {
+      try {
+        const duplicateQuery = await adminDb.collection('residents')
+          .where('firstName', '==', resident.firstName)
+          .where('lastName', '==', resident.lastName)
+          .where('birthdate', '==', resident.birthdate)
+          .get();
+
+        if (!duplicateQuery.empty) {
+          const existingResident = duplicateQuery.docs[0].data();
+          duplicates.push({
+            firstName: resident.firstName,
+            middleName: resident.middleName,
+            lastName: resident.lastName,
+            birthdate: resident.birthdate
+          });
+        } else {
+          validResidents.push(resident);
+        }
+      } catch (error) {
+        console.error('Error checking duplicate for resident:', resident.firstName, resident.lastName, error);
+        // If there's an error checking duplicates, still include the resident
+        validResidents.push(resident);
+      }
+    }
+
+    // If there are duplicates, return error with details
+    if (duplicates.length > 0) {
+      return NextResponse.json({
+        error: 'Duplicate residents found',
+        message: `${duplicates.length} resident(s) already exist in the system`,
+        duplicates: duplicates,
+        validCount: validResidents.length,
+        totalCount: residents.length
+      }, { status: 409 });
+    }
+
     // Batch insert residents using Firestore batch
     const firestoreBatch = adminDb.batch();
     const createdResidents = [];
 
-    for (const resident of residents) {
+    for (const resident of validResidents) {
       const docRef = adminDb.collection('residents').doc(resident.uniqueId);
       firestoreBatch.set(docRef, resident);
       createdResidents.push(resident);
@@ -335,7 +376,7 @@ export async function POST(request) {
     return NextResponse.json({
       message: 'Batch upload successful',
       processed: createdResidents.length,
-      total: residents.length,
+      total: validResidents.length,
       residents: createdResidents
     });
 

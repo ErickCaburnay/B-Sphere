@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "phosphor-react";
+import { ArrowRight } from "lucide-react";
 
 const HeroSection = () => {
   return (

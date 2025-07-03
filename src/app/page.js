@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle, Users, FileText, ChartBar, ShieldCheck } from "lucide-react";
-import { ArrowRight } from "phosphor-react";
 
 // AOS Animation Library Import
 import AOS from "aos";

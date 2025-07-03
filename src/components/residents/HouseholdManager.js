@@ -675,13 +675,18 @@ export function HouseholdManager({ residents, onUpdateHousehold }) {
 
       {/* Household Advanced Filters Modal */}
       {showHouseholdFilters && (
-        <HouseholdAdvancedFilters
-          onFilterChange={(filters) => {
-            setAppliedFilters(filters);
-            setShowHouseholdFilters(false);
-          }}
-          onClose={() => setShowHouseholdFilters(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Advanced Filters</h3>
+            <p className="text-gray-600 mb-4">Advanced filtering functionality coming soon...</p>
+            <button
+              onClick={() => setShowHouseholdFilters(false)}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
