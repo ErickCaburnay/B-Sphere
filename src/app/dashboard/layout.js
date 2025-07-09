@@ -282,7 +282,7 @@ export default function DashboardLayout({ children }) {
             <SidebarLink icon={<Folder size={18} />} label="Complaints" href="/dashboard/complaints" collapsed={sidebarCollapsed} />
             <SidebarLink icon={<FileText size={18} />} label="Reports" href="/dashboard/reports" collapsed={sidebarCollapsed} />          
             <SidebarLink icon={<Activity size={18} />} label="Logs" href="/dashboard/logs" collapsed={sidebarCollapsed} />
-            <SidebarLink icon={<ClipboardList size={18} />} label="Module 9" href="/dashboard/module9" collapsed={sidebarCollapsed} />
+            <SidebarLink icon={<Settings size={18} />} label="System Management" href="/dashboard/system-management" collapsed={sidebarCollapsed} />
             <SidebarLink icon={<Settings size={18} />} label="Module 10" href="/dashboard/module10" collapsed={sidebarCollapsed} />
           </nav>
         </div>

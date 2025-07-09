@@ -1,55 +1,349 @@
 "use client";
 
-import { useState } from "react";
-import { X, Search, FileText, User, Calendar, MapPin } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, Search, FileText, User, Calendar, MapPin, Eye } from "lucide-react";
+import { debounce } from 'lodash';
+import Image from 'next/image';
+import styles from './BrgyCertificateFormModal.module.css';
+
+const BARANGAY_OFFICIALS = [
+  { name: "Hon. CARTER P. MANZANO", position: "Barangay Chairman" },
+  { name: "Hon. CLARA A. FIGUEROA", position: "Committee on Appropriation" },
+  { name: "Hon. MERCEDES C. PEREZ", position: "Committee on Environmental Protection" },
+  { name: "Hon. AMADOR A. TITULOS", position: "Committee on Human Rights, Peace & Order" },
+  { name: "Hon. DEXTER G. MACABARE", position: "Committee on Education / Programs and Health Protection" },
+  { name: "Hon. MARIA GABBY", position: "Committee on Rules and Privileges Ways & Means" },
+  { name: "Hon. ABDULLA B. ORACION", position: "Committee on Infrastructure" },
+  { name: "Hon. REBECCA M. FLORDELIZE", position: "Committee on Cooperatives / Livelihood" },
+  { name: "Hon. GERALD L. ESPINA", position: "S.K Chairman" },
+  { name: "ROXANNE A. PADILLA", position: "Brgy. Secretary" },
+  { name: "LYDIA E. AQUINO", position: "Brgy. Treasurer" }
+];
 
 export default function BrgyCertificateFormModal({ isOpen, onClose }) {
   const [uniqueId, setUniqueId] = useState("");
   const [fullName, setFullName] = useState("");
   const [age, setAge] = useState("");
+  const [birthdate, setBirthdate] = useState("");
   const [address, setAddress] = useState("");
-  const [issueDate, setIssueDate] = useState("");
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [purpose, setPurpose] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [isPreviewing, setIsPreviewing] = useState(false);
 
-  if (!isOpen) return null;
-
-  const handleFetchData = async () => {
-    if (!uniqueId) {
-      alert("Please enter a Unique ID.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/residents/${uniqueId}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setFullName(`${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`);
-        setAge(data.age || "");
-        setAddress(data.address || "Address will be fetched from household data if available.");
-      } else {
-        alert(data.message || "No matching data found for this ID.");
-        setFullName("");
-        setAge("");
-        setAddress("");
-      }
-    } catch (error) {
-      console.error("Error fetching resident data:", error);
-      alert("An error occurred while fetching data. Please try again.");
+  useEffect(() => {
+    if (isOpen) {
+      setUniqueId("");
       setFullName("");
       setAge("");
+      setBirthdate("");
       setAddress("");
+      setIssueDate(new Date().toISOString().split('T')[0]);
+      setPurpose("");
+      setSearchQuery("");
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setError("");
+    }
+  }, [isOpen]);
+
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return "";
+    const today = new Date();
+    const birthDate = new Date(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
+
+  const searchResidents = useCallback(
+    debounce(async (query) => {
+      if (!query || query.length < 2) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/residents/search?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          setSuggestions(data.data || []);
+          setShowSuggestions(true);
+        } else {
+          console.error("Error searching residents:", data.error);
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch (error) {
+        console.error("Error searching residents:", error);
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300),
+    []
+  );
+
+  const handleSearchInputChange = (e) => {
+    const query = e.target.value.toUpperCase();
+    setSearchQuery(query);
+    searchResidents(query);
+  };
+
+  const handleSelectResident = (resident) => {
+    setUniqueId(resident.uniqueId || resident.id);
+    setFullName(`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`.toUpperCase());
+    setBirthdate(resident.birthdate?.split('T')[0] || "");
+    setAge(calculateAge(resident.birthdate));
+    setAddress((resident.address || "").toUpperCase());
+    setSearchQuery("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const handlePrint = async (requestId) => {
+    try {
+      const response = await fetch(`/api/document-requests/${requestId}/generate`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate document');
+      }
+
+      // Get the document as a blob
+      const blob = await response.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Create an iframe to load and print the document
+      const printFrame = document.createElement('iframe');
+      printFrame.style.display = 'none';
+      document.body.appendChild(printFrame);
+
+      printFrame.src = url;
+
+      // Wait for the iframe to load
+      printFrame.onload = () => {
+        try {
+          // Access the iframe's window object
+          const frameWindow = printFrame.contentWindow;
+
+          // Trigger print
+          frameWindow.focus();
+          frameWindow.print();
+
+          // Cleanup after printing
+          setTimeout(() => {
+            document.body.removeChild(printFrame);
+            window.URL.revokeObjectURL(url);
+          }, 1000);
+        } catch (error) {
+          console.error('Error during print:', error);
+          
+          // Fallback: If we can't print directly, download the file
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `barangay_certificate_${requestId}.docx`;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 1000);
+        }
+      };
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      setError('Failed to generate document. Please try again.');
     }
   };
 
-  const handlePrint = () => {
-    alert("Printing Barangay Certificate...");
-    onClose();
+  const handlePreview = async () => {
+    try {
+      setIsPreviewing(true);
+      setError("");
+
+      if (!uniqueId || !fullName || !purpose) {
+        setError("Please fill in all required fields");
+        return;
+      }
+
+      // Create request data
+      const requestData = {
+        residentId: uniqueId,
+        documentType: "Barangay Certificate",
+        fullName: fullName.toUpperCase(),
+        age: age,
+        address: address.toUpperCase(),
+        purpose: purpose.toUpperCase(),
+        requestedAt: new Date().toISOString(),
+        chairman: BARANGAY_OFFICIALS.find(o => o.position.includes("Chairman"))?.name || "",
+        secretary: BARANGAY_OFFICIALS.find(o => o.position.includes("Secretary"))?.name || "",
+        treasurer: BARANGAY_OFFICIALS.find(o => o.position.includes("Treasurer"))?.name || "",
+      };
+
+      // First save the document request
+      const saveResponse = await fetch('/api/document-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const saveResult = await saveResponse.json();
+
+      if (!saveResponse.ok) {
+        throw new Error(saveResult.error || 'Failed to save request');
+      }
+
+      if (!saveResult.success || !saveResult.requestId) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Then generate the preview
+      const previewResponse = await fetch('/api/document-requests/temp-preview/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...requestData,
+          controlId: saveResult.requestId
+        }),
+      });
+
+      if (!previewResponse.ok) {
+        throw new Error('Failed to generate preview');
+      }
+
+      const blob = await previewResponse.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Open preview in new window
+      window.open(url, '_blank');
+
+      // Create notification for admin
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            recipientId: 'admin',
+            type: 'document_request',
+            documentId: saveResult.requestId,
+            documentType: 'Barangay Certificate',
+            message: `New Barangay Certificate request from ${fullName} for ${purpose}`
+          })
+        });
+      } catch (notifError) {
+        console.error('Failed to create notification:', notifError);
+      }
+
+      // Show success message
+      alert(`Document request saved!\nControl No: ${saveResult.requestId}`);
+
+      setIsPreviewing(false);
+    } catch (error) {
+      console.error('Error in preview:', error);
+      setError(error.message || 'Failed to generate preview. Please try again.');
+      setIsPreviewing(false);
+    }
   };
 
-  const handleCancel = () => {
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      setError("");
+
+      if (!uniqueId || !fullName || !purpose) {
+        setError("Please fill in all required fields");
+        return;
+      }
+
+      // Create the document request with all necessary data
+      const requestData = {
+        residentId: uniqueId,
+        documentType: "Barangay Certificate",
+        fullName: fullName.toUpperCase(),
+        age: age,
+        address: address.toUpperCase(),
+        purpose: purpose.toUpperCase(),
+        requestedAt: new Date().toISOString(),
+        chairman: BARANGAY_OFFICIALS.find(o => o.position.includes("Chairman"))?.name || "",
+        secretary: BARANGAY_OFFICIALS.find(o => o.position.includes("Secretary"))?.name || "",
+        treasurer: BARANGAY_OFFICIALS.find(o => o.position.includes("Treasurer"))?.name || "",
+      };
+
+      const response = await fetch('/api/document-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit request');
+      }
+
+      if (!result.success || !result.requestId) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Create notification for admin
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            recipientId: 'admin',
+            type: 'document_request',
+            documentId: result.requestId,
+            documentType: 'Barangay Certificate',
+            message: `New Barangay Certificate request from ${fullName} for ${purpose}`
+          })
+        });
+      } catch (notifError) {
+        console.error('Failed to create notification:', notifError);
+      }
+
+      // Show success message
+      alert(`Document request submitted successfully!\nControl No: ${result.requestId}`);
+
+      // Generate and print
+      await handlePrint(result.requestId);
+      
+      // Close the modal
+      onClose();
+
+    } catch (error) {
+      console.error('Error in form submission:', error);
+      setError(error.message || 'Failed to submit request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
@@ -79,7 +373,6 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         {/* Form Content */}
         <div className="px-8 py-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
           <div className="space-y-8">
-            
             {/* ID Lookup Section */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
               <div className="flex items-center space-x-2 mb-6">
@@ -91,27 +384,37 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
               
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="uniqueId" className="block text-sm font-medium text-gray-700 text-left">
-                    Unique ID (optional)
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    Search Resident
                   </label>
-                  <div className="flex items-center gap-3">
+                  <div className="relative">
                     <input
                       type="text"
-                      id="uniqueId"
-                      className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                      value={uniqueId}
-                      onChange={(e) => setUniqueId(e.target.value)}
-                      placeholder="Enter resident ID"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      placeholder="Search by name or ID..."
+                      value={searchQuery}
+                      onChange={handleSearchInputChange}
                     />
-                    <button
-                      onClick={handleFetchData}
-                      className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2"
-                    >
-                      <Search className="h-4 w-4" />
-                      <span>Fetch</span>
-                    </button>
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-auto">
+                        {suggestions.map((resident) => (
+                          <button
+                            key={resident.id}
+                            className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                            onClick={() => handleSelectResident(resident)}
+                          >
+                            <div className="font-medium">
+                              {resident.firstName} {resident.middleName} {resident.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {resident.uniqueId || resident.id}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-500">Enter the resident's ID to auto-fill their information</p>
+                  <p className="text-xs text-gray-500">Search for a resident by name or ID to auto-fill their information</p>
                 </div>
               </div>
             </div>
@@ -127,50 +430,41 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 text-left">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
                     <span>Full Name</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
                     type="text"
-                    id="fullName"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter full name"
-                    required
+                    readOnly
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="age" className="block text-sm font-medium text-gray-700 text-left">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
                     <span>Age</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
-                    type="number"
-                    id="age"
+                    type="text"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="Enter age"
-                    required
+                    readOnly
                   />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 text-left">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
                     <span>Address</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
                     type="text"
-                    id="address"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter complete address"
-                    required
+                    readOnly
                   />
                 </div>
               </div>
@@ -187,31 +481,29 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label htmlFor="issueDate" className="block text-sm font-medium text-gray-700 text-left">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
                     <span>Issue Date</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
                     type="date"
-                    id="issueDate"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={issueDate}
                     onChange={(e) => setIssueDate(e.target.value)}
-                    required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 text-left">
-                    Purpose
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Purpose</span>
+                    <span className="text-red-500 ml-1">*</span>
                   </label>
-                  <textarea
-                    id="purpose"
-                    rows="3"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md resize-none"
+                  <input
+                    type="text"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={purpose}
-                    onChange={(e) => setPurpose(e.target.value)}
-                    placeholder="Enter purpose of certificate..."
+                    onChange={(e) => setPurpose(e.target.value.toUpperCase())}
+                    placeholder="Enter purpose..."
                   />
                 </div>
               </div>
@@ -220,21 +512,28 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
-          <div className="flex justify-end space-x-4">
+        <div className="bg-gray-50 px-8 py-5 flex items-center justify-between">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <div className="flex space-x-3">
             <button
-              onClick={handleCancel}
-              className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+              onClick={handlePreview}
+              disabled={isSubmitting || isPreviewing}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
+              <Eye className="w-4 h-4 mr-2" />
+              {isPreviewing ? "Loading..." : "Preview"}
             </button>
             <button
-              onClick={handlePrint}
-              className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+              onClick={handleSubmit}
+              disabled={isSubmitting || isPreviewing}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
             >
-              <FileText className="h-4 w-4 mr-2" />
-              Print Certificate
+              {isSubmitting ? "Generating..." : "Generate & Print"}
             </button>
           </div>
         </div>

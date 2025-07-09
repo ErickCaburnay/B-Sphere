@@ -16,11 +16,12 @@ const LoginPage = () => {
       email: '',
       password: ''
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-  const [resetEmail, setResetEmail] = useState('');
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetMessage, setResetMessage] = useState('');
+    const [resetEmail, setResetEmail] = useState('');
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [resetMessage, setResetMessage] = useState('');
 
   useEffect(() => {
     AOS.init({
@@ -300,15 +301,30 @@ const LoginPage = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-white/90 mb-1">Password</label>
-                        <input
-                          type="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          placeholder="••••••••"
-                          className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                          required
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            placeholder="••••••••"
+                            className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+                          >
+                            <Image
+                              src={showPassword ? "/resources/eye_slash_icon_white.jpg" : "/resources/eye_icon_white.jpg"}
+                              alt={showPassword ? "Hide password" : "Show password"}
+                              width={20}
+                              height={20}
+                              className="opacity-70 hover:opacity-100 transition-opacity"
+                            />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <div className="flex items-center">

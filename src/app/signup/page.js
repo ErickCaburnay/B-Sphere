@@ -13,6 +13,8 @@ const SignupPage = () => {
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [canAcceptTerms, setCanAcceptTerms] = useState(false);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -362,30 +364,60 @@ const SignupPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-white/90 mb-1">Password *</label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        placeholder="••••••••"
-                        className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                          errors.password ? 'border-red-500' : 'border-white/30'
-                        }`}
-                      />
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          placeholder="••••••••"
+                          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                            errors.password ? 'border-red-500' : 'border-white/30'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+                        >
+                          <Image
+                            src={showPassword ? "/resources/eye_slash_icon_white.jpg" : "/resources/eye_icon_white.jpg"}
+                            alt={showPassword ? "Hide password" : "Show password"}
+                            width={20}
+                            height={20}
+                            className="opacity-70 hover:opacity-100 transition-opacity"
+                          />
+                        </button>
+                      </div>
                       {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-white/90 mb-1">Confirm Password *</label>
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        placeholder="••••••••"
-                        className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                          errors.confirmPassword ? 'border-red-500' : 'border-white/30'
-                        }`}
-                      />
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          name="confirmPassword"
+                          value={formData.confirmPassword}
+                          onChange={handleInputChange}
+                          placeholder="••••••••"
+                          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                            errors.confirmPassword ? 'border-red-500' : 'border-white/30'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+                        >
+                          <Image
+                            src={showConfirmPassword ? "/resources/eye_slash_icon_white.jpg" : "/resources/eye_icon_white.jpg"}
+                            alt={showConfirmPassword ? "Hide password" : "Show password"}
+                            width={20}
+                            height={20}
+                            className="opacity-70 hover:opacity-100 transition-opacity"
+                          />
+                        </button>
+                      </div>
                       {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
                     </div>
                   </div>
