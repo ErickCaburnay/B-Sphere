@@ -37,52 +37,33 @@ export default function ServicesPage() {
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
 
   useEffect(() => {
-    const checkSidebarState = () => {
-      if (window.innerWidth >= 768) {
-        // Look for specific text that appears in the expanded sidebar
-        const dashboardText = document.querySelector('aside span:contains("Dashboard")') || 
-                             Array.from(document.querySelectorAll('aside span')).find(el => el.textContent.includes('Dashboard'));
-        const officialsText = document.querySelector('aside span:contains("Officials")') ||
-                             Array.from(document.querySelectorAll('aside span')).find(el => el.textContent.includes('Officials'));
-        const brgyText = document.querySelector('aside h3') ||
-                        document.querySelector('aside .text-sm');
-        
-        // Check if the "Barangay San Francisco" text is visible
-        const brgyNameElement = Array.from(document.querySelectorAll('aside *')).find(el => 
-          el.textContent && el.textContent.includes('Barangay San Francisco')
-        );
-        
-        // If we can find navigation text or barangay name, sidebar is expanded
-        const isExpanded = !!(dashboardText || officialsText || brgyText || brgyNameElement);
-        
-        // Detection successful
-        
-        setIsDesktopSidebarExpanded(isExpanded);
-      } else {
-        setIsDesktopSidebarExpanded(false);
-      }
-    };
+  const checkSidebarState = () => {
+    if (window.innerWidth >= 768) {
+      const dashboardText = Array.from(document.querySelectorAll('aside span'))
+        .find(el => el.textContent.includes('Dashboard'));
 
-    // Check initially
-    setTimeout(checkSidebarState, 500);
+      const officialsText = Array.from(document.querySelectorAll('aside span'))
+        .find(el => el.textContent.includes('Officials'));
 
-    // Listen for clicks that might toggle sidebar
-    const handleClick = () => {
-      setTimeout(checkSidebarState, 300);
-    };
-    
-    document.addEventListener('click', handleClick);
-    window.addEventListener('resize', checkSidebarState);
-    
-    // Check periodically
-    const interval = setInterval(checkSidebarState, 1000);
+      const brgyText = document.querySelector('aside h3') ||
+                       document.querySelector('aside .text-sm');
 
-    return () => {
-      document.removeEventListener('click', handleClick);
-      window.removeEventListener('resize', checkSidebarState);
-      clearInterval(interval);
-    };
-  }, []);
+      const brgyNameElement = Array.from(document.querySelectorAll('aside *'))
+        .find(el => el.textContent && el.textContent.includes('Barangay San Francisco'));
+
+      const isExpanded = !!(dashboardText || officialsText || brgyText || brgyNameElement);
+
+      setIsDesktopSidebarExpanded(isExpanded);
+    } else {
+      setIsDesktopSidebarExpanded(false);
+    }
+  };
+
+  checkSidebarState();
+  window.addEventListener('resize', checkSidebarState);
+  return () => window.removeEventListener('resize', checkSidebarState);
+}, []);
+
 
   // Modal states
   const [isDocumentApplicationModalOpen, setIsDocumentApplicationModalOpen] = useState(false);
@@ -632,7 +613,7 @@ export default function ServicesPage() {
                   title="Apply"
                 >
                   <Plus className="h-4 w-4" />
-                  {!isDesktopSidebarExpanded && (
+                  {isDesktopSidebarExpanded && (
                     <span>Apply</span>
                   )}
                 </button>

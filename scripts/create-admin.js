@@ -1,115 +1,84 @@
-const { initializeApp, getApps, cert } = require('firebase-admin/app');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
-const { getAuth } = require('firebase-admin/auth');
 require('dotenv').config({ path: '.env.local' });
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 
 // Initialize Firebase Admin
-function getFirebaseAdmin() {
-  if (getApps().length === 0) {
-    try {
-      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-      
-      if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
-        throw new Error('Missing Firebase Admin configuration');
-      }
+const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-      initializeApp({
-        credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: privateKey,
-        }),
-        projectId: process.env.FIREBASE_PROJECT_ID,
-      });
-    } catch (error) {
-      console.error('Firebase Admin initialization error:', error);
-      return null;
-    }
-  }
-  
-  const app = getApps()[0];
-  return {
-    db: getFirestore(app),
-    auth: getAuth(app)
-  };
+if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+  console.error('Missing Firebase Admin configuration');
+  process.exit(1);
 }
 
-async function createAdmin() {
+const app = initializeApp({
+  credential: cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: privateKey,
+  }),
+  projectId: process.env.FIREBASE_PROJECT_ID,
+});
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+async function createAdminUser(email, password) {
   try {
-    const { db, auth } = getFirebaseAdmin();
-    if (!db || !auth) {
-      console.error('Failed to initialize Firebase Admin');
-      return;
+    console.log('Creating admin user for:', email);
+
+    // Check if user already exists in Firebase Auth
+    let userRecord;
+    try {
+      userRecord = await auth.getUserByEmail(email);
+      console.log('User already exists in Firebase Auth');
+    } catch (error) {
+      if (error.code === 'auth/user-not-found') {
+        // Create new user in Firebase Auth
+        userRecord = await auth.createUser({
+          email: email,
+          password: password,
+          emailVerified: true
+        });
+        console.log('Created new user in Firebase Auth');
+      } else {
+        throw error;
+      }
     }
 
-    // Admin details - you can modify these
-    const adminData = {
-      email: 'admin@bsphere.com',
-      password: 'admin123',
-      firstName: 'System',
-      lastName: 'Administrator'
-    };
+    // Set custom claims for admin
+    await auth.setCustomUserClaims(userRecord.uid, { admin: true });
+    console.log('Set admin custom claims');
 
-    console.log('Creating admin account...');
-
-    // Create Firebase Auth user
-    const userRecord = await auth.createUser({
-      email: adminData.email,
-      password: adminData.password,
-      displayName: `${adminData.firstName} ${adminData.lastName}`,
-      emailVerified: true,
-    });
-
-    console.log('Firebase Auth user created:', userRecord.uid);
-
-    // Create admin document in residents collection
-    const adminDoc = {
-      uniqueId: 'ADMIN-001',
-      firebaseUid: userRecord.uid,
-      firstName: adminData.firstName.toUpperCase(),
-      lastName: adminData.lastName.toUpperCase(),
-      middleName: null,
-      suffix: null,
-      email: adminData.email.toLowerCase(),
-      contactNumber: '09123456789',
-      birthdate: '1990-01-01',
-      birthplace: null,
-      address: null,
-      citizenship: 'Filipino',
-      maritalStatus: null,
-      gender: null,
-      voterStatus: null,
-      employmentStatus: null,
-      educationalAttainment: null,
-      occupation: 'System Administrator',
-      isTUPAD: false,
-      isPWD: false,
-      is4Ps: false,
-      isSoloParent: false,
+    // Update or create admin document in Firestore
+    const adminRef = db.collection('admin_accounts').doc(userRecord.uid);
+    await adminRef.set({
+      email: email,
       role: 'admin',
-      accountStatus: 'approved',
-      updateRequest: null,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    };
+      firebaseUid: userRecord.uid,
+      createdAt: new Date(),
+      status: 'active'
+    }, { merge: true });
 
-    // Save to Firestore
-    await db.collection('residents').doc('ADMIN-001').set(adminDoc);
-
-    console.log('Admin account created successfully!');
-    console.log('Email:', adminData.email);
-    console.log('Password:', adminData.password);
-    console.log('Unique ID:', 'ADMIN-001');
+    console.log('✅ Admin user created/updated successfully!');
+    console.log('📧 Email:', email);
+    console.log('🆔 Firebase UID:', userRecord.uid);
+    console.log('\nYou can now login with these credentials.');
 
   } catch (error) {
-    console.error('Error creating admin:', error);
+    console.error('Error creating admin user:', error);
+    process.exit(1);
   }
 }
 
-// Run the script
-createAdmin().then(() => {
-  process.exit(0);
-}).catch((error) => {
-  console.error('Script failed:', error);
+// Get email and password from command line arguments
+const email = process.argv[2];
+const password = process.argv[3];
+
+if (!email || !password) {
+  console.error('Please provide email and password as arguments:');
+  console.error('node scripts/create-admin.js <email> <password>');
   process.exit(1);
-}); 
+}
+
+createAdminUser(email, password); 

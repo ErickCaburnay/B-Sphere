@@ -1,8 +1,47 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import jwt from 'jsonwebtoken';
+import { adminDb } from './firebase-admin';
 
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Verifies an admin token and checks if the user has admin privileges
+ * @param {string} token - The JWT token to verify
+ * @returns {Promise<boolean>} - Returns true if token is valid and user has admin privileges
+ */
+export async function verifyToken(token) {
+  try {
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded || !decoded.email) {
+      return false;
+    }
+
+    // Check if user exists and has admin privileges
+    const legacyAdminSnapshot = await adminDb.collection('admin_accounts')
+      .where('email', '==', decoded.email)
+      .limit(1)
+      .get();
+
+    if (!legacyAdminSnapshot.empty) {
+      return true;
+    }
+
+    // Check residents collection for admin role as fallback
+    const residentSnapshot = await adminDb.collection('residents')
+      .where('email', '==', decoded.email)
+      .where('role', 'in', ['admin', 'sub-admin'])
+      .limit(1)
+      .get();
+
+    return !residentSnapshot.empty;
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return false;
+  }
 }
 
 /**

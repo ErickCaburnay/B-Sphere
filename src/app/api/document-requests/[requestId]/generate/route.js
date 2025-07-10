@@ -18,18 +18,19 @@ export async function POST(request, { params }) {
 
     const requestData = docRef.data();
 
-    // Generate the document
-    const documentBuffer = await generateDocument('barangay_certificate_template.docx', {
+    // Generate the document using the document type from the request
+    const documentBuffer = await generateDocument(requestData.documentType, {
       ...requestData,
       controlId: requestId, // Use the document ID as the control number
       requestedAt: requestData.requestedAt,
     });
 
-    // Return the document as a downloadable file
+    // Return the document as a downloadable file with the correct document type in the filename
+    const filePrefix = requestData.documentType.toLowerCase().replace(/\s+/g, '_');
     return new NextResponse(documentBuffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename=barangay_certificate_${requestId}.docx`,
+        'Content-Disposition': `attachment; filename=${filePrefix}_${requestId}.docx`,
       },
     });
   } catch (error) {

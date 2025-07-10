@@ -1,64 +1,68 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // Helper functions first
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isAuthenticated() && (
+        (
+          exists(/databases/$(database)/documents/admin_accounts/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admin_accounts/$(request.auth.uid)).data.role == 'admin'
+        ) ||
+        (
+          get(/databases/$(database)/documents/residents/$(request.auth.uid)).data.role in ['admin', 'sub-admin']
+        )
+      );
     }
 
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Users collection (replacing user_accounts for consistency)
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if true; // Allow signup
+      allow update, delete: if isAdmin() || isOwner(userId);
+    }
+    
     // Residents collection
     match /residents/{residentId} {
-      allow read: if isAdmin() || 
-        isOwner(residentId);
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin(); // Only admins should modify resident data
     }
-
-    // Document requests collection
-    match /document_requests/{requestId} {
-      allow read: if isAdmin() || 
-        isOwner(resource.data.residentId);
-      allow create: if isAdmin() || 
-        (isAuthenticated() && request.resource.data.residentId == request.auth.uid);
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    // Notifications collection
-    match /notifications/{notificationId} {
-      allow read: if isAdmin() || 
-        isOwner(resource.data.recipientId);
-      allow create: if isAdmin();
-      allow update: if isAdmin() || 
-        (isOwner(resource.data.recipientId) && 
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
-      allow delete: if isAdmin();
-    }
-
-    // Counters collection (for generating IDs)
-    match /counters/{counterId} {
-      allow read, write: if isAdmin();
-    }
-
-    // Admins collection
-    match /admins/{adminId} {
+    
+    // Admin accounts collection
+    match /admin_accounts/{adminId} {
       allow read: if isAdmin();
       allow write: if isAdmin();
     }
 
-    // Users collection
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (isAdmin() || isOwner(userId));
-      allow write: if isAdmin() || isOwner(userId);
+    // Counters collection for permit numbers
+    match /counters/{counterId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Business Permits collection rules
+    match /business_permits/{permitId} {
+      function isPermitOwner() {
+        return isAuthenticated() && resource.data.applicantId == request.auth.uid;
+      }
+
+      allow read: if isAdmin() || isPermitOwner();
+      allow create: if isAdmin(); // Only admins can create permits
+      allow update: if isAdmin(); // Only admins can update permits
+      allow delete: if isAdmin();
+    }
+
+    // Default rule for other collections
+    match /{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 } 

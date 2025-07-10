@@ -2,6 +2,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { getStorage } from 'firebase-admin/storage';
 
 // Helper function to safely get and format private key
 function getPrivateKey() {
@@ -39,7 +40,7 @@ function isBuildTime() {
 }
 
 // Function to initialize Firebase Admin
-function initializeFirebaseAdmin() {
+export function initAdmin() {
   // Completely skip initialization during build time
   if (isBuildTime()) {
     console.log('Skipping Firebase Admin initialization during build phase');
@@ -64,6 +65,7 @@ function initializeFirebaseAdmin() {
         privateKey,
       }),
       projectId,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     };
 
     // Initialize Firebase Admin (avoid multiple initialization)
@@ -82,10 +84,11 @@ function initializeFirebaseAdmin() {
 let app = null;
 let adminDbInstance = null;
 let adminAuthInstance = null;
+let adminStorageInstance = null;
 
 function getApp() {
   if (app === null) {
-    app = initializeFirebaseAdmin();
+    app = initAdmin();
   }
   return app;
 }
@@ -125,6 +128,26 @@ export const adminAuth = new Proxy({}, {
     if (adminAuthInstance && prop in adminAuthInstance) {
       const value = adminAuthInstance[prop];
       return typeof value === 'function' ? value.bind(adminAuthInstance) : value;
+    }
+    
+    return undefined;
+  }
+});
+
+export const adminStorage = new Proxy({}, {
+  get(target, prop) {
+    if (isBuildTime()) {
+      return null;
+    }
+    
+    if (adminStorageInstance === null) {
+      const appInstance = getApp();
+      adminStorageInstance = appInstance ? getStorage(appInstance) : null;
+    }
+    
+    if (adminStorageInstance && prop in adminStorageInstance) {
+      const value = adminStorageInstance[prop];
+      return typeof value === 'function' ? value.bind(adminStorageInstance) : value;
     }
     
     return undefined;

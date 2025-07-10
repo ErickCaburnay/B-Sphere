@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        exists(/databases/(default)/documents/admin_accounts/$(request.auth.uid)) ||
+        (
+          get(/databases/(default)/documents/residents/$(request.auth.uid)).data.role in ['admin', 'sub-admin']
+        )
+      );
+    }
+
+    function isOwner(permitId) {
+      return isAuthenticated() &&
+        get(/databases/(default)/documents/business_permits/$(permitId)).data.applicantId == request.auth.uid;
+    }
+
+    function isValidFileType() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('image/.*');
+    }
+
+    function isValidFileSize() {
+      return request.resource.size <= 5 * 1024 * 1024; // 5MB
+    }
+
+    // Business Permit document rules
+    match /business_permits/{permitId}/{fileName} {
+      allow read: if isAdmin() || isOwner(permitId);
+      allow create, update: if isAdmin() && 
+                      isValidFileType() &&
+                      isValidFileSize();
+      allow delete: if isAdmin();
+    }
+
+    // Default rule for other paths
+    match /{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+} 

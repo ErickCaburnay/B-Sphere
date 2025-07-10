@@ -13,18 +13,49 @@ const BARANGAY_OFFICIALS = {
 
 // Document type prefix mapping
 const DOCUMENT_PREFIXES = {
-  'barangay_certificate': 'CRT',
-  'barangay_clearance': 'CLR',
-  'barangay_indigency': 'IND',
-  'barangay_id': 'BID',
-  'business_permit': 'BBP'
+  'Barangay Certificate': 'CRT',
+  'Barangay Clearance': 'CLR',
+  'Barangay Indigency': 'IND',
+  'Barangay ID': 'BID',
+  'Business Permit': 'BBP'
 };
+
+// Control number format functions
+async function getBusinessPermitCount() {
+  const counterRef = adminDb.collection('counters').doc('Business Permit');
+  const doc = await counterRef.get();
+  return doc.exists ? doc.data().count : 0;
+}
+
+async function formatBusinessPermitControlNo() {
+  const count = await getBusinessPermitCount();
+  const year = new Date().getFullYear();
+  const sequence = count.toString().padStart(4, '0');
+  return `BBP-${year}-${sequence}`;
+}
+
+async function formatPermitNo() {
+  const count = await getBusinessPermitCount();
+  const prefix = Math.floor(count/1000).toString().padStart(4, '0');
+  const suffix = (count % 1000).toString().padStart(3, '0');
+  return `${prefix}-${suffix}`;
+}
 
 // Template name mapping
 const TEMPLATE_FILES = {
-  'barangay_certificate': 'barangay_certificate_template.docx',
-  'barangay_indigency': 'barangay_indigency_template.docx',
-  'barangay_clearance': 'barangay_clearance_template.docx'
+  'Barangay Certificate': 'barangay_certificate_template.docx',
+  'Barangay Clearance': 'barangay_clearance_template.docx',
+  'Barangay Indigency': 'barangay_indigency_template.docx',
+  'Business Permit': 'barangay_business_permit_template.docx'
+};
+
+// Control number field mapping for different document types
+const CONTROL_NUMBER_FIELDS = {
+  'Barangay Certificate': 'printCertificate',
+  'Barangay Clearance': 'printClearance',
+  'Barangay Indigency': 'printIndigency',
+  'Barangay ID': 'printId',
+  'Business Permit': 'permitNo'
 };
 
 // Function to get ordinal suffix for day
@@ -63,15 +94,28 @@ async function generateDocumentId(documentType) {
       const currentCount = counterDoc.exists ? counterDoc.data().count : 0;
       const newCount = currentCount + 1;
       
-      // Format the counter parts (0000-0000)
-      const part1 = Math.floor(newCount / 10000) + 1;
-      const part2 = newCount % 10000;
-      const formattedId = `${prefix}-${part1.toString().padStart(4, '0')}-${part2.toString().padStart(4, '0')}`;
+      // Format based on document type
+      let formattedId;
+      if (documentType === 'Business Permit') {
+        // Format: BBP-YYYY-0000
+        const year = new Date().getFullYear();
+        formattedId = `BBP-${year}-${newCount.toString().padStart(4, '0')}`;
+      } else {
+        // Format for other documents: PREFIX-0000-0000
+        const part1 = Math.floor((newCount - 1) / 10000) + 1;
+        const part2 = ((newCount - 1) % 10000) + 1;
+        formattedId = `${prefix}-${part1.toString().padStart(4, '0')}-${part2.toString().padStart(4, '0')}`;
+      }
       
       // Update the counter
-      transaction.set(counterRef, { count: newCount, lastUpdated: new Date() });
+      transaction.set(counterRef, { 
+        count: newCount,
+        lastUpdated: new Date(),
+        documentType: documentType,
+        lastGeneratedId: formattedId
+      });
       
-      return formattedId;
+      return { formattedId, count: newCount };
     });
 
     return result;
@@ -81,24 +125,28 @@ async function generateDocumentId(documentType) {
   }
 }
 
-export async function generateDocument(templateName, data) {
-  try {
-    // Map the template names to actual file names
-    const templateMapping = {
-      'barangay_certificate': 'barangay_certificate_template.docx',
-      'barangay_indigency': 'barangay_indigency_template.docx',
-      'barangay_clearance': 'barangay_clearance_template.docx'
-    };
+// Function to format permit number (separate from control number)
+function formatPermitNumber(count) {
+  // Format: 0000-000 for the actual permit number
+  const prefix = Math.floor(count/1000).toString().padStart(4, '0');
+  const suffix = (count % 1000).toString().padStart(3, '0');
+  return `${prefix}-${suffix}`;
+}
 
-    // Get the actual template file name
-    const templateFileName = templateMapping[templateName] || templateName;
+export async function generateDocument(documentType, data) {
+  try {
+    // Get the template file name
+    const templateFileName = TEMPLATE_FILES[documentType];
+    if (!templateFileName) {
+      throw new Error(`No template found for document type: ${documentType}`);
+    }
     
     // Read the template
     const templatePath = path.join(process.cwd(), 'public', 'templates', templateFileName);
-    console.log('Attempting to read template from:', templatePath); // Debug log
+    console.log('Attempting to read template from:', templatePath);
     
     const content = await fsPromises.readFile(templatePath, 'binary');
-    console.log('Successfully read template file'); // Debug log
+    console.log('Successfully read template file');
     
     // Create a PizZip instance with the template content
     const zip = new PizZip(content);
@@ -109,63 +157,95 @@ export async function generateDocument(templateName, data) {
       linebreaks: true,
     });
 
-    // Get document type from template name
-    const documentType = templateName.replace('_template.docx', '');
-    
-    // Generate unique document ID if not provided
-    const controlId = data.controlId || await generateDocumentId(documentType);
+    // Generate unique document ID and get counter if not provided
+    const { formattedId, count } = data.controlId ? 
+      { formattedId: data.controlId, count: await getBusinessPermitCount() } : 
+      await generateDocumentId(documentType);
     
     // Get formatted date components
     const dateComponents = formatDateComponents(data.requestedAt || new Date());
 
+    // Get the correct control number field for this document type
+    const controlNumberField = CONTROL_NUMBER_FIELDS[documentType];
+    if (!controlNumberField) {
+      throw new Error(`No control number field mapping for document type: ${documentType}`);
+    }
+
     // Prepare the template data
-    const templateData = {
+    let templateData = {
       ...data,
-      // Control Number and Date fields exactly as in template
-      printCertificate: controlId,
+      // Set the control number using the correct field name for this document type
+      [controlNumberField]: formattedId,
+      // Also set common field names for control numbers to ensure compatibility
+      printClearance: formattedId,
+      printCertificate: formattedId,
+      controlNo: formattedId,
+      Control_No: formattedId,
+      // Date fields
+      date: new Date(data.requestedAt || Date.now()).toLocaleDateString(),
+      Date: new Date(data.requestedAt || Date.now()).toLocaleDateString(),
       processedAt: new Date(data.requestedAt || Date.now()).toLocaleDateString(),
       // Certificate date format fields
-      day: getOrdinalSuffix(new Date(data.requestedAt || Date.now()).getDate()),
-      month: new Date(data.requestedAt || Date.now()).toLocaleString('default', { month: 'long' }),
-      year: new Date(data.requestedAt || Date.now()).getFullYear().toString(),
+      day: dateComponents.day,
+      month: dateComponents.month,
+      year: dateComponents.year,
       // Other fields
-      fullName: data.fullName?.toUpperCase() || 'undefined',
-      age: data.age || 'undefined',
-      address: data.address?.toUpperCase() || 'undefined',
-      purpose: data.purpose?.toUpperCase() || 'undefined',
+      fullName: data.fullName?.toUpperCase() || '',
+      age: data.age || '',
+      address: data.address?.toUpperCase() || '',
+      purpose: data.purpose?.toUpperCase() || '',
       // Officials
-      chairman: data.chairman?.toUpperCase() || 'undefined',
-      secretary: data.secretary?.toUpperCase() || 'undefined',
-      treasurer: data.treasurer?.toUpperCase() || 'undefined',
+      chairman: data.chairman?.toUpperCase() || BARANGAY_OFFICIALS.chairman,
+      secretary: data.secretary?.toUpperCase() || BARANGAY_OFFICIALS.secretary,
+      treasurer: data.treasurer?.toUpperCase() || BARANGAY_OFFICIALS.treasurer,
     };
 
-    console.log('Template data:', templateData); // Debug log
-
-    // If this is a preview, add a watermark
-    if (data.isPreview) {
-      templateData.watermark = 'PREVIEW';
-      templateData.watermarkStyle = 'color: gray; opacity: 0.5; font-size: 48pt; transform: rotate(-45deg); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);';
+    // Add business permit specific fields
+    if (documentType === 'Business Permit') {
+      // Format: BBP-YYYY-0000 for control number
+      const year = new Date().getFullYear();
+      const permitControlNo = `BBP-${year}-${count.toString().padStart(4, '0')}`;
+      
+      // Format: 0000-000 for permit number
+      const permitNo = formatPermitNumber(count);
+      
+      templateData = {
+        ...templateData,
+        printPermit: permitControlNo, // This is the BBP-YYYY-0000 format
+        permitNo: permitNo, // This is the 0000-000 format
+        ctcNo: data.ctcNumber || '',
+        orNo: data.orNumber || '',
+        businessName: data.businessName?.toUpperCase() || '',
+        businessType: data.businessType?.toUpperCase() || '',
+        businessAddress: data.businessAddress?.toUpperCase() || '',
+        validityPeriod: data.validityPeriod || '1 YEAR',
+        amount: '₱500.00',
+        brgyName: 'BRGY. SAN FRANCISCO',
+        // Additional fields for business permits
+        natureOfBusiness: data.businessType?.toUpperCase() || '',
+        status: 'ACTIVE',
+        validity: '1 YEAR',
+        applicantName: data.fullName?.toUpperCase() || '',
+        applicantAddress: data.address?.toUpperCase() || '',
+        // Format dates
+        issueDate: new Date(data.issueDate || Date.now()).toLocaleDateString(),
+        expiryDate: (() => {
+          const date = new Date(data.issueDate || Date.now());
+          date.setFullYear(date.getFullYear() + 1);
+          return date.toLocaleDateString();
+        })()
+      };
     }
 
-    // Set the template data
-    doc.setData(templateData);
+    // Render the document with the data
+    doc.render(templateData);
 
-    try {
-      // Render the document (replace all markers with actual data)
-      doc.render();
-      console.log('Document rendered successfully'); // Debug log
-    } catch (error) {
-      console.error('Error rendering document:', error);
-      throw error;
-    }
-
-    // Generate buffer
+    // Generate the document buffer
     const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       compression: 'DEFLATE'
     });
 
-    console.log('Document buffer generated successfully'); // Debug log
     return buffer;
   } catch (error) {
     console.error('Error generating document:', error);

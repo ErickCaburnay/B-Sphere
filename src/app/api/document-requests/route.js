@@ -1,121 +1,76 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-
-// Document type prefix mapping
-const DOCUMENT_PREFIXES = {
-  'Barangay Certificate': 'CRT',
-  'Barangay Clearance': 'CLR',
-  'Barangay Indigency': 'IND',
-  'Barangay ID': 'BID',
-  'Business Permit': 'BBP'
-};
-
-// Function to verify Firebase connection
-async function verifyFirebaseConnection() {
-  try {
-    const testRef = adminDb.collection('_test_connection').doc('test');
-    await testRef.set({ timestamp: new Date() });
-    await testRef.delete();
-    return true;
-  } catch (error) {
-    console.error('Firebase connection test failed:', error);
-    return false;
-  }
-}
-
-// Function to generate unique document ID
-async function generateControlId(documentType) {
-  const prefix = DOCUMENT_PREFIXES[documentType];
-  if (!prefix) {
-    throw new Error(`Invalid document type: ${documentType}`);
-  }
-
-  const counterRef = adminDb.collection('counters').doc(documentType);
-  
-  try {
-    const result = await adminDb.runTransaction(async (transaction) => {
-      const counterDoc = await transaction.get(counterRef);
-      let currentCount = 0;
-
-      if (counterDoc.exists) {
-        currentCount = counterDoc.data().count || 0;
-      }
-      
-      const newCount = currentCount + 1;
-      
-      // Format: PREFIX-0000-0000
-      const formattedId = `${prefix}-${String(Math.floor((newCount - 1) / 10000)).padStart(4, '0')}-${String((newCount - 1) % 10000 + 1).padStart(4, '0')}`;
-      
-      // Update the counter
-      transaction.set(counterRef, { 
-        count: newCount,
-        lastUpdated: new Date(),
-        documentType: documentType,
-        lastGeneratedId: formattedId
-      });
-      
-      return formattedId;
-    });
-
-    return result;
-  } catch (error) {
-    console.error('Error generating control ID:', error);
-    throw new Error(`Failed to generate control ID: ${error.message}`);
-  }
-}
+import { verifyToken } from '@/lib/utils';
 
 export async function POST(request) {
   try {
-    if (!adminDb) {
-      throw new Error('Firebase Admin is not initialized');
+    // Verify admin token
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const isValid = await verifyToken(token);
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const data = await request.json();
-    const { documentType, residentId, fullName, purpose } = data;
-
-    if (!documentType || !residentId || !fullName || !purpose) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // Generate control ID
-    const controlId = await generateControlId(documentType);
-
-    // Create the document request
-    const requestData = {
-      controlId,
-      documentType,
-      residentId,
-      fullName: fullName.toUpperCase(),
-      purpose: purpose.toUpperCase(),
-      status: 'pending',
-      requestedAt: new Date().toISOString(),
-      processedAt: null,
-      processedBy: null,
-      notificationSent: false,
-      attachmentUrl: null,
-      remarks: '',
-      ...data // Include any additional fields from the request
-    };
-
-    // Save to Firestore using the control ID as the document ID
-    await adminDb.collection('document_requests').doc(controlId).set(requestData);
     
-    // Verify the document was saved
-    const savedDoc = await adminDb.collection('document_requests').doc(controlId).get();
-    if (!savedDoc.exists) {
-      throw new Error('Document failed to save');
+    // Generate document ID based on type
+    let documentId;
+    try {
+      const result = await adminDb.runTransaction(async (transaction) => {
+        const counterRef = adminDb.collection('counters').doc(data.documentType);
+        const counterDoc = await transaction.get(counterRef);
+        const currentCount = counterDoc.exists ? counterDoc.data().count : 0;
+        const newCount = currentCount + 1;
+        
+        // Update counter
+        transaction.set(counterRef, { 
+          count: newCount,
+          lastUpdated: new Date(),
+          documentType: data.documentType
+        });
+
+        // Format document ID based on type
+        if (data.documentType === 'Business Permit') {
+          const year = new Date().getFullYear();
+          documentId = `BBP-${year}-${newCount.toString().padStart(4, '0')}`;
+        } else {
+          const prefix = data.documentType === 'Barangay Certificate' ? 'CRT' :
+                        data.documentType === 'Barangay Clearance' ? 'CLR' :
+                        data.documentType === 'Barangay Indigency' ? 'IND' : 'DOC';
+          documentId = `${prefix}-${newCount.toString().padStart(6, '0')}`;
+        }
+
+        return { documentId, count: newCount };
+      });
+
+      documentId = result.documentId;
+      
+      // For business permits, also generate permit number
+      if (data.documentType === 'Business Permit') {
+        data.permitNo = `${Math.floor(result.count/1000).toString().padStart(4, '0')}-${(result.count % 1000).toString().padStart(3, '0')}`;
+      }
+    } catch (error) {
+      console.error('Error generating document ID:', error);
+      throw new Error('Failed to generate document ID');
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      requestId: controlId,
-      data: requestData,
-      message: 'Document request created successfully' 
+    // Save document request
+    await adminDb.collection('document_requests').doc(documentId).set({
+      ...data,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
 
+    return NextResponse.json({ 
+      message: 'Document request created successfully',
+      requestId: documentId
+    });
   } catch (error) {
     console.error('Error creating document request:', error);
     return NextResponse.json(

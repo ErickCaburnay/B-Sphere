@@ -213,28 +213,6 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         throw new Error('Invalid response from server');
       }
 
-      // Then generate the preview
-      const previewResponse = await fetch('/api/document-requests/temp-preview/preview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...requestData,
-          controlId: saveResult.requestId
-        }),
-      });
-
-      if (!previewResponse.ok) {
-        throw new Error('Failed to generate preview');
-      }
-
-      const blob = await previewResponse.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      // Open preview in new window
-      window.open(url, '_blank');
-
       // Create notification for admin
       try {
         await fetch('/api/notifications', {
@@ -254,13 +232,40 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         console.error('Failed to create notification:', notifError);
       }
 
-      // Show success message
-      alert(`Document request saved!\nControl No: ${saveResult.requestId}`);
+      // Generate and print the document
+      const printResponse = await fetch(`/api/document-requests/${saveResult.requestId}/generate`, {
+        method: 'POST',
+      });
 
-      setIsPreviewing(false);
+      if (!printResponse.ok) {
+        throw new Error('Failed to generate document');
+      }
+
+      // Get the document as a blob
+      const blob = await printResponse.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Download the file directly
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `barangay_certificate_${saveResult.requestId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      // Show success message and close modal
+      alert(`Document request processed successfully!\nControl No: ${saveResult.requestId}`);
+      onClose();
+
     } catch (error) {
-      console.error('Error in preview:', error);
-      setError(error.message || 'Failed to generate preview. Please try again.');
+      console.error('Error processing document:', error);
+      setError(error.message || 'Failed to process document. Please try again.');
+    } finally {
       setIsPreviewing(false);
     }
   };
@@ -512,28 +517,31 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-gray-50 px-8 py-5 flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800"
-          >
-            Cancel
-          </button>
+        <div className="bg-gray-50 px-8 py-5 flex items-center justify-end">
           <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              className="flex items-center px-6 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Cancel
+            </button>
             <button
               onClick={handlePreview}
               disabled={isSubmitting || isPreviewing}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="flex items-center px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
             >
-              <Eye className="w-4 h-4 mr-2" />
-              {isPreviewing ? "Loading..." : "Preview"}
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting || isPreviewing}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-            >
-              {isSubmitting ? "Generating..." : "Generate & Print"}
+              {isPreviewing ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Print
+                </>
+              )}
             </button>
           </div>
         </div>

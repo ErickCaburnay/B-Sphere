@@ -39,7 +39,7 @@ export function DocumentIssuanceReports() {
 
   const documentsByType = [
     { name: 'Barangay Clearance', value: documentSummary.barangayClearance },
-    { name: 'Certificate of Indigency', value: documentSummary.indigency },
+    { name: 'Barangay Indigency', value: documentSummary.indigency },
     { name: 'Certificate of Residency', value: documentSummary.residency },
   ];
 
@@ -51,7 +51,7 @@ export function DocumentIssuanceReports() {
 
   const recentDocuments = [
     { id: 'DOC001', type: 'Barangay Clearance', resident: 'Juan Dela Cruz', date: '2025-05-20', status: 'Issued' },
-    { id: 'DOC002', type: 'Certificate of Indigency', resident: 'Maria Clara', date: '2025-05-19', status: 'Pending' },
+    { id: 'DOC002', type: 'Barangay Indigency', resident: 'Maria Clara', date: '2025-05-19', status: 'Pending' },
     { id: 'DOC003', type: 'Certificate of Residency', resident: 'Crisostomo Ibarra', date: '2025-05-18', status: 'Issued' },
     { id: 'DOC004', type: 'Barangay Clearance', resident: 'Sisa Torres', date: '2025-05-17', status: 'Rejected' },
     { id: 'DOC005', type: 'Certificate of Residency', resident: 'Basilio Santos', date: '2025-05-16', status: 'Issued' },
@@ -74,7 +74,7 @@ export function DocumentIssuanceReports() {
           trend={3.1}
         />
         <ReportCard
-          title="Certificates of Indigency"
+          title="Barangay Indigency"
           value={documentSummary.indigency}
           icon={ClipboardList}
           trend={6.5}
@@ -110,7 +110,7 @@ export function DocumentIssuanceReports() {
           xAxisKey="month"
           series={[
             { key: 'clearance', name: 'Barangay Clearance' },
-            { key: 'indigency', name: 'Certificate of Indigency' },
+            { key: 'indigency', name: 'Barangay Indigency' },
             { key: 'residency', name: 'Certificate of Residency' },
           ]}
         />

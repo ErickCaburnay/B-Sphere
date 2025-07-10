@@ -10,7 +10,7 @@ import Link from "next/link";
 const services = [
   { title: "Barangay ID", icon: IdCard, gradient: "from-blue-500 to-blue-700" },
   { title: "Barangay Clearance", icon: FileText, gradient: "from-green-500 to-green-700" },
-  { title: "Certificate of Indigency", icon: ScrollText, gradient: "from-purple-500 to-purple-700" },
+  { title: "Barangay Indigency", icon: ScrollText, gradient: "from-purple-500 to-purple-700" },
   { title: "Certificate of Residency", icon: User, gradient: "from-amber-500 to-amber-700" },
   { title: "Business Clearance", icon: ClipboardCheck, gradient: "from-cyan-500 to-cyan-700" },
   { title: "Barangay Certification", icon: Stamp, gradient: "from-red-500 to-red-700" },

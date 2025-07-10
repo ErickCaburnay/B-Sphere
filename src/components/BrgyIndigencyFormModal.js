@@ -1,55 +1,225 @@
 "use client";
 
-import { useState } from "react";
-import { X, Search, FileText, User, Calendar, MapPin, Heart } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, Search, FileText, User, Calendar, MapPin } from "lucide-react";
+import { debounce } from 'lodash';
+// Import the CSS module
+import styles from './BrgyCertificateFormModal.module.css';
+
+const BARANGAY_OFFICIALS = {
+  chairman: "Hon. CARTER P. MANZANO",
+  secretary: "ROXANNE A. PADILLA",
+  treasurer: "LYDIA E. AQUINO"
+};
 
 export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
   const [uniqueId, setUniqueId] = useState("");
   const [fullName, setFullName] = useState("");
   const [age, setAge] = useState("");
+  const [birthdate, setBirthdate] = useState("");
   const [address, setAddress] = useState("");
-  const [issueDate, setIssueDate] = useState("");
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [purpose, setPurpose] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  if (!isOpen) return null;
-
-  const handleFetchData = async () => {
-    if (!uniqueId) {
-      alert("Please enter a Unique ID.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/residents/${uniqueId}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setFullName(`${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`);
-        setAge(data.age || "");
-        setAddress(data.address || "Address will be fetched from household data if available.");
-      } else {
-        alert(data.message || "No matching data found for this ID.");
-        setFullName("");
-        setAge("");
-        setAddress("");
-      }
-    } catch (error) {
-      console.error("Error fetching resident data:", error);
-      alert("An error occurred while fetching data. Please try again.");
+  useEffect(() => {
+    if (isOpen) {
+      setUniqueId("");
       setFullName("");
       setAge("");
+      setBirthdate("");
       setAddress("");
+      setIssueDate(new Date().toISOString().split('T')[0]);
+      setPurpose("");
+      setSearchQuery("");
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setError("");
+    }
+  }, [isOpen]);
+
+  // Add useEffect for ESC key handler
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape') {
+        setSearchQuery('');
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, []);
+
+  // Add clear search function
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return "";
+    const today = new Date();
+    const birthDate = new Date(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
+
+  const searchResidents = useCallback(
+    debounce(async (query) => {
+      if (!query || query.length < 2) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/residents/search?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          setSuggestions(data.data || []);
+          setShowSuggestions(true);
+        } else {
+          console.error("Error searching residents:", data.error);
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch (error) {
+        console.error("Error searching residents:", error);
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300),
+    []
+  );
+
+  const handleSearchInputChange = (e) => {
+    const query = e.target.value.toUpperCase();
+    setSearchQuery(query);
+    searchResidents(query);
+  };
+
+  const handleSelectResident = (resident) => {
+    setUniqueId(resident.uniqueId || resident.id);
+    setFullName(`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`.toUpperCase());
+    setBirthdate(resident.birthdate?.split('T')[0] || "");
+    setAge(calculateAge(resident.birthdate));
+    setAddress((resident.address || "").toUpperCase());
+    setSearchQuery("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const handlePrint = async () => {
+    try {
+      setIsSubmitting(true);
+      setError("");
+
+      if (!uniqueId || !fullName || !purpose) {
+        setError("Please fill in all required fields");
+        return;
+      }
+
+      // Create request data
+      const requestData = {
+        residentId: uniqueId,
+        documentType: "Barangay Indigency",
+        fullName: fullName.toUpperCase(),
+        age: age,
+        address: address.toUpperCase(),
+        purpose: purpose.toUpperCase(),
+        requestedAt: new Date().toISOString(),
+        chairman: BARANGAY_OFFICIALS.chairman,
+        secretary: BARANGAY_OFFICIALS.secretary,
+        treasurer: BARANGAY_OFFICIALS.treasurer,
+      };
+
+      // First save the document request
+      const saveResponse = await fetch('/api/document-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const saveResult = await saveResponse.json();
+
+      if (!saveResponse.ok) {
+        throw new Error(saveResult.error || 'Failed to save request');
+      }
+
+      // Generate the document
+      const printResponse = await fetch(`/api/document-requests/${saveResult.requestId}/generate`, {
+        method: 'POST',
+      });
+
+      if (!printResponse.ok) {
+        throw new Error('Failed to generate document');
+      }
+
+      // Get the document as a blob
+      const blob = await printResponse.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `barangay_indigency_${saveResult.requestId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+
+      // Create notification for admin
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            recipientId: 'admin',
+            type: 'document_request',
+            documentId: saveResult.requestId,
+            documentType: 'Barangay Indigency',
+            message: `New Barangay Indigency request from ${fullName} for ${purpose}`
+          })
+        });
+      } catch (notifError) {
+        console.error('Failed to create notification:', notifError);
+      }
+
+      // Close the modal
+      onClose();
+    } catch (error) {
+      console.error('Error handling print:', error);
+      setError(error.message || 'An error occurred while processing your request');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handlePrint = () => {
-    alert("Printing Barangay Indigency Certificate...");
-    onClose();
-  };
-
-  const handleCancel = () => {
-    onClose();
-  };
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
@@ -60,11 +230,11 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
           <div className="relative flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                <Heart className="h-6 w-6 text-white" />
+                <FileText className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white">Barangay Indigency</h2>
-                <p className="text-green-100 text-sm">Certificate of indigency for assistance</p>
+                <p className="text-green-100 text-sm">Official indigency application form</p>
               </div>
             </div>
             <button
@@ -79,39 +249,51 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
         {/* Form Content */}
         <div className="px-8 py-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
           <div className="space-y-8">
-            
-            {/* ID Lookup Section */}
+            {/* Search Section */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
               <div className="flex items-center space-x-2 mb-6">
                 <div className="bg-green-100 rounded-full p-2">
                   <Search className="h-5 w-5 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800">Resident Lookup</h3>
+                <h3 className="text-lg font-semibold text-gray-800">Resident Search</h3>
               </div>
               
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="uniqueId" className="block text-sm font-medium text-gray-700 text-left">
-                    Unique ID (optional)
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      id="uniqueId"
-                      className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                      value={uniqueId}
-                      onChange={(e) => setUniqueId(e.target.value)}
-                      placeholder="Enter resident ID"
-                    />
-                    <button
-                      onClick={handleFetchData}
-                      className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-2"
-                    >
-                      <Search className="h-4 w-4" />
-                      <span>Fetch</span>
-                    </button>
+                {/* Search Bar */}
+                <div className="relative">
+                  <div className="mb-4">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <Search className="w-4 h-4" /> Resident Search
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={handleSearchInputChange}
+                        placeholder="Search by Name or ID"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      />
+                      {/* Suggestions Dropdown */}
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-auto">
+                          {suggestions.map((resident) => (
+                            <div
+                              key={resident.id}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => handleSelectResident(resident)}
+                            >
+                              <div className="text-gray-900">
+                                {resident.firstName} {resident.middleName} {resident.lastName}
+                              </div>
+                              <div className="text-gray-500 text-sm">
+                                {resident.uniqueId || resident.id}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500">Enter the resident's ID to auto-fill their information</p>
                 </div>
               </div>
             </div>
@@ -124,134 +306,115 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800">Personal Information</h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 text-left">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
                     <span>Full Name</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
                     type="text"
-                    id="fullName"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter full name"
-                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    readOnly
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="age" className="block text-sm font-medium text-gray-700 text-left">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
                     <span>Age</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
-                    type="number"
-                    id="age"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    type="text"
                     value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="Enter age"
-                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    readOnly
                   />
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Address</span>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Birthdate</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
-                    type="text"
-                    id="address"
+                    type="date"
+                    value={birthdate}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter complete address"
-                    required
+                    readOnly
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Indigency Details Section */}
-            <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-6 border border-gray-100">
-              <div className="flex items-center space-x-2 mb-6">
-                <div className="bg-teal-100 rounded-full p-2">
-                  <Calendar className="h-5 w-5 text-teal-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">Indigency Details</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label htmlFor="issueDate" className="block text-sm font-medium text-gray-700 text-left">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
                     <span>Issue Date</span>
                     <span className="text-red-500 ml-1">*</span>
                   </label>
                   <input
                     type="date"
-                    id="issueDate"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={issueDate}
                     onChange={(e) => setIssueDate(e.target.value)}
-                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 text-left">
-                    Purpose
+                <div className="space-y-2 md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Address</span>
+                    <span className="text-red-500 ml-1">*</span>
                   </label>
-                  <textarea
-                    id="purpose"
-                    rows="3"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md resize-none"
-                    value={purpose}
-                    onChange={(e) => setPurpose(e.target.value)}
-                    placeholder="Enter purpose of indigency certificate..."
+                  <input
+                    type="text"
+                    value={address}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    readOnly
                   />
                 </div>
-              </div>
-              
-              {/* Information Note */}
-              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                <div className="flex items-start space-x-2">
-                  <div className="bg-yellow-100 rounded-full p-1 mt-0.5">
-                    <svg className="h-4 w-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-yellow-800">Important Note</h4>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      This certificate is issued to certify that the above-named person belongs to the indigent family of this barangay and is in need of financial assistance.
-                    </p>
-                  </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 text-left">
+                    <span>Purpose</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value.toUpperCase())}
+                    placeholder="Enter purpose"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                  />
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100">
+        {/* Error Message */}
+        {error && (
+          <div className="px-8 py-2">
+            <div className="bg-red-50 text-red-500 px-4 py-2 rounded-lg text-sm">
+              {error}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="px-8 py-6 bg-gray-50/80 backdrop-blur-sm border-t border-gray-100">
           <div className="flex justify-end space-x-4">
             <button
-              onClick={handleCancel}
-              className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+              onClick={onClose}
+              className="px-6 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-all duration-200"
             >
-              <X className="h-4 w-4 mr-2" />
               Cancel
             </button>
             <button
               onClick={handlePrint}
-              className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+              disabled={isSubmitting}
+              className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all duration-200 disabled:opacity-50"
             >
-              <Heart className="h-4 w-4 mr-2" />
-              Print Certificate
+              {isSubmitting ? 'Processing...' : 'Print'}
             </button>
           </div>
         </div>

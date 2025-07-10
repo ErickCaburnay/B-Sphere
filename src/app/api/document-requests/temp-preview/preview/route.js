@@ -1,30 +1,49 @@
 import { NextResponse } from 'next/server';
 import { generateDocument } from '@/lib/document-generator';
+import { verifyToken } from '@/lib/utils';
 
 export async function POST(request) {
   try {
-    const data = await request.json();
-    console.log('Received preview request with data:', data); // Debug log
-
-    // Use the actual control ID from the saved document
-    if (!data.controlId) {
-      throw new Error('Control ID is required for preview');
+    // Verify admin token
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Generate the document with preview watermark
-    const documentBuffer = await generateDocument('barangay_certificate_template.docx', {
+    const token = authHeader.split(' ')[1];
+    const isValid = await verifyToken(token);
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { documentType, data } = await request.json();
+    console.log('Received preview request:', { documentType, data }); // Debug log
+
+    if (!documentType) {
+      throw new Error('Document type is required');
+    }
+
+    // Generate the document
+    const documentBuffer = await generateDocument(documentType, {
       ...data,
       isPreview: true,
       requestedAt: new Date().toISOString(),
     });
 
+    if (!documentBuffer || !(documentBuffer instanceof Buffer)) {
+      throw new Error('Invalid document buffer generated');
+    }
+
     console.log('Generated preview document buffer size:', documentBuffer.length); // Debug log
 
-    // Return the document as a downloadable file
+    // Return the document as a downloadable file with proper content type
     return new NextResponse(documentBuffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `inline; filename=preview_barangay_certificate.docx`,
+        'Content-Disposition': `attachment; filename=preview_${documentType.toLowerCase().replace(/\s+/g, '_')}.docx`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       },
     });
   } catch (error) {

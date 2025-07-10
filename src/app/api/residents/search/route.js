@@ -59,12 +59,15 @@ export async function GET(request) {
             resident.lastName.toLowerCase().includes(lastName.toLowerCase());
         }
 
-        // Check birthdate
+        // Check birthdate/birthDate
         if (birthdate) {
-          const residentBirthdate = resident.birthdate?.toDate?.()?.toISOString()?.split('T')[0] || 
+          const residentBirthDate = resident.birthDate?.toDate?.()?.toISOString()?.split('T')[0] || 
+                                   resident.birthdate?.toDate?.()?.toISOString()?.split('T')[0] || 
+                                   resident.birthDate?.split('T')[0] || 
                                    resident.birthdate?.split('T')[0] || 
+                                   resident.birthDate || 
                                    resident.birthdate;
-          matches = matches && residentBirthdate === birthdate;
+          matches = matches && residentBirthDate === birthdate;
         }
 
         return matches;
@@ -92,10 +95,19 @@ export async function GET(request) {
       residents = allResidents.slice(0, 50); // Limit to first 50 for performance
     }
 
-    const formattedResidents = residents.map(resident => ({
-      ...resident,
-      birthdate: resident.birthdate?.toDate?.()?.toISOString() || resident.birthdate,
-    }));
+    const formattedResidents = residents.map(resident => {
+      // Handle both birthdate and birthDate fields
+      const birthDate = resident.birthDate?.toDate?.()?.toISOString() || 
+                       resident.birthdate?.toDate?.()?.toISOString() || 
+                       resident.birthDate || 
+                       resident.birthdate;
+
+      return {
+        ...resident,
+        birthDate: birthDate, // Always return as birthDate
+        birthdate: undefined // Remove old birthdate field
+      };
+    });
 
     return NextResponse.json({ 
       data: formattedResidents,

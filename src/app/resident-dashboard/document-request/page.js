@@ -59,7 +59,7 @@ export default function DocumentRequest() {
       },
       {
         id: 3,
-        documentType: 'Certificate of Indigency',
+        documentType: 'Barangay Indigency',
         purpose: 'Scholarship Application',
         status: 'rejected',
         requestDate: '2024-01-08',
@@ -86,7 +86,7 @@ export default function DocumentRequest() {
       color: 'from-green-500 to-green-600'
     },
     {
-      name: 'Certificate of Indigency',
+      name: 'Barangay Indigency',
       description: 'For scholarship applications and financial assistance',
       fee: 'Free',
       processingTime: '3-5 business days',
