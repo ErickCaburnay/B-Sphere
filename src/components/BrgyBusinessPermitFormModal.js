@@ -433,6 +433,8 @@ export default function BrgyBusinessPermitFormModal({ isOpen, onClose }) {
         validityPeriod: validityPeriod || '1 YEAR',
         requestedAt: new Date().toISOString(),
         status: 'PENDING',
+        ctcNumber: ctcNumber,
+        orNumber: orNumber,
         attachments: uploadedFiles.map(file => ({
           fileName: file.fileName,
           fileURL: file.downloadURL,

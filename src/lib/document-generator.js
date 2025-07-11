@@ -202,19 +202,18 @@ export async function generateDocument(documentType, data) {
 
     // Add business permit specific fields
     if (documentType === 'Business Permit') {
-      // Format: BBP-YYYY-0000 for control number
-      const year = new Date().getFullYear();
-      const permitControlNo = `BBP-${year}-${count.toString().padStart(4, '0')}`;
+      // Use the existing control number from the document data
+      const permitControlNo = data.id || data.transactionNo || formattedId;
       
       // Format: 0000-000 for permit number
-      const permitNo = formatPermitNumber(count);
+      const permitNo = data.permitNo || formatPermitNumber(count);
       
       templateData = {
         ...templateData,
-        printPermit: permitControlNo, // This is the BBP-YYYY-0000 format
-        permitNo: permitNo, // This is the 0000-000 format
-        ctcNo: data.ctcNumber || '',
-        orNo: data.orNumber || '',
+        printPermit: permitControlNo, // Use the document's actual control number
+        permitNo: permitNo, // Use the document's actual permit number
+        ctcNo: data.ctcNumber || '', // Use the provided CTC number
+        orNo: data.orNumber || '', // Use the provided OR number
         businessName: data.businessName?.toUpperCase() || '',
         businessType: data.businessType?.toUpperCase() || '',
         businessAddress: data.businessAddress?.toUpperCase() || '',

@@ -16,11 +16,6 @@ service firebase.storage {
       );
     }
 
-    function isOwner(permitId) {
-      return isAuthenticated() &&
-        get(/databases/(default)/documents/business_permits/$(permitId)).data.applicantId == request.auth.uid;
-    }
-
     function isValidFileType() {
       return request.resource.contentType.matches('application/pdf') ||
              request.resource.contentType.matches('image/.*');
@@ -31,11 +26,11 @@ service firebase.storage {
     }
 
     // Business Permit document rules
-    match /business_permits/{permitId}/{fileName} {
-      allow read: if isAdmin() || isOwner(permitId);
-      allow create, update: if isAdmin() && 
-                      isValidFileType() &&
-                      isValidFileSize();
+    match /business_permits/{uniqueId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && 
+                           isValidFileType() &&
+                           isValidFileSize();
       allow delete: if isAdmin();
     }
 

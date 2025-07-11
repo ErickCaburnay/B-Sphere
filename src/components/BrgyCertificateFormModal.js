@@ -55,6 +55,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
     if (!birthdate) return "";
     const today = new Date();
     const birthDate = new Date(birthdate);
+    if (isNaN(birthDate.getTime())) return ""; // Return empty string if invalid date
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -101,83 +102,42 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
   const handleSelectResident = (resident) => {
     setUniqueId(resident.uniqueId || resident.id);
     setFullName(`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`.toUpperCase());
-    setBirthdate(resident.birthdate?.split('T')[0] || "");
-    setAge(calculateAge(resident.birthdate));
+    
+    // Handle different birthdate formats
+    let birthdateValue = "";
+    if (resident.birthDate) {
+      // If it's a Timestamp or Date object
+      if (resident.birthDate.toDate) {
+        birthdateValue = resident.birthDate.toDate().toISOString().split('T')[0];
+      } 
+      // If it's already an ISO string
+      else if (typeof resident.birthDate === 'string') {
+        birthdateValue = resident.birthDate.split('T')[0];
+      }
+    }
+    
+    setBirthdate(birthdateValue);
+    setAge(calculateAge(birthdateValue));
     setAddress((resident.address || "").toUpperCase());
     setSearchQuery("");
     setSuggestions([]);
     setShowSuggestions(false);
   };
 
-  const handlePrint = async (requestId) => {
-    try {
-      const response = await fetch(`/api/document-requests/${requestId}/generate`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate document');
-      }
-
-      // Get the document as a blob
-      const blob = await response.blob();
-      
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(blob);
-
-      // Create an iframe to load and print the document
-      const printFrame = document.createElement('iframe');
-      printFrame.style.display = 'none';
-      document.body.appendChild(printFrame);
-
-      printFrame.src = url;
-
-      // Wait for the iframe to load
-      printFrame.onload = () => {
-        try {
-          // Access the iframe's window object
-          const frameWindow = printFrame.contentWindow;
-
-          // Trigger print
-          frameWindow.focus();
-          frameWindow.print();
-
-          // Cleanup after printing
-          setTimeout(() => {
-            document.body.removeChild(printFrame);
-            window.URL.revokeObjectURL(url);
-          }, 1000);
-        } catch (error) {
-          console.error('Error during print:', error);
-          
-          // Fallback: If we can't print directly, download the file
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `barangay_certificate_${requestId}.docx`;
-          document.body.appendChild(a);
-          a.click();
-          
-          // Cleanup
-          setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-          }, 1000);
-        }
-      };
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      setError('Failed to generate document. Please try again.');
+  const handleAgeChange = (e) => {
+    const value = e.target.value;
+    // Only allow numbers and empty string
+    if (value === '' || /^\d+$/.test(value)) {
+      setAge(value);
     }
   };
 
-  const handlePreview = async () => {
+  const handlePrint = async (requestId) => {
     try {
-      setIsPreviewing(true);
-      setError("");
-
-      if (!uniqueId || !fullName || !purpose) {
-        setError("Please fill in all required fields");
-        return;
+      // Get the auth token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
       }
 
       // Create request data
@@ -199,6 +159,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestData),
       });
@@ -235,10 +196,123 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
       // Generate and print the document
       const printResponse = await fetch(`/api/document-requests/${saveResult.requestId}/generate`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!printResponse.ok) {
         throw new Error('Failed to generate document');
+      }
+
+      // Get the document as a blob
+      const blob = await printResponse.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Download the file directly
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `barangay_certificate_${saveResult.requestId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      // Show success message and close modal
+      alert(`Document request processed successfully!\nControl No: ${saveResult.requestId}`);
+      onClose();
+
+    } catch (error) {
+      console.error('Error handling print:', error);
+      setError(error.message || 'An error occurred while processing your request');
+    }
+  };
+
+  const handlePreview = async () => {
+    try {
+      setIsPreviewing(true);
+      setError("");
+
+      if (!uniqueId || !fullName || !purpose) {
+        setError("Please fill in all required fields");
+        return;
+      }
+
+      // Get the auth token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Create request data
+      const requestData = {
+        residentId: uniqueId,
+        documentType: "Barangay Certificate",
+        fullName: fullName.toUpperCase(),
+        age: age,
+        address: address.toUpperCase(),
+        purpose: purpose.toUpperCase(),
+        requestedAt: new Date().toISOString(),
+        chairman: BARANGAY_OFFICIALS.find(o => o.position.includes("Chairman"))?.name || "",
+        secretary: BARANGAY_OFFICIALS.find(o => o.position.includes("Secretary"))?.name || "",
+        treasurer: BARANGAY_OFFICIALS.find(o => o.position.includes("Treasurer"))?.name || "",
+      };
+
+      // First save the document request
+      const saveResponse = await fetch('/api/document-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const saveResult = await saveResponse.json();
+
+      if (!saveResponse.ok) {
+        throw new Error(saveResult.error || 'Failed to save request');
+      }
+
+      if (!saveResult.requestId) {
+        throw new Error('No request ID received from server');
+      }
+
+      // Create notification for admin
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            recipientId: 'admin',
+            type: 'document_request',
+            documentId: saveResult.requestId,
+            documentType: 'Barangay Certificate',
+            message: `New Barangay Certificate request from ${fullName} for ${purpose}`
+          })
+        });
+      } catch (notifError) {
+        console.error('Failed to create notification:', notifError);
+      }
+
+      // Generate and print the document
+      const printResponse = await fetch(`/api/document-requests/${saveResult.requestId}/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!printResponse.ok) {
+        const errorData = await printResponse.json();
+        throw new Error(errorData.error || 'Failed to generate document');
       }
 
       // Get the document as a blob
@@ -280,6 +354,12 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         return;
       }
 
+      // Get the auth token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       // Create the document request with all necessary data
       const requestData = {
         residentId: uniqueId,
@@ -298,6 +378,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestData),
       });
@@ -378,137 +459,139 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
         {/* Form Content */}
         <div className="px-8 py-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
           <div className="space-y-8">
-            {/* ID Lookup Section */}
+            {/* Search Section */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
               <div className="flex items-center space-x-2 mb-6">
                 <div className="bg-green-100 rounded-full p-2">
                   <Search className="h-5 w-5 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800">Resident Lookup</h3>
+                <h3 className="text-lg font-semibold text-gray-800">Resident Search</h3>
               </div>
               
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    Search Resident
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                      placeholder="Search by name or ID..."
-                      value={searchQuery}
-                      onChange={handleSearchInputChange}
-                    />
-                    {showSuggestions && suggestions.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-auto">
-                        {suggestions.map((resident) => (
-                          <button
-                            key={resident.id}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
-                            onClick={() => handleSelectResident(resident)}
-                          >
-                            <div className="font-medium">
-                              {resident.firstName} {resident.middleName} {resident.lastName}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {resident.uniqueId || resident.id}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                {/* Search Bar */}
+                <div className="relative">
+                  <div className="mb-4">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <Search className="w-4 h-4" /> Resident Search
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={handleSearchInputChange}
+                        placeholder="Search by Name or ID"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500">Search for a resident by name or ID to auto-fill their information</p>
+
+                  {/* Suggestions Dropdown */}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200">
+                      {suggestions.map((resident, index) => (
+                        <button
+                          key={resident.id}
+                          onClick={() => handleSelectResident(resident)}
+                          className="w-full px-4 py-2 text-left hover:bg-green-50 focus:bg-green-50 focus:outline-none first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          <span className="font-medium">{resident.firstName} {resident.middleName} {resident.lastName}</span>
+                          <span className="text-gray-500 text-sm ml-2">({resident.uniqueId || resident.id})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Personal Information Section */}
-            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-gray-100">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
               <div className="flex items-center space-x-2 mb-6">
-                <div className="bg-emerald-100 rounded-full p-2">
-                  <User className="h-5 w-5 text-emerald-600" />
+                <div className="bg-green-100 rounded-full p-2">
+                  <User className="h-5 w-5 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800">Personal Information</h3>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Full Name</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    value={fullName}
-                    readOnly
-                  />
+
+              <div className="space-y-4">
+                {/* Full Name and Age Row */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <User className="w-4 h-4" /> Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      readOnly
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <User className="w-4 h-4" /> Age
+                    </label>
+                    <input
+                      type="text"
+                      value={age}
+                      onChange={handleAgeChange}
+                      placeholder="Enter Age"
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Age</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    value={age}
-                    readOnly
-                  />
+                {/* Birthdate and Issue Date Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <Calendar className="w-4 h-4" /> Birthdate
+                    </label>
+                    <input
+                      type="date"
+                      value={birthdate}
+                      readOnly
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <Calendar className="w-4 h-4" /> Issue Date
+                    </label>
+                    <input
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Address</span>
-                    <span className="text-red-500 ml-1">*</span>
+                {/* Address Field */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                    <MapPin className="w-4 h-4" /> Address
                   </label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={address}
                     readOnly
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Certificate Details Section */}
-            <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl p-6 border border-gray-100">
-              <div className="flex items-center space-x-2 mb-6">
-                <div className="bg-teal-100 rounded-full p-2">
-                  <Calendar className="h-5 w-5 text-teal-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">Certificate Details</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Issue Date</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    value={issueDate}
-                    onChange={(e) => setIssueDate(e.target.value)}
+                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Purpose</span>
-                    <span className="text-red-500 ml-1">*</span>
+                {/* Purpose Field */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                    <FileText className="w-4 h-4" /> Purpose
                   </label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value.toUpperCase())}
-                    placeholder="Enter purpose..."
+                    placeholder="Enter Purpose"
+                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
               </div>

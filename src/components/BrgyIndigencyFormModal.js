@@ -69,6 +69,7 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
     if (!birthdate) return "";
     const today = new Date();
     const birthDate = new Date(birthdate);
+    if (isNaN(birthDate.getTime())) return ""; // Return empty string if invalid date
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -115,12 +116,34 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
   const handleSelectResident = (resident) => {
     setUniqueId(resident.uniqueId || resident.id);
     setFullName(`${resident.firstName} ${resident.middleName ? resident.middleName + ' ' : ''}${resident.lastName}`.toUpperCase());
-    setBirthdate(resident.birthdate?.split('T')[0] || "");
-    setAge(calculateAge(resident.birthdate));
+    
+    // Handle different birthdate formats
+    let birthdateValue = "";
+    if (resident.birthDate) {
+      // If it's a Timestamp or Date object
+      if (resident.birthDate.toDate) {
+        birthdateValue = resident.birthDate.toDate().toISOString().split('T')[0];
+      } 
+      // If it's already an ISO string
+      else if (typeof resident.birthDate === 'string') {
+        birthdateValue = resident.birthDate.split('T')[0];
+      }
+    }
+    
+    setBirthdate(birthdateValue);
+    setAge(calculateAge(birthdateValue));
     setAddress((resident.address || "").toUpperCase());
     setSearchQuery("");
     setSuggestions([]);
     setShowSuggestions(false);
+  };
+
+  const handleAgeChange = (e) => {
+    const value = e.target.value;
+    // Only allow numbers and empty string
+    if (value === '' || /^\d+$/.test(value)) {
+      setAge(value);
+    }
   };
 
   const handlePrint = async () => {
@@ -133,6 +156,12 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
         return;
       }
 
+      // Get the auth token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       // Create request data
       const requestData = {
         residentId: uniqueId,
@@ -142,9 +171,9 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
         address: address.toUpperCase(),
         purpose: purpose.toUpperCase(),
         requestedAt: new Date().toISOString(),
-        chairman: BARANGAY_OFFICIALS.chairman,
-        secretary: BARANGAY_OFFICIALS.secretary,
-        treasurer: BARANGAY_OFFICIALS.treasurer,
+        chairman: BARANGAY_OFFICIALS.chairman || "",
+        secretary: BARANGAY_OFFICIALS.secretary || "",
+        treasurer: BARANGAY_OFFICIALS.treasurer || "",
       };
 
       // First save the document request
@@ -152,6 +181,7 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestData),
       });
@@ -162,13 +192,21 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
         throw new Error(saveResult.error || 'Failed to save request');
       }
 
-      // Generate the document
+      if (!saveResult.requestId) {
+        throw new Error('No request ID received from server');
+      }
+
+      // Generate and print the document
       const printResponse = await fetch(`/api/document-requests/${saveResult.requestId}/generate`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!printResponse.ok) {
-        throw new Error('Failed to generate document');
+        const errorData = await printResponse.json();
+        throw new Error(errorData.error || 'Failed to generate document');
       }
 
       // Get the document as a blob
@@ -195,7 +233,8 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
         await fetch('/api/notifications', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             recipientId: 'admin',
@@ -211,6 +250,7 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
 
       // Close the modal
       onClose();
+
     } catch (error) {
       console.error('Error handling print:', error);
       setError(error.message || 'An error occurred while processing your request');
@@ -271,119 +311,117 @@ export default function BrgyIndigencyFormModal({ isOpen, onClose }) {
                         value={searchQuery}
                         onChange={handleSearchInputChange}
                         placeholder="Search by Name or ID"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                       />
-                      {/* Suggestions Dropdown */}
-                      {showSuggestions && suggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-auto">
-                          {suggestions.map((resident) => (
-                            <div
-                              key={resident.id}
-                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                              onClick={() => handleSelectResident(resident)}
-                            >
-                              <div className="text-gray-900">
-                                {resident.firstName} {resident.middleName} {resident.lastName}
-                              </div>
-                              <div className="text-gray-500 text-sm">
-                                {resident.uniqueId || resident.id}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
+
+                  {/* Suggestions Dropdown */}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200">
+                      {suggestions.map((resident, index) => (
+                        <button
+                          key={resident.id}
+                          onClick={() => handleSelectResident(resident)}
+                          className="w-full px-4 py-2 text-left hover:bg-green-50 focus:bg-green-50 focus:outline-none first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          <span className="font-medium">{resident.firstName} {resident.middleName} {resident.lastName}</span>
+                          <span className="text-gray-500 text-sm ml-2">({resident.uniqueId || resident.id})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Personal Information Section */}
-            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-gray-100">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-gray-100">
               <div className="flex items-center space-x-2 mb-6">
-                <div className="bg-emerald-100 rounded-full p-2">
-                  <User className="h-5 w-5 text-emerald-600" />
+                <div className="bg-green-100 rounded-full p-2">
+                  <User className="h-5 w-5 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800">Personal Information</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Full Name</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    readOnly
-                  />
+              <div className="space-y-4">
+                {/* Full Name and Age Row */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <User className="w-4 h-4" /> Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      readOnly
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <User className="w-4 h-4" /> Age
+                    </label>
+                    <input
+                      type="text"
+                      value={age}
+                      onChange={handleAgeChange}
+                      placeholder="Enter Age"
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Age</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={age}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    readOnly
-                  />
+                {/* Birthdate and Issue Date Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <Calendar className="w-4 h-4" /> Birthdate
+                    </label>
+                    <input
+                      type="date"
+                      value={birthdate}
+                      readOnly
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <Calendar className="w-4 h-4" /> Issue Date
+                    </label>
+                    <input
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Birthdate</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={birthdate}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    readOnly
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Issue Date</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={issueDate}
-                    onChange={(e) => setIssueDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Address</span>
-                    <span className="text-red-500 ml-1">*</span>
+                {/* Address Field */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                    <MapPin className="w-4 h-4" /> Address
                   </label>
                   <input
                     type="text"
                     value={address}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     readOnly
+                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 text-left">
-                    <span>Purpose</span>
-                    <span className="text-red-500 ml-1">*</span>
+                {/* Purpose Field */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                    <FileText className="w-4 h-4" /> Purpose
                   </label>
                   <input
                     type="text"
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value.toUpperCase())}
-                    placeholder="Enter purpose"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    placeholder="Enter Purpose"
+                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
               </div>

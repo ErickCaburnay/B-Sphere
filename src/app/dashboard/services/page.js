@@ -16,6 +16,9 @@ import BrgyIdFormModal from "@/components/BrgyIdFormModal";
 import BrgyBusinessPermitFormModal from "@/components/BrgyBusinessPermitFormModal";
 import Pagination from '@/components/ui/Pagination';
 import DashboardPageContainer from '@/components/DashboardPageContainer';
+import { db } from '@/lib/firebase'; // Add this import
+import { collection, query, orderBy, getDocs } from 'firebase/firestore'; // Add this import
+import { DocumentViewModal } from '@/components/DocumentViewModal';
 
 export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,6 +35,9 @@ export default function ServicesPage() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [servicesData, setServicesData] = useState([]); // Add this state
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   // Simple and direct sidebar detection based on text visibility
   const [isDesktopSidebarExpanded, setIsDesktopSidebarExpanded] = useState(false);
@@ -74,107 +80,108 @@ export default function ServicesPage() {
   const [isBrgyBusinessPermitFormModalOpen, setIsBrgyBusinessPermitFormModalOpen] = useState(false);
 
   // Enhanced dummy data with more realistic information
-  const servicesData = [
-    {
-      id: 1,
-      transactionNo: "INDG-000012",
-      dateFiled: "2024-12-16",
-      nameOfApplicant: "Maria Santos",
-      purpose: "MEDICAL ASSISTANCE",
-      type: "Indigency",
-      status: "Printed",
-      dateIssued: "2024-12-16",
-      priority: "high",
-      estimatedCompletion: "2024-12-17",
-      applicantContact: "+63 912 345 6789",
-      processingTime: "1 day",
-      fee: "₱0.00"
-    },
-    {
-      id: 2,
-      transactionNo: "CERT-000001",
-      dateFiled: "2024-12-15",
-      nameOfApplicant: "Jane Doe",
-      purpose: "EMPLOYMENT REQUIREMENT",
-      type: "Certificate",
-      status: "Processing",
-      dateIssued: null,
-      priority: "medium",
-      estimatedCompletion: "2024-12-18",
-      applicantContact: "+63 923 456 7890",
-      processingTime: "3 days",
-      fee: "₱50.00"
-    },
-    {
-      id: 3,
-      transactionNo: "CLR-000002",
-      dateFiled: "2024-12-14",
-      nameOfApplicant: "John Smith",
-      purpose: "BUSINESS PERMIT",
-      type: "Clearance",
-      status: "Pending",
-      dateIssued: null,
-      priority: "low",
-      estimatedCompletion: "2024-12-20",
-      applicantContact: "+63 934 567 8901",
-      processingTime: "5 days",
-      fee: "₱100.00"
-    },
-    {
-      id: 4,
-      transactionNo: "ID-000003",
-      dateFiled: "2024-12-13",
-      nameOfApplicant: "Alice Johnson",
-      purpose: "IDENTIFICATION",
-      type: "Barangay ID",
-      status: "Ready for Pickup",
-      dateIssued: "2024-12-16",
-      priority: "medium",
-      estimatedCompletion: "2024-12-16",
-      applicantContact: "+63 945 678 9012",
-      processingTime: "3 days",
-      fee: "₱30.00"
-    },
-    {
-      id: 5,
-      transactionNo: "BP-000004",
-      dateFiled: "2024-12-12",
-      nameOfApplicant: "Bob Williams",
-      purpose: "BUSINESS OPERATION",
-      type: "Business Permit",
-      status: "Approved",
-      dateIssued: "2024-12-15",
-      priority: "high",
-      estimatedCompletion: "2024-12-15",
-      applicantContact: "+63 956 789 0123",
-      processingTime: "3 days",
-      fee: "₱200.00"
-    },
-    {
-      id: 6,
-      transactionNo: "DOC-000005",
-      dateFiled: "2024-12-11",
-      nameOfApplicant: "Eve Brown",
-      purpose: "SCHOOL ENROLLMENT",
-      type: "Document Request",
-      status: "Rejected",
-      dateIssued: null,
-      priority: "medium",
-      estimatedCompletion: null,
-      applicantContact: "+63 967 890 1234",
-      processingTime: "2 days",
-      fee: "₱25.00"
-    }
-  ];
+  // const servicesData = [
+  //   {
+  //     id: 1,
+  //     transactionNo: "INDG-000012",
+  //     dateFiled: "2024-12-16",
+  //     nameOfApplicant: "Maria Santos",
+  //     purpose: "MEDICAL ASSISTANCE",
+  //     type: "Indigency",
+  //     status: "Printed",
+  //     dateIssued: "2024-12-16",
+  //     priority: "high",
+  //     estimatedCompletion: "2024-12-17",
+  //     applicantContact: "+63 912 345 6789",
+  //     processingTime: "1 day",
+  //     fee: "₱0.00"
+  //   },
+  //   {
+  //     id: 2,
+  //     transactionNo: "CERT-000001",
+  //     dateFiled: "2024-12-15",
+  //     nameOfApplicant: "Jane Doe",
+  //     purpose: "EMPLOYMENT REQUIREMENT",
+  //     type: "Certificate",
+  //     status: "Processing",
+  //     dateIssued: null,
+  //     priority: "medium",
+  //     estimatedCompletion: "2024-12-18",
+  //     applicantContact: "+63 923 456 7890",
+  //     processingTime: "3 days",
+  //     fee: "₱50.00"
+  //   },
+  //   {
+  //     id: 3,
+  //     transactionNo: "CLR-000002",
+  //     dateFiled: "2024-12-14",
+  //     nameOfApplicant: "John Smith",
+  //     purpose: "BUSINESS PERMIT",
+  //     type: "Clearance",
+  //     status: "Pending",
+  //     dateIssued: null,
+  //     priority: "low",
+  //     estimatedCompletion: "2024-12-20",
+  //     applicantContact: "+63 934 567 8901",
+  //     processingTime: "5 days",
+  //     fee: "₱100.00"
+  //   },
+  //   {
+  //     id: 4,
+  //     transactionNo: "ID-000003",
+  //     dateFiled: "2024-12-13",
+  //     nameOfApplicant: "Alice Johnson",
+  //     purpose: "IDENTIFICATION",
+  //     type: "Barangay ID",
+  //     status: "Ready for Pickup",
+  //     dateIssued: "2024-12-16",
+  //     priority: "medium",
+  //     estimatedCompletion: "2024-12-16",
+  //     applicantContact: "+63 945 678 9012",
+  //     processingTime: "3 days",
+  //     fee: "₱30.00"
+  //   },
+  //   {
+  //     id: 5,
+  //     transactionNo: "BP-000004",
+  //     dateFiled: "2024-12-12",
+  //     nameOfApplicant: "Bob Williams",
+  //     purpose: "BUSINESS OPERATION",
+  //     type: "Business Permit",
+  //     status: "Approved",
+  //     dateIssued: "2024-12-15",
+  //     priority: "high",
+  //     estimatedCompletion: "2024-12-15",
+  //     applicantContact: "+63 956 789 0123",
+  //     processingTime: "3 days",
+  //     fee: "₱200.00"
+  //   },
+  //   {
+  //     id: 6,
+  //     transactionNo: "DOC-000005",
+  //     dateFiled: "2024-12-11",
+  //     nameOfApplicant: "Eve Brown",
+  //     purpose: "SCHOOL ENROLLMENT",
+  //     type: "Document Request",
+  //     status: "Rejected",
+  //     dateIssued: null,
+  //     priority: "medium",
+  //     estimatedCompletion: null,
+  //     applicantContact: "+63 967 890 1234",
+  //     processingTime: "2 days",
+  //     fee: "₱25.00"
+  //   }
+  // ];
 
   // Status configuration
   const statusConfig = {
-    "Pending": { color: "bg-yellow-100 text-yellow-800", icon: Clock, dot: "bg-yellow-400" },
-    "Processing": { color: "bg-blue-100 text-blue-800", icon: RefreshCw, dot: "bg-blue-400" },
-    "Approved": { color: "bg-green-100 text-green-800", icon: CheckCircle, dot: "bg-green-400" },
-    "Printed": { color: "bg-purple-100 text-purple-800", icon: FileText, dot: "bg-purple-400" },
-    "Ready for Pickup": { color: "bg-indigo-100 text-indigo-800", icon: Bell, dot: "bg-indigo-400" },
-    "Rejected": { color: "bg-red-100 text-red-800", icon: XCircle, dot: "bg-red-400" }
+    pending: { color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-400" },
+    processing: { color: "bg-blue-100 text-blue-800", dot: "bg-blue-400" },
+    approved: { color: "bg-green-100 text-green-800", dot: "bg-green-400" },
+    printed: { color: "bg-purple-100 text-purple-800", dot: "bg-purple-400" },
+    "ready for pickup": { color: "bg-indigo-100 text-indigo-800", dot: "bg-indigo-400" },
+    rejected: { color: "bg-red-100 text-red-800", dot: "bg-red-400" },
+    completed: { color: "bg-green-100 text-green-800", dot: "bg-green-400" }
   };
 
   // Priority configuration
@@ -253,6 +260,63 @@ export default function ServicesPage() {
     currentPage * rowsPerPage
   );
 
+  // Add this useEffect for fetching data
+  useEffect(() => {
+    const fetchDocumentRequests = async () => {
+      try {
+        setLoading(true);
+        const q = query(collection(db, 'document_requests'), orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        
+        const documents = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          const baseDocument = {
+            id: doc.id,
+            transactionNo: doc.id,
+            dateFiled: data.createdAt?.toDate?.()?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0],
+            nameOfApplicant: data.fullName || '',
+            purpose: data.purpose || '',
+            type: data.documentType || '',
+            status: data.status || 'PENDING',
+            dateIssued: data.issuedAt?.toDate?.()?.toISOString()?.split('T')[0] || null,
+            priority: data.priority || 'medium',
+            estimatedCompletion: data.estimatedCompletion || null,
+            applicantContact: data.contactNumber || '',
+            processingTime: '3 days',
+            fee: data.fee || '₱0.00'
+          };
+
+          // Add business permit specific fields if it's a business permit
+          if (data.documentType === 'Business Permit') {
+            return {
+              ...baseDocument,
+              printPermit: doc.id, // BBP-YYYY-0000 format
+              permitNo: data.permitNo, // 0000-000 format
+              businessName: data.businessName || '',
+              businessType: data.businessType || '',
+              businessAddress: data.businessAddress || '',
+              natureOfBusiness: data.businessType || '',
+              ctcNo: data.ctcNumber || '',
+              orNo: data.orNumber || '',
+              validity: data.validityPeriod || '1 YEAR',
+              validityPeriod: data.validityPeriod || '1 YEAR'
+            };
+          }
+
+          return baseDocument;
+        });
+        
+        setServicesData(documents);
+      } catch (error) {
+        console.error('Error fetching document requests:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDocumentRequests();
+  }, []);
+
   // Handlers
   const handleOpenDocumentApplicationModal = () => {
     setIsDocumentApplicationModalOpen(true);
@@ -297,11 +361,89 @@ export default function ServicesPage() {
     setIsDocumentApplicationModalOpen(true);
   };
 
+  // Modify handleRefresh to use real data
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRefreshing(false);
+    try {
+      const q = query(collection(db, 'document_requests'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const documents = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        const baseDocument = {
+          id: doc.id,
+          transactionNo: doc.id,
+          dateFiled: data.createdAt?.toDate?.()?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0],
+          nameOfApplicant: data.fullName || '',
+          purpose: data.purpose || '',
+          type: data.documentType || '',
+          status: data.status || 'PENDING',
+          dateIssued: data.issuedAt?.toDate?.()?.toISOString()?.split('T')[0] || null,
+          priority: data.priority || 'medium',
+          estimatedCompletion: data.estimatedCompletion || null,
+          applicantContact: data.contactNumber || '',
+          processingTime: '3 days',
+          fee: data.fee || '₱0.00'
+        };
+
+        // Add business permit specific fields if it's a business permit
+        if (data.documentType === 'Business Permit') {
+          return {
+            ...baseDocument,
+            printPermit: doc.id, // BBP-YYYY-0000 format
+            permitNo: data.permitNo, // 0000-000 format
+            businessName: data.businessName || '',
+            businessType: data.businessType || '',
+            businessAddress: data.businessAddress || '',
+            natureOfBusiness: data.businessType || '',
+            ctcNo: data.ctcNumber || '',
+            orNo: data.orNumber || '',
+            validity: data.validityPeriod || '1 YEAR',
+            validityPeriod: data.validityPeriod || '1 YEAR'
+          };
+        }
+
+        return baseDocument;
+      });
+      
+      setServicesData(documents);
+    } catch (error) {
+      console.error('Error refreshing document requests:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Add download handler
+  const handleDownload = async (documentData) => {
+    try {
+      const response = await fetch(`/api/document-requests/${documentData.id}/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate document');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${documentData.type.toLowerCase().replace(/\s+/g, '_')}_${documentData.id}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      alert('Failed to download document. Please try again.');
+    }
   };
 
   const handleSort = (field) => {
@@ -327,6 +469,11 @@ export default function ServicesPage() {
         ? prev.filter(serviceId => serviceId !== id)
         : [...prev, id]
     );
+  };
+
+  const handleViewDocument = (document) => {
+    setSelectedDocument(document);
+    setIsViewModalOpen(true);
   };
 
   // Statistics Cards Component
@@ -382,107 +529,71 @@ export default function ServicesPage() {
 
   // Service Card Component
   const ServiceCard = ({ service }) => {
-    const StatusIcon = statusConfig[service.status]?.icon || AlertCircle;
-    
-    return (
-      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden group min-h-[280px] sm:min-h-[320px] flex flex-col">
-        {/* Card Header */}
-        <div className="p-4 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3 flex-1 min-w-0">
-              <input
-                type="checkbox"
-                checked={selectedServices.includes(service.id)}
-                onChange={() => handleSelectService(service.id)}
-                className="rounded border-gray-300 text-green-600 focus:ring-green-500 mt-0.5 flex-shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-gray-900 text-sm leading-tight break-words">{service.transactionNo}</h3>
-                <p className="text-sm text-gray-500 mt-1">{service.type}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-              {service.priority === "high" && (
-                <Star className="h-4 w-4 text-red-500 fill-current" />
-              )}
-              <div className="relative group">
-                <button className="p-1 rounded-full hover:bg-gray-100 transition-colors">
-                  <MoreVertical className="h-4 w-4 text-gray-400" />
-                </button>
-                <div className="absolute right-0 top-8 w-32 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                  <button className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2">
-                    <Eye className="h-4 w-4" />
-                    <span>View</span>
-                  </button>
-                  <button className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2">
-                    <Edit className="h-4 w-4" />
-                    <span>Edit</span>
-                  </button>
-                  <button className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2">
-                    <Download className="h-4 w-4" />
-                    <span>Download</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    // Normalize status to lowercase and handle default case
+    const normalizedStatus = (service.status || 'pending').toLowerCase();
+    const statusStyle = statusConfig[normalizedStatus] || statusConfig['pending'];
+    const priorityStyle = priorityConfig[service.priority?.toLowerCase()] || priorityConfig["medium"];
 
-        {/* Card Body */}
-        <div className="p-4 flex-1 flex flex-col">
-          <div className="space-y-3 flex-1">
-            <div>
-              <h4 className="font-medium text-gray-900 text-base leading-tight">{service.nameOfApplicant}</h4>
-              <p className="text-sm text-gray-600 mt-1 line-clamp-2">{service.purpose}</p>
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <div className={`p-2 rounded-lg ${statusStyle.color}`}>
+                <FileText className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">{service.transactionNo}</h3>
+                <p className="text-xs text-gray-500">{service.type}</p>
+              </div>
             </div>
-            
-            <div className="flex items-center justify-between">
-              <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[service.status]?.color}`}>
-                <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${statusConfig[service.status]?.dot}`}></div>
+            <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.color}`}>
+              <div className="flex items-center space-x-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`}></div>
                 <span>{service.status}</span>
               </div>
-              <span className={`text-xs font-medium ${priorityConfig[service.priority]?.color}`}>
-                {priorityConfig[service.priority]?.label}
-              </span>
             </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-500 text-xs">Filed</p>
-                <p className="font-medium text-sm">{new Date(service.dateFiled).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Processing Time</p>
-                <p className="font-medium text-sm">{service.processingTime}</p>
-              </div>
-            </div>
-
-            {service.estimatedCompletion && (
-              <div className="bg-gray-50 rounded-lg p-3 mt-auto">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Est. Completion</span>
-                  <span className="font-medium text-gray-900">
-                    {new Date(service.estimatedCompletion).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* Card Footer */}
-        <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600 font-medium">Fee: {service.fee}</span>
-            <button 
-              className={`${isDesktopSidebarExpanded ? 'p-1.5' : 'px-3 py-1.5'} bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center ${isDesktopSidebarExpanded ? '' : 'space-x-1.5'}`}
-              title="Download"
-            >
-              <Download className="h-4 w-4" />
-              {!isDesktopSidebarExpanded && (
-                <span>Download</span>
-              )}
-            </button>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-gray-500">Applicant</label>
+              <p className="text-sm font-medium text-gray-900">{service.nameOfApplicant}</p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Purpose</label>
+              <p className="text-sm text-gray-900">{service.purpose}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-500">Date Filed</label>
+                <p className="text-sm text-gray-900">{service.dateFiled}</p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Fee</label>
+                <p className="text-sm text-gray-900">{service.fee}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+            <div className={`text-xs ${priorityStyle.color}`}>
+              {priorityStyle.label}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleViewDocument(service)}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDownload(service)}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -823,13 +934,18 @@ export default function ServicesPage() {
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-1 sm:space-x-2">
-                            <button className="text-green-600 hover:text-green-900 p-1 rounded-lg hover:bg-green-50" title="View">
+                            <button 
+                              onClick={() => handleViewDocument(service)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded-lg hover:bg-blue-50" 
+                              title="View Details"
+                            >
                               <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
-                            <button className="text-blue-600 hover:text-blue-900 p-1 rounded-lg hover:bg-blue-50" title="Edit">
-                              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                            </button>
-                            <button className="text-green-600 hover:text-green-900 p-1 rounded-lg hover:bg-green-50" title="Download">
+                            <button 
+                              onClick={() => handleDownload(service)}
+                              className="text-green-600 hover:text-green-900 p-1 rounded-lg hover:bg-green-50" 
+                              title="Download"
+                            >
                               <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
                           </div>
@@ -908,6 +1024,13 @@ export default function ServicesPage() {
         <BrgyBusinessPermitFormModal
           isOpen={isBrgyBusinessPermitFormModalOpen}
           onClose={handleCloseAllModalsAndReopenDocumentApplication}
+        />
+
+        {/* View Document Modal */}
+        <DocumentViewModal
+          isOpen={isViewModalOpen}
+          onClose={() => setIsViewModalOpen(false)}
+          document={selectedDocument}
         />
       </DashboardPageContainer>
     </>

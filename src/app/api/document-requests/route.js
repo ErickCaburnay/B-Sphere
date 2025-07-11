@@ -68,13 +68,17 @@ export async function POST(request) {
     });
 
     return NextResponse.json({ 
+      success: true,
       message: 'Document request created successfully',
       requestId: documentId
     });
   } catch (error) {
     console.error('Error creating document request:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create document request' },
+      { 
+        success: false,
+        error: error.message || 'Failed to create document request' 
+      },
       { status: 500 }
     );
   }

@@ -141,64 +141,89 @@ export function useFileUpload(folderPath, uniqueId) {
 
   const uploadFile = useCallback(async (file) => {
     if (!uniqueId || !folderPath) {
+      console.error('Missing upload parameters:', { uniqueId, folderPath });
       throw new Error('Missing required parameters for file upload');
     }
 
     if (!user) {
+      console.error('No authenticated user found');
       throw new Error('User must be authenticated to upload files');
     }
 
-    // Get a fresh ID token before upload
-    const idToken = await user.getIdToken(true);
+    try {
+      // Get a fresh ID token before upload
+      const idToken = await user.getIdToken(true);
 
-    const storageRef = ref(storage, `${folderPath}/${uniqueId}/${file.name}`);
-    const metadata = {
-      customMetadata: {
-        uploadedBy: user.uid,
-        uploadedAt: new Date().toISOString()
-      }
-    };
+      // Ensure the path is properly formatted
+      const sanitizedFolderPath = folderPath.replace(/^\/+|\/+$/g, ''); // Remove leading/trailing slashes
+      const sanitizedUniqueId = uniqueId.replace(/[^a-zA-Z0-9-_]/g, '_'); // Sanitize uniqueId
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9-_. ]/g, '_'); // Sanitize filename
 
-    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+      const fullPath = `${sanitizedFolderPath}/${sanitizedUniqueId}/${sanitizedFileName}`;
+      console.log('Uploading file to path:', fullPath);
 
-    return new Promise((resolve, reject) => {
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(prev => ({
-            ...prev,
-            [file.name]: Math.round(progress)
-          }));
-        },
-        (error) => {
-          console.error('Upload error:', error);
-          setErrors(prev => ({
-            ...prev,
-            [file.name]: 'Failed to upload file. Please try again.'
-          }));
-          reject(error);
-        },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            const fileMetadata = {
-              fileName: file.name,
-              fileType: file.type,
-              fileSize: file.size,
-              downloadURL,
-              uploadedAt: new Date().toISOString(),
-              uploadedBy: user.uid
-            };
-
-            setUploadedFiles(prev => [...prev, fileMetadata]);
-            resolve(fileMetadata);
-          } catch (error) {
-            console.error('Error getting download URL:', error);
-            reject(error);
-          }
+      const storageRef = ref(storage, fullPath);
+      const metadata = {
+        contentType: file.type,
+        customMetadata: {
+          uploadedBy: user.uid,
+          uploadedAt: new Date().toISOString(),
+          originalName: file.name
         }
-      );
-    });
+      };
+
+      const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Upload progress for ${file.name}: ${progress}%`);
+            setUploadProgress(prev => ({
+              ...prev,
+              [file.name]: Math.round(progress)
+            }));
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            setErrors(prev => ({
+              ...prev,
+              [file.name]: `Failed to upload file: ${error.message}`
+            }));
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('File uploaded successfully:', file.name);
+              console.log('Download URL:', downloadURL);
+              
+              const fileMetadata = {
+                fileName: sanitizedFileName,
+                originalName: file.name,
+                fileType: file.type,
+                fileSize: file.size,
+                downloadURL,
+                uploadedAt: new Date().toISOString(),
+                uploadedBy: user.uid,
+                path: fullPath
+              };
+
+              setUploadedFiles(prev => [...prev, fileMetadata]);
+              resolve(fileMetadata);
+            } catch (error) {
+              console.error('Error getting download URL:', error);
+              reject(error);
+            }
+          }
+        );
+      });
+    } catch (error) {
+      console.error('Error in uploadFile:', error);
+      throw error;
+    }
   }, [folderPath, uniqueId, user]);
 
   const handleUpload = useCallback(async () => {
