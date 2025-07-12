@@ -126,7 +126,7 @@ export default function BrgyClearanceFormModal({ isOpen, onClose }) {
       setIsSubmitting(true);
       setError("");
 
-      if (!uniqueId || !fullName || !purpose) {
+      if (!fullName || !purpose) {
         setError("Please fill in all required fields");
         return;
       }
@@ -139,7 +139,7 @@ export default function BrgyClearanceFormModal({ isOpen, onClose }) {
 
       // Create request data
       const requestData = {
-        residentId: uniqueId,
+        ...(uniqueId ? { residentId: uniqueId } : {}),
         documentType: "Barangay Clearance",
         fullName: fullName.toUpperCase(),
         age: age,
@@ -323,7 +323,7 @@ export default function BrgyClearanceFormModal({ isOpen, onClose }) {
                     <input
                       type="text"
                       value={fullName}
-                      readOnly
+                      onChange={e => setFullName(e.target.value)}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                     />
                   </div>
@@ -350,7 +350,7 @@ export default function BrgyClearanceFormModal({ isOpen, onClose }) {
                     <input
                       type="date"
                       value={birthdate}
-                      readOnly
+                      onChange={e => setBirthdate(e.target.value)}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                     />
                   </div>
@@ -375,7 +375,7 @@ export default function BrgyClearanceFormModal({ isOpen, onClose }) {
                   <input
                     type="text"
                     value={address}
-                    readOnly
+                    onChange={e => setAddress(e.target.value)}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                 </div>

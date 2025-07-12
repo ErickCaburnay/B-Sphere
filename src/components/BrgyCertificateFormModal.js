@@ -237,7 +237,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
       setIsPreviewing(true);
       setError("");
 
-      if (!uniqueId || !fullName || !purpose) {
+      if (!fullName || !purpose) {
         setError("Please fill in all required fields");
         return;
       }
@@ -524,7 +524,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
                     <input
                       type="text"
                       value={fullName}
-                      readOnly
+                      onChange={e => setFullName(e.target.value)}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                     />
                   </div>
@@ -551,7 +551,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
                     <input
                       type="date"
                       value={birthdate}
-                      readOnly
+                      onChange={e => setBirthdate(e.target.value)}
                       className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                     />
                   </div>
@@ -576,7 +576,7 @@ export default function BrgyCertificateFormModal({ isOpen, onClose }) {
                   <input
                     type="text"
                     value={address}
-                    readOnly
+                    onChange={e => setAddress(e.target.value)}
                     className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                   />
                 </div>

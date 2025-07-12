@@ -28,7 +28,7 @@ export default function ServicesPage() {
   const [dateRange, setDateRange] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(12);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState("cards"); // 'cards', 'table', 'grid'
+  const [viewMode, setViewMode] = useState("table"); // 'cards', 'table', 'grid'
   const [showFilters, setShowFilters] = useState(false);
   const [selectedServices, setSelectedServices] = useState([]);
   const [sortBy, setSortBy] = useState("dateFiled");
@@ -173,15 +173,16 @@ export default function ServicesPage() {
   //   }
   // ];
 
-  // Status configuration
+  // Status configuration for admin-created documents
   const statusConfig = {
+    approved: { color: "bg-green-100 text-green-800", dot: "bg-green-400" }, // Initial state when admin creates
+    printed: { color: "bg-purple-100 text-purple-800", dot: "bg-purple-400" }, // After document is printed
+    "ready for pickup": { color: "bg-indigo-100 text-indigo-800", dot: "bg-indigo-400" }, // When document is ready
+    completed: { color: "bg-green-100 text-green-800", dot: "bg-green-400" }, // After pickup
+    // Keep these for backward compatibility and resident-initiated requests
     pending: { color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-400" },
     processing: { color: "bg-blue-100 text-blue-800", dot: "bg-blue-400" },
-    approved: { color: "bg-green-100 text-green-800", dot: "bg-green-400" },
-    printed: { color: "bg-purple-100 text-purple-800", dot: "bg-purple-400" },
-    "ready for pickup": { color: "bg-indigo-100 text-indigo-800", dot: "bg-indigo-400" },
-    rejected: { color: "bg-red-100 text-red-800", dot: "bg-red-400" },
-    completed: { color: "bg-green-100 text-green-800", dot: "bg-green-400" }
+    rejected: { color: "bg-red-100 text-red-800", dot: "bg-red-400" }
   };
 
   // Priority configuration
@@ -744,11 +745,10 @@ export default function ServicesPage() {
                     className="w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="all">All Status</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Processing">Processing</option>
                     <option value="Approved">Approved</option>
                     <option value="Printed">Printed</option>
                     <option value="Ready for Pickup">Ready for Pickup</option>
+                    <option value="Completed">Completed</option>
                     <option value="Rejected">Rejected</option>
                   </select>
                 </div>

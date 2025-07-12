@@ -62,7 +62,7 @@ export async function POST(request) {
     // Save document request
     await adminDb.collection('document_requests').doc(documentId).set({
       ...data,
-      status: 'PENDING',
+      status: 'APPROVED', // Admin-created documents are automatically approved
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
