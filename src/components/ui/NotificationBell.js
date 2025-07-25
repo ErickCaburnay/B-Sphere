@@ -417,14 +417,14 @@ const InfoUpdateModal = ({ notification, onClose }) => {
       try {
         // Use the embedded notification data directly - this contains all the info we need
         if (notification.data && notification.data.residentId) {
-          console.log('Using embedded notification data:', notification.data);
+    
           setPendingUpdate(notification.data);
           setLoadingData(false);
           return;
         }
 
         // Fallback: create structure from notification fields (shouldn't be needed)
-        console.log('No embedded data found, creating fallback structure');
+
         const fallbackUpdate = {
           id: notification.requestId,
           residentId: notification.senderUserId || notification.targetUserId,
@@ -491,17 +491,14 @@ const InfoUpdateModal = ({ notification, onClose }) => {
         return;
       }
 
-      console.log('=== APPROVAL PROCESS STARTED ===');
-      console.log('Pending update:', pendingUpdate);
-      console.log('Resident ID:', pendingUpdate.residentId);
-      console.log('Requested changes:', pendingUpdate.requestedChanges);
+
 
       // Step 1: Update the resident record in the database
       let databaseUpdateSuccess = false;
       try {
         // First, let's check if the resident exists
         const checkResponse = await fetch(`/api/residents/${pendingUpdate.residentId}`);
-        console.log('Check resident response status:', checkResponse.status);
+
         
         if (!checkResponse.ok) {
           console.error('Resident not found with ID:', pendingUpdate.residentId);

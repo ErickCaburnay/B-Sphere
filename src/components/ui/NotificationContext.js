@@ -35,11 +35,11 @@ export const NotificationProvider = ({ children }) => {
       if (isResidentDashboard) {
         // Get current user ID for resident notifications
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log('NotificationContext - User data from localStorage:', userData);
+    
         
         // Try multiple possible fields for resident ID
         const residentId = userData.uniqueId || userData.residentId || userData.id || userData.uid;
-        console.log('NotificationContext - Resolved resident ID:', residentId);
+  
         
         params.append('targetRole', 'resident');
         if (residentId) {
@@ -47,7 +47,7 @@ export const NotificationProvider = ({ children }) => {
         } else {
           console.warn('No resident ID found for resident dashboard. Available fields:', Object.keys(userData));
           // Don't return early, just continue without residentId filter
-          console.log('Continuing without resident ID filter');
+  
         }
       } else {
         // Admin notifications
@@ -55,7 +55,7 @@ export const NotificationProvider = ({ children }) => {
       }
 
       const url = `/api/notifications?${params.toString()}`;
-      console.log('Fetching notifications from:', url);
+
       
       const response = await fetch(url);
       
@@ -63,12 +63,12 @@ export const NotificationProvider = ({ children }) => {
         const errorText = await response.text();
         console.error('Response not OK:', response.status, response.statusText, errorText);
         // Don't throw error, just return empty result
-        console.log('Returning empty notifications due to API error');
+        
         return { notifications: [], unreadCount: 0, pagination: { total: 0, hasMore: false } };
       }
       
       const data = await response.json();
-      console.log('Notifications fetched successfully:', data.notifications?.length || 0);
+      
       return data;
     } catch (error) {
       console.error('Error fetching notifications:', error.message);

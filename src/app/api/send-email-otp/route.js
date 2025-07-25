@@ -116,7 +116,7 @@ export async function POST(request) {
     
     // 🚀 PERFORMANCE: Minimal logging (only in development)
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📧 OTP sent to ${email} | Send: ${sendTime}ms | Total: ${totalTime}ms`);
+  
     }
     
     return NextResponse.json(

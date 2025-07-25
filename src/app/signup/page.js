@@ -365,7 +365,7 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
         // Store the uniqueId and firebaseUid for Step 3
         localStorage.setItem('signup_uniqueId', result.uniqueId);
         localStorage.setItem('signup_firebaseUid', result.firebaseUid);
-        console.log('✅ Resident account created:', result.uniqueId);
+  
       } else {
         throw new Error(result.error || 'Failed to create account');
     }
@@ -394,7 +394,7 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
       const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
             size: 'invisible', // Make it invisible for better UX
             callback: (response) => {
-              console.log('reCAPTCHA solved automatically');
+      
         },
         'expired-callback': () => {
               setRecaptchaVerifier(null);
@@ -442,13 +442,7 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
           timestamp: Date.now()
         };
         
-        // Debug logging for OTP generation
-        console.log('📧 Generated OTP:', {
-          code: otpCode,
-          codeType: typeof otpCode,
-          email: email,
-          timestamp: otpData.timestamp
-        });
+
         
         // 🚀 PERFORMANCE: Parallel operations - store locally while sending
         localStorage.setItem('email_otp', JSON.stringify(otpData));
@@ -470,7 +464,7 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
 
         if (response.ok) {
             const totalTime = Date.now() - startTime;
-            console.log(`🚀 Email OTP sent in ${totalTime}ms`);
+  
             
             // Track performance
             if (window.addEmailPerformanceData) {
@@ -479,7 +473,7 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
 
             // Show performance info in development
             if (process.env.NODE_ENV === 'development' && result.performance) {
-              console.log(`📊 Performance: Send ${result.performance.sendTime}ms | Total ${result.performance.totalTime}ms`);
+  
           }
             
             setOtpSent(true);
@@ -541,14 +535,8 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
         // Remove the leading 0 and add +63
         const phoneNumber = '+63' + cleanNumber.substring(1);
         
-        console.log('Original contact number:', contactNumber);
-        console.log('Cleaned number:', cleanNumber);
-        console.log('Formatted for Firebase:', phoneNumber);
-
         try {
-          console.log('Attempting to send SMS via Firebase...');
           const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-          console.log('SMS sent successfully, confirmation result:', confirmation);
           setConfirmationResult(confirmation);
           setOtpSent(true);
         } catch (firebaseError) {
@@ -611,7 +599,7 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
       if (otpMethod === 'email') {
         // Email OTP verification
         const storedOtp = localStorage.getItem('email_otp');
-        console.log('🔍 Stored OTP raw:', storedOtp);
+  
         
         if (!storedOtp) {
           throw new Error('OTP expired. Please request a new one.');
@@ -620,7 +608,7 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
         let otpData;
         try {
           otpData = JSON.parse(storedOtp);
-          console.log('🔍 Parsed OTP data:', otpData);
+  
         } catch (parseError) {
           console.error('❌ Failed to parse stored OTP:', parseError);
           localStorage.removeItem('email_otp');
@@ -635,26 +623,13 @@ const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, account
           throw new Error('OTP expired. Please request a new one.');
         }
         
-        // Debug logging for OTP comparison
-        console.log('🔍 OTP Debug:', {
-          storedCode: otpData.code,
-          storedCodeType: typeof otpData.code,
-          inputCode: otp.trim(),
-          inputCodeType: typeof otp.trim(),
-          storedEmail: otpData.email,
-          inputEmail: email,
-          codesMatch: String(otpData.code) === String(otp.trim())
-        });
-        
         // Check if OTP matches (ensure both are strings for comparison)
         if (String(otpData.code) !== String(otp.trim())) {
-          console.error('❌ OTP mismatch:', { stored: otpData.code, input: otp.trim() });
           throw new Error('Invalid OTP code. Please try again.');
         }
 
         // Check if email matches
         if (otpData.email !== email) {
-          console.error('❌ Email mismatch:', { stored: otpData.email, input: email });
           throw new Error('OTP does not match the email address.');
         }
         
@@ -972,7 +947,7 @@ const Step3Personal = ({ data, setData, onBack, accountData, errors, setErrors }
         const uniqueId = localStorage.getItem('signup_uniqueId');
         const firebaseUid = localStorage.getItem('signup_firebaseUid');
         
-        console.log('🔍 Step 3 Debug:', { uniqueId, firebaseUid });
+  
         
         if (!uniqueId || !firebaseUid) {
           console.error('❌ Missing registration data:', { uniqueId, firebaseUid });

@@ -27,10 +27,10 @@ export default function ResidentDashboard() {
     const userData = localStorage.getItem('user');
     if (userData) {
       const parsedUser = JSON.parse(userData);
-      console.log('Resident dashboard - User data from localStorage:', parsedUser);
+  
       setUser(parsedUser);
     } else {
-      console.log('No user data found in localStorage, redirecting to login');
+      
       router.push('/login');
     }
     setLoading(false);

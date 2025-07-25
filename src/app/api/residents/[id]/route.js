@@ -3,9 +3,7 @@ import { NextResponse } from 'next/server';
 
 // GET /api/residents/[id]
 export async function GET(request, { params }) {
-  const { id } = params;
-  
-  console.log('GET /api/residents/[id] called with ID:', id);
+  const { id } = await params;
   
   try {
     const { adminDb } = await getFirebaseAdmin();
@@ -19,12 +17,10 @@ export async function GET(request, { params }) {
     
     if (residentDoc.exists) {
       const resident = { id: residentDoc.id, ...residentDoc.data() };
-      console.log('Found resident by document ID:', resident);
       return NextResponse.json(resident, { status: 200 });
     }
     
     // If not found by document ID, try to find by uniqueId field
-    console.log('Not found by document ID, searching by uniqueId field...');
     const querySnapshot = await adminDb.collection('residents')
       .where('uniqueId', '==', String(id))
       .limit(1)
@@ -33,11 +29,9 @@ export async function GET(request, { params }) {
     if (!querySnapshot.empty) {
       const doc = querySnapshot.docs[0];
       const resident = { id: doc.id, ...doc.data() };
-      console.log('Found resident by uniqueId field:', resident);
       return NextResponse.json(resident, { status: 200 });
     }
     
-    console.log('Resident not found with ID:', id);
     return NextResponse.json({ message: 'Resident not found' }, { status: 404 });
   } catch (error) {
     console.error("Error fetching resident:", error);
@@ -47,10 +41,8 @@ export async function GET(request, { params }) {
 
 // PUT /api/residents/[id]
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const data = await request.json();
-  
-  console.log('PUT /api/residents/[id] called with:', { id, data });
   
   try {
     const { adminDb } = await getFirebaseAdmin();
