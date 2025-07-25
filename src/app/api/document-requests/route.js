@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { verifyToken } from '@/lib/utils';
+import { verifyToken } from '@/lib/server-utils';
 
 export async function POST(request) {
   try {

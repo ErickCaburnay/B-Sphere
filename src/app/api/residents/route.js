@@ -1,7 +1,7 @@
 import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 import { NextResponse } from 'next/server';
 import { Timestamp } from 'firebase-admin/firestore';
-import { generateNextResidentId } from '@/lib/utils';
+import { generateNextResidentId } from '@/lib/server-utils';
 
 // Utility function to clean contact number for database storage
 const cleanContactNumber = (contactNumber) => {

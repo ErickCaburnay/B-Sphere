@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import getFirebaseAdmin from '@/lib/firebase-admin-dynamic';
 import { Timestamp } from 'firebase-admin/firestore';
-import { generateNextResidentId } from '@/lib/utils';
+import { generateNextResidentId } from '@/lib/server-utils';
 import ExcelJS from 'exceljs';
 
 // Helper function to clean contact number

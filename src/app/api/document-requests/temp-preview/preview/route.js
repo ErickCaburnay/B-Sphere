@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateDocument } from '@/lib/document-generator';
-import { verifyToken } from '@/lib/utils';
+import { verifyToken } from '@/lib/server-utils';
 
 export async function POST(request) {
   try {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateDocument } from '@/lib/document-generator';
 import { adminDb } from '@/lib/firebase-admin';
-import { verifyToken } from '@/lib/utils';
+import { verifyToken } from '@/lib/server-utils';
 
 export async function POST(request, { params }) {
   try {

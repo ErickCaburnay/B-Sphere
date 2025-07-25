@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { initAdmin, adminStorage } from '@/lib/firebase-admin';
-import { verifyToken } from '@/lib/utils';
+import { verifyToken } from '@/lib/server-utils';
 
 // Initialize Firebase Admin if not already initialized
 try {

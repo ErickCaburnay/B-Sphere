@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { generateNextResidentId } from '@/lib/utils';
+import { generateNextResidentId } from '@/lib/server-utils';
 import { validateResidentDuplicates } from '@/lib/duplicateValidation';
 
 // Initialize Firebase Admin directly in this route
