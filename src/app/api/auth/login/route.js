@@ -244,7 +244,7 @@ export async function POST(request) {
       // Set the token as an HTTP-only cookie
       response.cookies.set('token', token, {
         httpOnly: false, // Allow JavaScript access for now
-        secure: false, // Allow HTTP for local development
+        secure: process.env.NODE_ENV === 'production', // Secure in production
         sameSite: 'lax',
         maxAge: 86400, // 24 hours
         path: '/'
@@ -396,7 +396,7 @@ export async function POST(request) {
       // Set the token as an HTTP-only cookie
       response.cookies.set('token', token, {
         httpOnly: false, // Allow JavaScript access for now
-        secure: false, // Allow HTTP for local development
+        secure: process.env.NODE_ENV === 'production', // Secure in production
         sameSite: 'lax',
         maxAge: 86400, // 24 hours
         path: '/'
