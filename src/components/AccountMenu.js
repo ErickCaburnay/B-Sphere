@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { clearAuthToken } from '@/lib/auth-utils';
 
 const AccountMenu = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -38,20 +39,15 @@ const AccountMenu = () => {
         method: 'POST',
       });
 
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('user');
-
-      // Clear cookies
-      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      // Clear all auth data
+      clearAuthToken();
 
       // Redirect to login
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
       // Still redirect even if API call fails
-      localStorage.clear();
+      clearAuthToken();
       router.push('/login');
     }
   };
