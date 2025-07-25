@@ -16,8 +16,7 @@ import BrgyIdFormModal from "@/components/BrgyIdFormModal";
 import BrgyBusinessPermitFormModal from "@/components/BrgyBusinessPermitFormModal";
 import Pagination from '@/components/ui/Pagination';
 import DashboardPageContainer from '@/components/DashboardPageContainer';
-import { db } from '@/lib/firebase'; // Add this import
-import { collection, query, orderBy, getDocs } from 'firebase/firestore'; // Add this import
+// Removed direct Firebase imports - using API routes instead
 import { DocumentViewModal } from '@/components/DocumentViewModal';
 
 export default function ServicesPage() {
@@ -261,46 +260,57 @@ export default function ServicesPage() {
     currentPage * rowsPerPage
   );
 
-  // Add this useEffect for fetching data
+  // Fetch document requests using API route
   useEffect(() => {
     const fetchDocumentRequests = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'document_requests'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
         
-        const documents = querySnapshot.docs.map(doc => {
-          const data = doc.data();
+        const response = await fetch('/api/document-requests', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch document requests: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const requests = data.data || data;
+        
+        const documents = requests.map(doc => {
           const baseDocument = {
             id: doc.id,
             transactionNo: doc.id,
-            dateFiled: data.createdAt?.toDate?.()?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0],
-            nameOfApplicant: data.fullName || '',
-            purpose: data.purpose || '',
-            type: data.documentType || '',
-            status: data.status || 'PENDING',
-            dateIssued: data.issuedAt?.toDate?.()?.toISOString()?.split('T')[0] || null,
-            priority: data.priority || 'medium',
-            estimatedCompletion: data.estimatedCompletion || null,
-            applicantContact: data.contactNumber || '',
+            dateFiled: doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            nameOfApplicant: doc.fullName || '',
+            purpose: doc.purpose || '',
+            type: doc.documentType || '',
+            status: doc.status || 'PENDING',
+            dateIssued: doc.issuedAt ? new Date(doc.issuedAt.seconds * 1000).toISOString().split('T')[0] : null,
+            priority: doc.priority || 'medium',
+            estimatedCompletion: doc.estimatedCompletion || null,
+            applicantContact: doc.contactNumber || '',
             processingTime: '3 days',
-            fee: data.fee || '₱0.00'
+            fee: doc.fee || '₱0.00'
           };
 
           // Add business permit specific fields if it's a business permit
-          if (data.documentType === 'Business Permit') {
+          if (doc.documentType === 'Business Permit') {
             return {
               ...baseDocument,
               printPermit: doc.id, // BBP-YYYY-0000 format
-              permitNo: data.permitNo, // 0000-000 format
-              businessName: data.businessName || '',
-              businessType: data.businessType || '',
-              businessAddress: data.businessAddress || '',
-              natureOfBusiness: data.businessType || '',
-              ctcNo: data.ctcNumber || '',
-              orNo: data.orNumber || '',
-              validity: data.validityPeriod || '1 YEAR',
-              validityPeriod: data.validityPeriod || '1 YEAR'
+              permitNo: doc.permitNo, // 0000-000 format
+              businessName: doc.businessName || '',
+              businessType: doc.businessType || '',
+              businessAddress: doc.businessAddress || '',
+              natureOfBusiness: doc.businessType || '',
+              ctcNo: doc.ctcNumber || '',
+              orNo: doc.orNumber || '',
+              validity: doc.validityPeriod || '1 YEAR',
+              validityPeriod: doc.validityPeriod || '1 YEAR'
             };
           }
 
@@ -310,6 +320,7 @@ export default function ServicesPage() {
         setServicesData(documents);
       } catch (error) {
         console.error('Error fetching document requests:', error);
+        setServicesData([]); // Set empty array on error
       } finally {
         setLoading(false);
       }
@@ -362,45 +373,55 @@ export default function ServicesPage() {
     setIsDocumentApplicationModalOpen(true);
   };
 
-  // Modify handleRefresh to use real data
+  // Refresh document requests using API route
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const q = query(collection(db, 'document_requests'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
+      const response = await fetch('/api/document-requests', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to refresh document requests: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const requests = data.data || data;
       
-      const documents = querySnapshot.docs.map(doc => {
-        const data = doc.data();
+      const documents = requests.map(doc => {
         const baseDocument = {
           id: doc.id,
           transactionNo: doc.id,
-          dateFiled: data.createdAt?.toDate?.()?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0],
-          nameOfApplicant: data.fullName || '',
-          purpose: data.purpose || '',
-          type: data.documentType || '',
-          status: data.status || 'PENDING',
-          dateIssued: data.issuedAt?.toDate?.()?.toISOString()?.split('T')[0] || null,
-          priority: data.priority || 'medium',
-          estimatedCompletion: data.estimatedCompletion || null,
-          applicantContact: data.contactNumber || '',
+          dateFiled: doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          nameOfApplicant: doc.fullName || '',
+          purpose: doc.purpose || '',
+          type: doc.documentType || '',
+          status: doc.status || 'PENDING',
+          dateIssued: doc.issuedAt ? new Date(doc.issuedAt.seconds * 1000).toISOString().split('T')[0] : null,
+          priority: doc.priority || 'medium',
+          estimatedCompletion: doc.estimatedCompletion || null,
+          applicantContact: doc.contactNumber || '',
           processingTime: '3 days',
-          fee: data.fee || '₱0.00'
+          fee: doc.fee || '₱0.00'
         };
 
         // Add business permit specific fields if it's a business permit
-        if (data.documentType === 'Business Permit') {
+        if (doc.documentType === 'Business Permit') {
           return {
             ...baseDocument,
             printPermit: doc.id, // BBP-YYYY-0000 format
-            permitNo: data.permitNo, // 0000-000 format
-            businessName: data.businessName || '',
-            businessType: data.businessType || '',
-            businessAddress: data.businessAddress || '',
-            natureOfBusiness: data.businessType || '',
-            ctcNo: data.ctcNumber || '',
-            orNo: data.orNumber || '',
-            validity: data.validityPeriod || '1 YEAR',
-            validityPeriod: data.validityPeriod || '1 YEAR'
+            permitNo: doc.permitNo, // 0000-000 format
+            businessName: doc.businessName || '',
+            businessType: doc.businessType || '',
+            businessAddress: doc.businessAddress || '',
+            natureOfBusiness: doc.businessType || '',
+            ctcNo: doc.ctcNumber || '',
+            orNo: doc.orNumber || '',
+            validity: doc.validityPeriod || '1 YEAR',
+            validityPeriod: doc.validityPeriod || '1 YEAR'
           };
         }
 
