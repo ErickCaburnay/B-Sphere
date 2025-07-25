@@ -14,6 +14,7 @@ import PerformanceMonitor from '@/components/ui/PerformanceMonitor';
 import AccountMenu from '@/components/AccountMenu';
 import { NotificationProvider } from '@/components/ui/NotificationContext';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { AuthProvider } from '@/lib/auth-context';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true); // Default to true for desktop
@@ -129,7 +130,8 @@ export default function DashboardLayout({ children }) {
   const sidebarWidth = getSidebarWidth();
 
   return (
-    <NotificationProvider>
+    <AuthProvider>
+      <NotificationProvider>
       <div className="font-sans text-gray-900 min-h-screen flex flex-col">
         {/* Performance Monitor */}
         <PerformanceMonitor />
@@ -309,6 +311,7 @@ export default function DashboardLayout({ children }) {
       </main>
           </div>
     </NotificationProvider>
+    </AuthProvider>
   );
 }
 

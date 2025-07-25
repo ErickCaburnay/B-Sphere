@@ -28,6 +28,7 @@ import AccountMenu from '@/components/AccountMenu';
 import { NotificationProvider } from '@/components/ui/NotificationContext';
 import NotificationBell from '@/components/ui/NotificationBell';
 import NotificationTest from '@/components/ui/NotificationTest';
+import { AuthProvider } from '@/lib/auth-context';
 
 export default function ResidentDashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -256,7 +257,8 @@ export default function ResidentDashboardLayout({ children }) {
     }), []);
 
   return (
-    <NotificationProvider>
+    <AuthProvider>
+      <NotificationProvider>
       <div className="font-sans text-gray-900 min-h-screen flex flex-col">
         {/* Navigation Loading Indicator */}
         {isNavigating && (
@@ -469,6 +471,7 @@ export default function ResidentDashboardLayout({ children }) {
       </div>
       
     </NotificationProvider>
+    </AuthProvider>
   );
 }
 

@@ -1,78 +1,107 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions first
+    // Helper functions for authentication
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
       return isAuthenticated() && (
-        (
-          exists(/databases/$(database)/documents/admin_accounts/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/admin_accounts/$(request.auth.uid)).data.role == 'admin'
-        ) ||
-        (
-          get(/databases/$(database)/documents/residents/$(request.auth.uid)).data.role in ['admin', 'sub-admin']
-        )
+        // Check custom claims for admin role
+        request.auth.token.role in ['admin', 'sub-admin'] ||
+        // Fallback: check admin_accounts collection
+        exists(/databases/$(database)/documents/admin_accounts/$(request.auth.uid))
       );
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isResident() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'resident' ||
+        request.auth.token.userType == 'resident'
+      );
     }
 
-    // Users collection (replacing user_accounts for consistency)
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if true; // Allow signup
-      allow update, delete: if isAdmin() || isOwner(userId);
+    function isOwner(resourceUserId) {
+      return isAuthenticated() && (
+        request.auth.uid == resourceUserId ||
+        request.auth.token.uniqueId == resourceUserId ||
+        request.auth.token.residentId == resourceUserId
+      );
     }
-    
-    // Residents collection
-    match /residents/{residentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin(); // Only admins should modify resident data
-    }
-    
+
     // Admin accounts collection
     match /admin_accounts/{adminId} {
       allow read: if isAdmin();
       allow write: if isAdmin();
     }
 
-    // Counters collection for permit numbers
+    // Residents collection
+    match /residents/{residentId} {
+      allow read: if isAdmin() || (isResident() && isOwner(residentId));
+      allow write: if isAdmin();
+    }
+
+    // Document requests
+    match /document_requests/{requestId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.applicantId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.applicantId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Business permits
+    match /business_permits/{permitId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.applicantId == request.auth.uid);
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Households
+    match /households/{householdId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isAdmin() || (isAuthenticated() && (
+        resource.data.targetUserId == request.auth.uid ||
+        resource.data.senderUserId == request.auth.uid
+      ));
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && (
+        resource.data.targetUserId == request.auth.uid ||
+        resource.data.senderUserId == request.auth.uid
+      ));
+      allow delete: if isAdmin();
+    }
+
+    // Counters (for auto-incrementing IDs)
     match /counters/{counterId} {
       allow read: if isAdmin();
       allow write: if isAdmin();
     }
 
-    // Business Permits collection rules
-    match /business_permits/{permitId} {
-      function isPermitOwner() {
-        return isAuthenticated() && resource.data.applicantId == request.auth.uid;
-      }
-
-      allow read: if isAdmin() || isPermitOwner();
-      allow create: if isAdmin(); // Only admins can create permits
-      allow update: if isAdmin(); // Only admins can update permits
-      allow delete: if isAdmin();
-    }
-
     // OTPs collection - only accessible by Cloud Functions
     match /otps/{email} {
-      allow read, write: if false; // Only Cloud Functions can access
+      allow read, write: if false;
     }
-    
-    // OTPs fallback collection - for development when Cloud Functions are not available
-    match /otps_fallback/{email} {
-      allow read, write: if true; // Allow client access for development fallback
+
+    // Temporary residents (for signup process)
+    match /temp_residents/{tempId} {
+      allow read, write: if true; // Allow for signup process
     }
-    
-    // Default rule for other collections
+
+    // Email OTPs (for signup process)
+    match /email_otps/{tempId} {
+      allow read, write: if true; // Allow for signup process
+    }
+
+    // Default deny for other collections
     match /{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read, write: if false;
     }
   }
 } 
