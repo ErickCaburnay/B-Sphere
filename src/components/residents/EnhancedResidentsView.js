@@ -320,10 +320,10 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
     const checkSidebarState = () => {
       if (window.innerWidth >= 768) {
         // Look for specific text that appears in the expanded sidebar
-        const dashboardText = document.querySelector('aside span:contains("Dashboard")') || 
-                             Array.from(document.querySelectorAll('aside span')).find(el => el.textContent.includes('Dashboard'));
-        const officialsText = document.querySelector('aside span:contains("Officials")') ||
-                             Array.from(document.querySelectorAll('aside span')).find(el => el.textContent.includes('Officials'));
+        const dashboardText = Array.from(document.querySelectorAll('aside span'))
+          .find(el => el.textContent.includes('Dashboard'));
+        const officialsText = Array.from(document.querySelectorAll('aside span'))
+          .find(el => el.textContent.includes('Officials'));
         const brgyText = document.querySelector('aside h3') ||
                         document.querySelector('aside .text-sm');
         

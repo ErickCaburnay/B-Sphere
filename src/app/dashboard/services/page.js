@@ -260,6 +260,31 @@ export default function ServicesPage() {
     currentPage * rowsPerPage
   );
 
+  // Helper function to safely parse dates
+  const parseFirestoreDate = (dateField) => {
+    if (!dateField) return null;
+    
+    try {
+      // Handle Firestore timestamp format
+      if (dateField.seconds) {
+        return new Date(dateField.seconds * 1000).toISOString().split('T')[0];
+      }
+      // Handle ISO string format
+      if (typeof dateField === 'string') {
+        return new Date(dateField).toISOString().split('T')[0];
+      }
+      // Handle Date object
+      if (dateField instanceof Date) {
+        return dateField.toISOString().split('T')[0];
+      }
+      // Fallback
+      return new Date(dateField).toISOString().split('T')[0];
+    } catch (error) {
+      console.warn('Error parsing date:', dateField, error);
+      return new Date().toISOString().split('T')[0];
+    }
+  };
+
   // Fetch document requests using API route
   useEffect(() => {
     const fetchDocumentRequests = async () => {
@@ -284,12 +309,12 @@ export default function ServicesPage() {
           const baseDocument = {
             id: doc.id,
             transactionNo: doc.id,
-            dateFiled: doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            dateFiled: parseFirestoreDate(doc.createdAt) || new Date().toISOString().split('T')[0],
             nameOfApplicant: doc.fullName || '',
             purpose: doc.purpose || '',
             type: doc.documentType || '',
             status: doc.status || 'PENDING',
-            dateIssued: doc.issuedAt ? new Date(doc.issuedAt.seconds * 1000).toISOString().split('T')[0] : null,
+            dateIssued: parseFirestoreDate(doc.issuedAt),
             priority: doc.priority || 'medium',
             estimatedCompletion: doc.estimatedCompletion || null,
             applicantContact: doc.contactNumber || '',
@@ -395,12 +420,12 @@ export default function ServicesPage() {
         const baseDocument = {
           id: doc.id,
           transactionNo: doc.id,
-          dateFiled: doc.createdAt ? new Date(doc.createdAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          dateFiled: parseFirestoreDate(doc.createdAt) || new Date().toISOString().split('T')[0],
           nameOfApplicant: doc.fullName || '',
           purpose: doc.purpose || '',
           type: doc.documentType || '',
           status: doc.status || 'PENDING',
-          dateIssued: doc.issuedAt ? new Date(doc.issuedAt.seconds * 1000).toISOString().split('T')[0] : null,
+          dateIssued: parseFirestoreDate(doc.issuedAt),
           priority: doc.priority || 'medium',
           estimatedCompletion: doc.estimatedCompletion || null,
           applicantContact: doc.contactNumber || '',
