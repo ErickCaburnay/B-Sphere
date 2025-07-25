@@ -8,7 +8,12 @@ export function middleware(request) {
                   request.headers.get('authorization')?.replace('Bearer ', '');
 
     if (!token) {
-      // Redirect to login if no token
+      // Allow client-side navigation to proceed (user-agent includes 'Mozilla')
+      const userAgent = request.headers.get('user-agent') || '';
+      if (userAgent.includes('Mozilla')) {
+        return NextResponse.next();
+      }
+      // Redirect to login if no token for server-side requests
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
