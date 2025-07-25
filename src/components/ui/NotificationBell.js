@@ -457,7 +457,7 @@ const InfoUpdateModal = ({ notification, onClose }) => {
     };
 
     loadPendingUpdate();
-  }, [notification.requestId, notification.data, notification.senderUserId, notification.createdAt, notification.status]);
+  }, [notification.requestId, notification.data, notification.senderUserId, notification.createdAt, notification.status, notification.targetUserId]);
 
   // Add this useEffect inside InfoUpdateModal to sync notificationStatus with notification.status
   useEffect(() => {
@@ -1117,7 +1117,7 @@ const NotificationModal = ({
             <div className="flex flex-col items-center justify-center p-12 text-gray-500">
               <Bell className="w-16 h-16 mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">No notifications yet</h3>
-              <p className="text-sm">You'll see notifications here when there are new activities</p>
+              <p className="text-sm">You&apos;ll see notifications here when there are new activities</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">

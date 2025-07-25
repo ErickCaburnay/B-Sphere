@@ -29,7 +29,7 @@ export default function OfficialsManagement() {
               <div className="w-24 h-24 rounded-lg overflow-hidden">
                 <img 
                   src={official.imageUrl} 
-                  alt={official.name}
+                  alt={official.name || "Official photo"}
                   className="w-full h-full object-cover"
                 />
               </div>

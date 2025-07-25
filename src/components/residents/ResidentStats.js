@@ -20,7 +20,7 @@ export function ResidentStats({ residents }) {
     if (residents && residents.length > 0) {
       calculateStats(residents);
     }
-  }, [residents]);
+  }, [residents, calculateStats]);
 
   const calculateAge = (birthdate) => {
     const today = new Date();

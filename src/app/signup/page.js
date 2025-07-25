@@ -302,7 +302,7 @@ const Step1Account = ({ data, setData, onNext, errors, setErrors }) => {
           <label htmlFor="terms" className="text-sm text-white/90 cursor-pointer">
             I agree to the{' '}
             <span className="text-green-300 hover:text-green-100 transition duration-300 underline">
-              Terms & Conditions
+              Terms &amp; Conditions
             </span>
           </label>
           {errors.terms && <p className="text-red-400 text-xs mt-1">{errors.terms}</p>}

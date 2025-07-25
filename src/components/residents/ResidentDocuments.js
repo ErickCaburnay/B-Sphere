@@ -80,7 +80,7 @@ export function ResidentDocuments({ resident, onClose }) {
             <div className="relative">
               <img
                 src={resident.photo}
-                alt={`${resident.fullName}'s photo`}
+                alt={`${resident.fullName}&apos;s photo`}
                 className="w-32 h-32 object-cover rounded-lg"
               />
               <button
