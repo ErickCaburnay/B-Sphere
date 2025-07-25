@@ -13,6 +13,7 @@ export async function GET(request) {
     // Get search parameters
     const keyword = searchParams.get("q")?.trim();
     const uniqueId = searchParams.get("uniqueId")?.trim();
+    const firebaseUid = searchParams.get("firebaseUid")?.trim();
     const firstName = searchParams.get("firstName")?.trim();
     const middleName = searchParams.get("middleName")?.trim();
     const lastName = searchParams.get("lastName")?.trim();
@@ -31,7 +32,7 @@ export async function GET(request) {
     let residents = allResidents;
 
     // If specific field search parameters are provided
-    if (uniqueId || firstName || middleName || lastName || birthdate) {
+    if (uniqueId || firebaseUid || firstName || middleName || lastName || birthdate) {
       residents = allResidents.filter(resident => {
         let matches = true;
 
@@ -39,6 +40,11 @@ export async function GET(request) {
         if (uniqueId) {
           const residentUniqueId = resident.uniqueId || resident.id;
           matches = matches && residentUniqueId.toLowerCase().includes(uniqueId.toLowerCase());
+        }
+
+        // Check firebaseUid
+        if (firebaseUid) {
+          matches = matches && resident.firebaseUid === firebaseUid;
         }
 
         // Check firstName
@@ -110,7 +116,7 @@ export async function GET(request) {
     });
 
     return NextResponse.json({ 
-      data: formattedResidents,
+      residents: formattedResidents,
       total: formattedResidents.length 
     });
   } catch (error) {

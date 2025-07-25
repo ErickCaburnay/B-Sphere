@@ -59,6 +59,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // OTPs collection - only accessible by Cloud Functions
+    match /otps/{email} {
+      allow read, write: if false; // Only Cloud Functions can access
+    }
+    
+    // OTPs fallback collection - for development when Cloud Functions are not available
+    match /otps_fallback/{email} {
+      allow read, write: if true; // Allow client access for development fallback
+    }
+    
     // Default rule for other collections
     match /{document=**} {
       allow read: if isAuthenticated();

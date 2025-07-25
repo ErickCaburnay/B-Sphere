@@ -61,7 +61,18 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
   const onSubmitForm = async (data) => {
     try {
       setIsSubmitting(true);
-      await onSubmit(data);
+      const uppercasedData = {
+        ...data,
+        firstName: data.firstName?.toUpperCase() || '',
+        middleName: data.middleName ? data.middleName.toUpperCase() : '',
+        lastName: data.lastName?.toUpperCase() || '',
+        suffix: data.suffix ? data.suffix.toUpperCase() : '',
+        address: data.address?.toUpperCase() || '',
+        birthplace: data.birthplace?.toUpperCase() || '',
+        citizenship: data.citizenship?.toUpperCase() || '',
+        occupation: data.occupation ? data.occupation.toUpperCase() : '',
+      };
+      await onSubmit(uppercasedData);
       toast.success('Resident saved successfully');
       onClose();
     } catch (error) {
@@ -145,6 +156,7 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
                   <input
                     type="text"
                     {...register('firstName', { required: 'First name is required' })}
+                    onInput={(e) => e.target.value = e.target.value.toUpperCase()}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                   {errors.firstName && (
@@ -156,6 +168,7 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
                   <input
                     type="text"
                     {...register('middleName')}
+                    onInput={(e) => e.target.value = e.target.value.toUpperCase()}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -164,6 +177,7 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
                   <input
                     type="text"
                     {...register('lastName', { required: 'Last name is required' })}
+                    onInput={(e) => e.target.value = e.target.value.toUpperCase()}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                   {errors.lastName && (
@@ -175,6 +189,7 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
                   <input
                     type="text"
                     {...register('suffix')}
+                    onInput={(e) => e.target.value = e.target.value.toUpperCase()}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -192,6 +207,7 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
                   <input
                     type="text"
                     {...register('birthplace', { required: 'Birthplace is required' })}
+                    onInput={(e) => e.target.value = e.target.value.toUpperCase()}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                   {errors.birthplace && (
@@ -240,6 +256,7 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
                   <input
                     type="text"
                     {...register('address', { required: 'Address is required' })}
+                    onInput={(e) => e.target.value = e.target.value.toUpperCase()}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                   {errors.address && (
@@ -359,6 +376,7 @@ export function EnhancedResidentForm({ resident, onSubmit, onClose }) {
                   <input
                     type="text"
                     {...register('occupation')}
+                    onInput={(e) => e.target.value = e.target.value.toUpperCase()}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>

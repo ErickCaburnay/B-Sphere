@@ -38,6 +38,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.510.0",
     "next": "15.3.2",
+    "nodemailer": "^7.0.5",
     "pdfkit": "^0.17.1",
     "pdfkit-table": "^0.1.99",
     "pizzip": "^3.2.0",

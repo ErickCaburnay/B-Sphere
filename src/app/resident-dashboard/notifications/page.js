@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import NotificationItem from '@/components/ui/NotificationItem';
 
 export default function ResidentNotifications() {
   const [notifications, setNotifications] = useState([]);
@@ -92,7 +93,7 @@ export default function ResidentNotifications() {
         console.log('Found notification for highlight:', notification);
         
         // Mark as read if not already read
-        if (!notification.seen) {
+        if (!notification.read) {
           markAsRead(notification.id);
         }
         
@@ -113,7 +114,8 @@ export default function ResidentNotifications() {
       setLoading(true);
       setError(null);
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      const residentId = userData.residentId || userData.id;
+      // Use robust extraction for residentId
+      const residentId = userData.uniqueId || userData.residentId || userData.id || userData.uid;
 
       if (!residentId) {
         setError('No resident ID found. Please log in again.');
@@ -153,7 +155,7 @@ export default function ResidentNotifications() {
 
       if (response.ok) {
         setNotifications(prev => prev.map(notif => 
-          notif.id === notificationId ? { ...notif, seen: true } : notif
+          notif.id === notificationId ? { ...notif, read: true } : notif
         ));
         return true;
       } else {
@@ -174,7 +176,7 @@ export default function ResidentNotifications() {
 
       if (response.ok) {
         setNotifications(prev => prev.map(notif => 
-          notif.id === notificationId ? { ...notif, seen: false } : notif
+          notif.id === notificationId ? { ...notif, read: false } : notif
         ));
       }
     } catch (error) {
@@ -200,19 +202,17 @@ export default function ResidentNotifications() {
 
   const handleNotificationClick = async (notification) => {
     try {
-      // Open modal with notification details first
-      setSelectedNotification(notification);
-      setShowModal(true);
-      
-      // Mark as read if not already read (do this after opening modal)
-      if (!notification.seen) {
+      // Mark as read if not already read
+      if (!notification.read) {
         await markAsRead(notification.id);
+        await refreshNotifications();
       }
+      // Get the updated notification from state
+      const updatedNotification = notifications.find(n => n.id === notification.id) || notification;
+      setSelectedNotification(updatedNotification);
+      setShowModal(true);
     } catch (error) {
       console.error('Error handling notification click:', error);
-      // Still open the modal even if marking as read fails
-      setSelectedNotification(notification);
-      setShowModal(true);
     }
   };
 
@@ -289,13 +289,13 @@ export default function ResidentNotifications() {
 
   // Filter notifications
   const filteredNotifications = notifications.filter(notification => {
-    if (filter === 'read' && !notification.seen) return false;
-    if (filter === 'unread' && notification.seen) return false;
+    if (filter === 'read' && !notification.read) return false;
+    if (filter === 'unread' && notification.read) return false;
     if (typeFilter !== 'all' && notification.type !== typeFilter) return false;
     return true;
   });
 
-  const unreadCount = notifications.filter(n => !n.seen).length;
+  const unreadCount = notifications.filter(n => !n.read).length;
   const uniqueTypes = [...new Set(notifications.map(n => n.type))];
 
   if (loading) {
@@ -414,134 +414,11 @@ export default function ResidentNotifications() {
           </div>
         ) : (
           filteredNotifications.map((notification) => (
-            <div
+            <NotificationItem
               key={notification.id}
+              notification={notification}
               onClick={() => handleNotificationClick(notification)}
-              className={`bg-white rounded-xl shadow-sm border-l-4 border border-gray-200 transition-all duration-200 hover:shadow-md cursor-pointer ${
-                getNotificationColor(notification.type, notification.priority)
-              } ${!notification.seen ? 'ring-2 ring-blue-100' : 'opacity-75'}`}
-            >
-              <div className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    {/* Icon */}
-                    <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {notification.title}
-                            </h3>
-                                                         {!notification.seen && (
-                               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                             )}
-                            {notification.status && getStatusBadge(notification.status)}
-                          </div>
-                          
-                          <p className="text-gray-700 mb-3 leading-relaxed">
-                            {notification.message}
-                          </p>
-
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              {formatTimeAgo(notification.createdAt)}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                {getNotificationTypeLabel(notification.type)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expanded Details */}
-                      {expandedNotification === notification.id && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="font-medium text-gray-700">Notification ID:</span>
-                              <span className="ml-2 text-gray-600 font-mono">{notification.id}</span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-700">Priority:</span>
-                              <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                notification.priority === 'high' ? 'bg-red-100 text-red-800' :
-                                notification.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {notification.priority || 'normal'}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-700">Created:</span>
-                              <span className="ml-2 text-gray-600">
-                                {new Date(notification.createdAt).toLocaleString()}
-                              </span>
-                            </div>
-                            {notification.updatedAt && notification.updatedAt !== notification.createdAt && (
-                              <div>
-                                <span className="font-medium text-gray-700">Updated:</span>
-                                <span className="ml-2 text-gray-600">
-                                  {new Date(notification.updatedAt).toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedNotification(
-                          expandedNotification === notification.id ? null : notification.id
-                        );
-                      }}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Toggle details"
-                    >
-                      {expandedNotification === notification.id ? 
-                        <ChevronUp className="w-4 h-4" /> : 
-                        <ChevronDown className="w-4 h-4" />
-                      }
-                    </button>
-                    
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        notification.seen ? markAsUnread(notification.id) : markAsRead(notification.id);
-                      }}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      title={notification.seen ? "Mark as unread" : "Mark as read"}
-                    >
-                      {notification.seen ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
-                    
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNotification(notification.id);
-                      }}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete notification"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            />
           ))
         )}
       </div>
@@ -557,7 +434,7 @@ export default function ResidentNotifications() {
             </div>
                          <div className="text-center">
                <div className="text-2xl font-bold text-green-600">
-                 {notifications.filter(n => n.seen).length}
+                 {notifications.filter(n => n.read).length}
                </div>
                <div className="text-sm text-gray-600">Read</div>
              </div>
@@ -577,21 +454,31 @@ export default function ResidentNotifications() {
 
       {/* Notification Detail Modal */}
       {showModal && selectedNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               {/* Modal Header */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-start gap-4 flex-1">
                   <div className="flex-shrink-0 mt-1">
-                    {getNotificationIcon(selectedNotification.type)}
+                    {/* Custom icon for approved/rejected info update */}
+                    {(selectedNotification.type === 'info_update_approved') ? (
+                      <CheckCircle className="w-8 h-8 text-green-600" />
+                    ) : selectedNotification.type === 'info_update_rejected' ? (
+                      <XCircle className="w-8 h-8 text-red-600" />
+                    ) : (
+                      getNotificationIcon(selectedNotification.type)
+                    )}
                   </div>
                   <div className="flex-1">
                     <h2 className="text-xl font-bold text-gray-900 mb-2">
-                      {selectedNotification.title}
+                      {/* Custom header for approved/rejected info update */}
+                      {selectedNotification.type === 'info_update_approved' && 'Information Update Approved'}
+                      {selectedNotification.type === 'info_update_rejected' && 'Information Update Rejected'}
+                      {selectedNotification.type !== 'info_update_approved' && selectedNotification.type !== 'info_update_rejected' && selectedNotification.title}
                     </h2>
                     <div className="flex items-center gap-3 mb-3">
-                      {!selectedNotification.seen && (
+                      {!selectedNotification.read && (
                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       )}
                       {selectedNotification.status && getStatusBadge(selectedNotification.status)}
@@ -615,7 +502,12 @@ export default function ResidentNotifications() {
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Message</h3>
                   <p className="text-gray-900 leading-relaxed bg-gray-50 p-4 rounded-lg">
-                    {selectedNotification.message}
+                    {/* Custom message for approved/rejected info update */}
+                    {selectedNotification.type === 'info_update_approved' &&
+                      'Your personal information update request has been approved and your profile has been updated.'}
+                    {selectedNotification.type === 'info_update_rejected' &&
+                      'Your personal information update request has been reviewed and rejected. Please contact the admin for more details.'}
+                    {selectedNotification.type !== 'info_update_approved' && selectedNotification.type !== 'info_update_rejected' && selectedNotification.message}
                   </p>
                 </div>
 
@@ -753,13 +645,13 @@ export default function ResidentNotifications() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      selectedNotification.seen ? markAsUnread(selectedNotification.id) : markAsRead(selectedNotification.id);
-                      setSelectedNotification(prev => ({ ...prev, seen: !prev.seen }));
+                      selectedNotification.read ? markAsUnread(selectedNotification.id) : markAsRead(selectedNotification.id);
+                      setSelectedNotification(prev => ({ ...prev, read: !prev.read }));
                     }}
                     className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    {selectedNotification.seen ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    {selectedNotification.seen ? 'Mark as Unread' : 'Mark as Read'}
+                    {selectedNotification.read ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    {selectedNotification.read ? 'Mark as Unread' : 'Mark as Read'}
                   </button>
                   
                   <button
@@ -775,10 +667,13 @@ export default function ResidentNotifications() {
                 </div>
                 
                 <button
-                  onClick={closeModal}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => {
+                    closeModal();
+                    window.location.href = '/resident-dashboard/notifications';
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Close
+                  Go to Notification Page
                 </button>
               </div>
             </div>

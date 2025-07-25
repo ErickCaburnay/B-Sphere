@@ -1,105 +1,102 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import AOS from "aos";
-import "aos/dist/aos.css";
 import { usePathname } from 'next/navigation';
+import { 
+  CheckCircle, 
+  ChevronRight, 
+  Eye, 
+  EyeOff, 
+  Upload, 
+  FileText, 
+  X, 
+  Download, 
+  Trash2,
+  AlertCircle,
+  Phone,
+  Mail,
+  Clock,
+  ArrowLeft
+} from "lucide-react";
 
-const SignupPage = () => {
-  const pathname = usePathname();
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [hasReadTerms, setHasReadTerms] = useState(false);
-  const [canAcceptTerms, setCanAcceptTerms] = useState(false);
-  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { auth } from '@/lib/firebase'; // Use centralized Firebase config
+import { sendProductionOTP, verifyProductionOTP, cleanupExpiredOTPs } from '@/lib/productionOTP';
+import EmailPerformanceMonitor from '@/components/ui/EmailPerformanceMonitor';
+
+const steps = [
+  { id: 0, label: "Account Info", icon: "👤" },
+  { id: 1, label: "OTP Verification", icon: "🔐" },
+  { id: 2, label: "Personal Info", icon: "📋" },
+];
+
+// Step 1: Account Information Component
+const Step1Account = ({ data, setData, onNext, errors, setErrors }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    middleName: '',
-    email: '',
-    phone: '',
-    birthdate: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [errors, setErrors] = useState({});
+  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
 
+  // Use refs to maintain stable references
+  const setDataRef = useRef(setData);
+  const setErrorsRef = useRef(setErrors);
+  
+  // Update refs when props change
   useEffect(() => {
-    AOS.init({
-      duration: 800,
-      once: true,
-    });
+    setDataRef.current = setData;
+    setErrorsRef.current = setErrors;
+  }, [setData, setErrors]);
+
+  // Simple input handler - no error clearing during typing
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setDataRef.current(prev => ({ ...prev, [name]: value }));
   }, []);
 
-  const handleInputChange = (e) => {
+  // Handle error clearing on blur instead of during typing
+  const handleInputBlur = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+    if (value.trim()) {
+      setErrorsRef.current(prev => {
+        if (prev[name]) {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        }
+        return prev;
+      });
     }
-  };
+  }, []);
 
-  const handleTermsScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target;
-    const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
-    
-    if (scrollPercentage >= 0.95) { // 95% scrolled
-      setCanAcceptTerms(true);
-    }
-  };
-
-  const handleAcceptTerms = () => {
-    setHasReadTerms(true);
-    setShowTermsModal(false);
-  };
-
-  const handleTermsCheckbox = () => {
-    if (!hasReadTerms) {
-      setShowTermsModal(true);
-    } else {
-      setIsTermsAccepted(!isTermsAccepted);
-    }
-  };
-
-  const validateForm = () => {
+  const validateStep1 = () => {
     const newErrors = {};
-
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.email.trim()) {
+    if (!data.firstName?.trim()) newErrors.firstName = 'First name is required';
+    if (!data.lastName?.trim()) newErrors.lastName = 'Last name is required';
+    if (!data.email?.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/\S+@\S+\.\S+/.test(data.email)) {
       newErrors.email = 'Email is invalid';
     }
-    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!formData.birthdate.trim()) {
+    if (!data.contactNumber?.trim()) newErrors.contactNumber = 'Phone number is required';
+    if (!data.birthdate?.trim()) {
       newErrors.birthdate = 'Birth date is required';
     } else {
-      const birthDate = new Date(formData.birthdate);
+      const birthDate = new Date(data.birthdate);
       const today = new Date();
       const age = today.getFullYear() - birthDate.getFullYear();
-      if (age < 13 || (age === 13 && today < new Date(birthDate.setFullYear(birthDate.getFullYear() + 13)))) {
+      if (age < 13) {
         newErrors.birthdate = 'You must be at least 13 years old';
       }
     }
-    if (!formData.password) {
+    if (!data.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
+    } else if (data.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    if (!formData.confirmPassword) {
+    if (!data.confirmPassword) {
       newErrors.confirmPassword = 'Confirm password is required';
-    } else if (formData.password !== formData.confirmPassword) {
+    } else if (data.password !== data.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     if (!isTermsAccepted) {
@@ -110,63 +107,1325 @@ const SignupPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      setIsSubmitting(true);
+  const handleNext = async () => {
+    if (validateStep1()) {
       try {
-        const response = await fetch('/api/auth/signup', {
+        // Submit Step 1 data to backend
+        const response = await fetch('/api/auth/signup/step1', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            middleName: formData.middleName,
-            email: formData.email,
-            phone: formData.phone,
-            birthdate: formData.birthdate,
-            password: formData.password,
-          }),
+          body: JSON.stringify(data),
         });
 
-        const data = await response.json();
+        const result = await response.json();
 
         if (response.ok) {
-          // Success - store user data and redirect to resident dashboard
-          localStorage.setItem('user', JSON.stringify(data.user));
-          localStorage.setItem('token', data.token || 'temp-token');
-          alert('Account created successfully! Welcome to B-Sphere.');
-          window.location.href = '/resident-dashboard';
+          // Store tempId and step1 data for next steps
+          localStorage.setItem('signup_tempId', result.tempId);
+          localStorage.setItem('signup_step1_data', JSON.stringify(data));
+          onNext();
         } else {
-          // Error - show error message
-          setErrors({ submit: data.error || 'Failed to create account' });
+          setErrors(prev => ({ ...prev, submit: result.error || 'Failed to proceed to next step' }));
         }
       } catch (error) {
-        console.error('Signup error:', error);
-        setErrors({ submit: 'Network error. Please try again.' });
-      } finally {
-        setIsSubmitting(false);
+        console.error('Step 1 error:', error);
+        setErrors(prev => ({ ...prev, submit: 'Network error. Please try again.' }));
       }
     }
   };
 
   return (
-    <div className="font-sans text-gray-900 overflow-x-hidden">
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">Create Your Account</h2>
+        <p className="text-white/80">Enter your basic information to get started</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">First Name *</label>
+          <input
+            type="text"
+            name="firstName"
+            value={data.firstName || ''}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            placeholder="Juan"
+            autoComplete="given-name"
+            className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+              errors.firstName ? 'border-red-500' : 'border-white/30'
+            }`}
+          />
+          {errors.firstName && <p className="text-red-400 text-xs mt-1">{errors.firstName}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Last Name *</label>
+          <input
+            type="text"
+            name="lastName"
+            value={data.lastName || ''}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            placeholder="Dela Cruz"
+            autoComplete="family-name"
+            className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+              errors.lastName ? 'border-red-500' : 'border-white/30'
+            }`}
+          />
+          {errors.lastName && <p className="text-red-400 text-xs mt-1">{errors.lastName}</p>}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Middle Name (Optional)</label>
+        <input
+          type="text"
+          name="middleName"
+          value={data.middleName || ''}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          placeholder="Santos"
+          autoComplete="additional-name"
+          className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Email Address *</label>
+        <input
+          type="email"
+          name="email"
+          value={data.email || ''}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          placeholder="you@example.com"
+          autoComplete="email"
+          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+            errors.email ? 'border-red-500' : 'border-white/30'
+          }`}
+        />
+        {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Contact Number *</label>
+        <input
+          type="tel"
+          name="contactNumber"
+          value={data.contactNumber || ''}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          placeholder="0921 234 5678"
+          autoComplete="tel"
+          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+            errors.contactNumber ? 'border-red-500' : 'border-white/30'
+          }`}
+        />
+        {errors.contactNumber && <p className="text-red-400 text-xs mt-1">{errors.contactNumber}</p>}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Birth Date *</label>
+        <input
+          type="date"
+          name="birthdate"
+          value={data.birthdate || ''}
+          onChange={handleInputChange}
+          max={new Date(new Date().setFullYear(new Date().getFullYear() - 13)).toISOString().split('T')[0]}
+          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+            errors.birthdate ? 'border-red-500' : 'border-white/30'
+          }`}
+        />
+        {errors.birthdate && <p className="text-red-400 text-xs mt-1">{errors.birthdate}</p>}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Password *</label>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={data.password || ''}
+              onChange={handleInputChange}
+              placeholder="••••••••"
+              className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                errors.password ? 'border-red-500' : 'border-white/30'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Confirm Password *</label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              value={data.confirmPassword || ''}
+              onChange={handleInputChange}
+              placeholder="••••••••"
+              className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+                errors.confirmPassword ? 'border-red-500' : 'border-white/30'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+            >
+              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
+        </div>
+      </div>
+
+      <div className="flex items-start">
+        <input
+          type="checkbox"
+          id="terms"
+          checked={isTermsAccepted}
+          onChange={() => setIsTermsAccepted(!isTermsAccepted)}
+          className="h-4 w-4 text-green-600 border-white/30 rounded focus:ring-green-500 bg-white/20 mt-1"
+        />
+        <div className="ml-2 flex-1">
+          <label htmlFor="terms" className="text-sm text-white/90 cursor-pointer">
+            I agree to the{' '}
+            <span className="text-green-300 hover:text-green-100 transition duration-300 underline">
+              Terms & Conditions
+            </span>
+          </label>
+          {errors.terms && <p className="text-red-400 text-xs mt-1">{errors.terms}</p>}
+        </div>
+      </div>
+
+      {errors.submit && (
+        <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <p className="text-red-400 text-sm">{errors.submit}</p>
+        </div>
+      )}
+
+      <button
+        onClick={handleNext}
+        className="w-full py-3 rounded-lg font-medium transition duration-300 shadow-lg bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800"
+      >
+        Continue to OTP Verification
+      </button>
+    </div>
+  );
+};
+
+// Step 2: OTP Verification Component
+const Step2OTP = ({ data, setData, onNext, onBack, email, contactNumber, accountData, errors, setErrors }) => {
+  const [otpMethod, setOtpMethod] = useState('email');
+  const [otp, setOtp] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState(null);
+
+  // Clean up expired OTPs on component mount
+  useEffect(() => {
+    cleanupExpiredOTPs();
+  }, []);
+
+  // Create resident account after OTP verification
+  const createResidentAccount = async () => {
+    try {
+      const response = await fetch('/api/auth/signup/step2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create_account_direct',
+          email: email,
+          contactNumber: contactNumber,
+          firstName: accountData.firstName || '',
+          lastName: accountData.lastName || '',
+          middleName: accountData.middleName || '',
+          birthdate: accountData.birthdate || '',
+          password: accountData.password || ''
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Store the uniqueId and firebaseUid for Step 3
+        localStorage.setItem('signup_uniqueId', result.uniqueId);
+        localStorage.setItem('signup_firebaseUid', result.firebaseUid);
+        console.log('✅ Resident account created:', result.uniqueId);
+      } else {
+        throw new Error(result.error || 'Failed to create account');
+    }
+    } catch (error) {
+      console.error('❌ Failed to create resident account:', error);
+      throw new Error('Failed to create account. Please try again.');
+    }
+  };
+
+  // Initialize reCAPTCHA only when needed for phone verification
+  useEffect(() => {
+    if (otpMethod === 'phone' && typeof window !== 'undefined') {
+      // Clear any existing verifier first
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+          delete window.recaptchaVerifier;
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+
+      // Add a small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        try {
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'invisible', // Make it invisible for better UX
+            callback: (response) => {
+              console.log('reCAPTCHA solved automatically');
+        },
+        'expired-callback': () => {
+              setRecaptchaVerifier(null);
+              setErrors(prev => ({ ...prev, otp: 'Verification expired. Please try again.' }));
+        }
+      });
+          
+          window.recaptchaVerifier = verifier;
+      setRecaptchaVerifier(verifier);
+        } catch (error) {
+          console.error('reCAPTCHA initialization error:', error);
+          setErrors(prev => ({ ...prev, otp: 'Failed to initialize phone verification. Please refresh the page.' }));
+    }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+
+    return () => {
+      // Cleanup when switching away from phone method
+      if (otpMethod !== 'phone' && window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+          delete window.recaptchaVerifier;
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        setRecaptchaVerifier(null);
+      }
+    };
+  }, [otpMethod]);
+
+  const sendOtp = async () => {
+    const startTime = Date.now();
+    setIsVerifying(true);
+    setErrors(prev => ({ ...prev, otp: '' }));
+    
+    try {
+      if (otpMethod === 'email') {
+        // 🚀 PERFORMANCE: Generate OTP and prepare data simultaneously
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpData = {
+          code: otpCode,
+          email: email,
+          timestamp: Date.now()
+        };
+        
+        // Debug logging for OTP generation
+        console.log('📧 Generated OTP:', {
+          code: otpCode,
+          codeType: typeof otpCode,
+          email: email,
+          timestamp: otpData.timestamp
+        });
+        
+        // 🚀 PERFORMANCE: Parallel operations - store locally while sending
+        localStorage.setItem('email_otp', JSON.stringify(otpData));
+        
+        // 🚀 PERFORMANCE: Optimized fetch with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        
+        try {
+          const response = await fetch('/api/send-email-otp', {
+          method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp: otpCode }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+        const result = await response.json();
+
+        if (response.ok) {
+            const totalTime = Date.now() - startTime;
+            console.log(`🚀 Email OTP sent in ${totalTime}ms`);
+            
+            // Track performance
+            if (window.addEmailPerformanceData) {
+              window.addEmailPerformanceData(totalTime, true);
+          }
+
+            // Show performance info in development
+            if (process.env.NODE_ENV === 'development' && result.performance) {
+              console.log(`📊 Performance: Send ${result.performance.sendTime}ms | Total ${result.performance.totalTime}ms`);
+          }
+            
+            setOtpSent(true);
+        } else {
+            // Even if email sending fails, keep the OTP and allow user to enter it
+            // In case they received it despite the API error
+            console.warn('⚠️ Email sending may have failed, but OTP is still valid for 5 minutes');
+            setOtpSent(true); // Still show the input field
+            
+            // Set a warning message instead of throwing an error
+            setErrors(prev => ({ 
+              ...prev, 
+              otp: `Warning: Email may not have been sent (${result.error || 'Unknown error'}). If you received the OTP, you can still enter it.` 
+            }));
+          }
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          
+          // Track failed performance
+          if (window.addEmailPerformanceData) {
+            window.addEmailPerformanceData(Date.now() - startTime, false);
+          }
+          
+          if (fetchError.name === 'AbortError') {
+            // Even on timeout, keep the OTP and show input field
+            console.warn('⚠️ Email sending timed out, but OTP is still valid');
+            setOtpSent(true);
+            setErrors(prev => ({ 
+              ...prev, 
+              otp: 'Email sending timed out. If you received the OTP, you can still enter it. Otherwise, try again.' 
+            }));
+            return; // Don't throw error, just show warning
+          }
+          
+          // For other errors, still allow OTP entry
+          console.warn('⚠️ Email sending error:', fetchError.message);
+          setOtpSent(true);
+          setErrors(prev => ({ 
+            ...prev, 
+            otp: `Email error: ${fetchError.message}. If you received the OTP, you can still enter it.` 
+          }));
+        }
+      } else if (otpMethod === 'phone') {
+        // Firebase Auth phone verification
+        if (!recaptchaVerifier) {
+          throw new Error('Phone verification not ready. Please wait a moment and try again.');
+        }
+
+        // Format phone number for Firebase
+        // First, clean the contact number (remove spaces and non-digits)
+        const cleanNumber = contactNumber.replace(/\D/g, '');
+        
+        // Validate that it's a valid Philippine mobile number (11 digits starting with 09)
+        if (!/^09\d{9}$/.test(cleanNumber)) {
+          throw new Error('Invalid phone number format. Please use format: 0921 234 5678');
+        }
+        
+        // Convert to international format (+63 format)
+        // Remove the leading 0 and add +63
+        const phoneNumber = '+63' + cleanNumber.substring(1);
+        
+        console.log('Original contact number:', contactNumber);
+        console.log('Cleaned number:', cleanNumber);
+        console.log('Formatted for Firebase:', phoneNumber);
+
+        try {
+          console.log('Attempting to send SMS via Firebase...');
+          const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+          console.log('SMS sent successfully, confirmation result:', confirmation);
+          setConfirmationResult(confirmation);
+          setOtpSent(true);
+        } catch (firebaseError) {
+          console.error('Firebase phone auth error details:', {
+            code: firebaseError.code,
+            message: firebaseError.message,
+            phoneNumber: phoneNumber,
+            recaptchaVerifier: !!recaptchaVerifier
+          });
+          
+          // Handle specific Firebase errors with more detailed messages
+          if (firebaseError.code === 'auth/invalid-app-credential') {
+            throw new Error('Firebase phone authentication is not properly configured. This may require upgrading to Firebase Blaze plan.');
+          } else if (firebaseError.code === 'auth/too-many-requests') {
+            throw new Error('Too many SMS requests. Please try again in a few minutes or use email verification.');
+          } else if (firebaseError.code === 'auth/invalid-phone-number') {
+            throw new Error(`Invalid phone number format. Received: ${phoneNumber}`);
+          } else if (firebaseError.code === 'auth/captcha-check-failed') {
+            throw new Error('Security verification failed. Please refresh the page and try again.');
+          } else if (firebaseError.code === 'auth/quota-exceeded') {
+            throw new Error('SMS quota exceeded. Please try email verification or contact support.');
+          } else {
+            throw new Error(`SMS sending failed: ${firebaseError.message}. Please try email verification instead.`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Send OTP error:', error);
+      
+      let errorMessage = 'Failed to send verification. Please try again.';
+      
+      if (error.code === 'auth/invalid-phone-number') {
+        errorMessage = 'Invalid phone number format. Please use format: 09xxxxxxxxx';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please try again later.';
+      } else if (error.code === 'auth/captcha-check-failed') {
+        errorMessage = 'reCAPTCHA verification failed. Please try again.';
+      } else if (error.code === 'auth/internal-error') {
+        errorMessage = 'Phone verification service temporarily unavailable. Please try email verification.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setErrors(prev => ({ ...prev, otp: errorMessage }));
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!otp.trim()) {
+      setErrors(prev => ({ ...prev, otp: 'Please enter the verification code' }));
+      return;
+    }
+
+    setIsVerifying(true);
+    setErrors(prev => ({ ...prev, otp: '' }));
+    
+    try {
+      if (otpMethod === 'email') {
+        // Email OTP verification
+        const storedOtp = localStorage.getItem('email_otp');
+        console.log('🔍 Stored OTP raw:', storedOtp);
+        
+        if (!storedOtp) {
+          throw new Error('OTP expired. Please request a new one.');
+        }
+
+        let otpData;
+        try {
+          otpData = JSON.parse(storedOtp);
+          console.log('🔍 Parsed OTP data:', otpData);
+        } catch (parseError) {
+          console.error('❌ Failed to parse stored OTP:', parseError);
+          localStorage.removeItem('email_otp');
+          throw new Error('Invalid OTP data. Please request a new one.');
+        }
+        const now = Date.now();
+        const otpAge = now - otpData.timestamp;
+        
+        // Check if OTP is expired (5 minutes)
+        if (otpAge > 5 * 60 * 1000) {
+          localStorage.removeItem('email_otp');
+          throw new Error('OTP expired. Please request a new one.');
+        }
+        
+        // Debug logging for OTP comparison
+        console.log('🔍 OTP Debug:', {
+          storedCode: otpData.code,
+          storedCodeType: typeof otpData.code,
+          inputCode: otp.trim(),
+          inputCodeType: typeof otp.trim(),
+          storedEmail: otpData.email,
+          inputEmail: email,
+          codesMatch: String(otpData.code) === String(otp.trim())
+        });
+        
+        // Check if OTP matches (ensure both are strings for comparison)
+        if (String(otpData.code) !== String(otp.trim())) {
+          console.error('❌ OTP mismatch:', { stored: otpData.code, input: otp.trim() });
+          throw new Error('Invalid OTP code. Please try again.');
+        }
+
+        // Check if email matches
+        if (otpData.email !== email) {
+          console.error('❌ Email mismatch:', { stored: otpData.email, input: email });
+          throw new Error('OTP does not match the email address.');
+        }
+        
+        // OTP is valid, clean up and proceed to create account
+        localStorage.removeItem('email_otp');
+        
+        // Call Step 2 API to create the resident record
+        await createResidentAccount();
+        onNext();
+        
+      } else if (otpMethod === 'phone') {
+        // Firebase phone verification
+        if (!confirmationResult) {
+          throw new Error('No verification session found. Please request a new OTP.');
+        }
+        
+        const result = await confirmationResult.confirm(otp.trim());
+
+        if (result.user) {
+          // Call Step 2 API to create the resident record
+          await createResidentAccount();
+              onNext();
+            } else {
+          throw new Error('Phone verification failed. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Verify OTP error:', error);
+      
+      let errorMessage = 'Verification failed. Please try again.';
+      
+      if (error.code === 'auth/invalid-verification-code') {
+        errorMessage = 'Invalid OTP code. Please check and try again.';
+      } else if (error.code === 'auth/code-expired') {
+        errorMessage = 'OTP code has expired. Please request a new one.';
+      } else if (error.code === 'auth/session-expired') {
+        errorMessage = 'Verification session expired. Please request a new OTP.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setErrors(prev => ({ ...prev, otp: errorMessage }));
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-white mb-2">Verify Your Account</h2>
+        <p className="text-white/70">We need to verify your identity before proceeding</p>
+      </div>
+
+      {!otpSent ? (
+        <div className="space-y-6">
+          <div className="text-center">
+            <h3 className="text-xl font-semibold text-white mb-4">Choose verification method</h3>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => setOtpMethod('email')}
+                className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all ${
+                  otpMethod === 'email'
+                    ? 'border-green-500 bg-green-500/20 text-white'
+                    : 'border-white/30 bg-white/10 text-white/80 hover:border-white/50'
+                }`}
+              >
+                <Mail className="w-5 h-5" />
+                <span>Email OTP</span>
+              </button>
+              <button
+                onClick={() => setOtpMethod('phone')}
+                className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all ${
+                  otpMethod === 'phone'
+                    ? 'border-green-500 bg-green-500/20 text-white'
+                    : 'border-white/30 bg-white/10 text-white/80 hover:border-white/50'
+                }`}
+              >
+                <Phone className="w-5 h-5" />
+                <span>SMS OTP</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="text-white/70 mb-4">
+              We'll send a verification code to: <span className="font-semibold text-white">
+                {otpMethod === 'email' ? email : contactNumber}
+              </span>
+            </p>
+            
+            <div className={`${otpMethod === 'email' ? 'bg-blue-500/20 border-blue-500/30' : 'bg-green-500/20 border-green-500/30'} border rounded-lg p-4 mb-4`}>
+              <p className={`${otpMethod === 'email' ? 'text-blue-200' : 'text-green-200'} text-sm`}>
+                {otpMethod === 'email' ? '📧' : '📱'} We'll send a 6-digit verification code to your {otpMethod === 'email' ? 'email address' : 'phone number'}.
+              </p>
+            </div>
+            
+            <button
+              onClick={sendOtp}
+              disabled={isVerifying}
+              className={`px-8 py-3 rounded-lg font-medium transition duration-300 ${
+                isVerifying
+                  ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
+              }`}
+            >
+              {isVerifying ? 'Sending OTP...' : (otpMethod === 'email' ? 'Send Email OTP' : 'Send SMS OTP')}
+            </button>
+            
+            {/* Invisible reCAPTCHA container for phone authentication */}
+            {otpMethod === 'phone' && (
+              <div>
+                <div id="recaptcha-container" className="mt-2"></div>
+                <p className="text-white/50 text-xs mt-2">
+                  🔒 Protected by invisible reCAPTCHA
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="text-center">
+              <div className="space-y-4">
+                <p className="text-white/70 mb-4">
+                Check your {otpMethod === 'email' ? 'email inbox' : 'phone messages'} for the OTP code sent to: <span className="font-semibold text-white">
+                  {otpMethod === 'email' ? email : contactNumber}
+                </span>
+                </p>
+              <div className={`${otpMethod === 'email' ? 'bg-blue-500/20 border-blue-500/30' : 'bg-green-500/20 border-green-500/30'} border rounded-lg p-4`}>
+                <p className={`${otpMethod === 'email' ? 'text-blue-200' : 'text-green-200'} text-sm`}>
+                  {otpMethod === 'email' ? '📧' : '📱'} Enter the 6-digit verification code from your {otpMethod === 'email' ? 'email' : 'SMS'} below.
+                  </p>
+                </div>
+              </div>
+          </div>
+
+          {/* OTP Input */}
+          <div className="space-y-4">
+              <input
+                type="text"
+                value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter 6-digit code"
+                className="w-full p-4 text-center text-2xl font-mono rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              maxLength="6"
+              />
+              {errors.otp && (
+              <div className="flex items-center gap-2 mt-2 text-red-400 text-sm justify-center">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{errors.otp}</span>
+                </div>
+              )}
+            </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={verifyOtp}
+              disabled={isVerifying || !otp.trim()}
+              className={`px-8 py-3 rounded-lg font-medium transition duration-300 ${
+                isVerifying || !otp.trim()
+                  ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
+                  : otpMethod === 'email'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                    : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
+              }`}
+            >
+              {isVerifying ? 'Verifying...' : 'Verify Code'}
+            </button>
+
+                <button
+              onClick={() => {
+                setOtp('');
+                setErrors(prev => ({ ...prev, otp: '' }));
+                sendOtp();
+              }}
+              disabled={isVerifying}
+              className="px-6 py-3 rounded-lg font-medium bg-white/20 text-white border border-white/30 hover:bg-white/30 transition duration-300 disabled:opacity-50"
+            >
+              Resend OTP
+                </button>
+
+            <button
+              onClick={() => setOtpSent(false)}
+              className="px-6 py-3 rounded-lg font-medium bg-white/20 text-white border border-white/30 hover:bg-white/30 transition duration-300"
+            >
+              Change Method
+            </button>
+                </div>
+              </div>
+            )}
+
+      {/* Navigation */}
+      <div className="flex justify-between pt-6">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 px-6 py-3 text-white/80 hover:text-white transition duration-300"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Custom Dropdown Component with Glass Effect
+const GlassDropdown = ({ name, value, onChange, options, placeholder, error, required = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState('');
+
+  useEffect(() => {
+    const option = options.find(opt => opt.value === value);
+    setSelectedLabel(option ? option.label : '');
+  }, [value, options]);
+
+  const handleSelect = (option) => {
+    onChange({ target: { name, value: option.value } });
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition text-left flex items-center justify-between ${
+          error ? 'border-red-500' : 'border-white/30'
+        }`}
+      >
+        <span className={value ? 'text-white' : 'text-white/70'}>
+          {selectedLabel || placeholder}
+        </span>
+        <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 rounded-lg bg-gray-800 border border-gray-600 shadow-xl">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => handleSelect(option)}
+              className="w-full p-3 text-left text-white hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg border-b border-gray-600 last:border-b-0"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+      
+      {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    </div>
+  );
+};
+
+// Step 3: Personal Information Component
+const Step3Personal = ({ data, setData, onBack, accountData, errors, setErrors }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationMethod, setVerificationMethod] = useState('email');
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
+
+  // Use refs to maintain stable references
+  const setDataRef = useRef(setData);
+  const setErrorsRef = useRef(setErrors);
+  
+  // Update refs when props change
+  useEffect(() => {
+    setDataRef.current = setData;
+    setErrorsRef.current = setErrors;
+  }, [setData, setErrors]);
+
+  // Simple input handler - no error clearing during typing
+  const handleInputChange = useCallback((e) => {
+    const { name, value, type, checked } = e.target;
+    setDataRef.current(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  }, []);
+
+  // Handle error clearing on blur instead of during typing
+  const handleInputBlur = useCallback((e) => {
+    const { name, value, type } = e.target;
+    const fieldValue = type === 'checkbox' ? e.target.checked : value.trim();
+    if (fieldValue) {
+      setErrorsRef.current(prev => {
+        if (prev[name]) {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        }
+        return prev;
+      });
+    }
+  }, []);
+
+  const validateStep3 = () => {
+    const newErrors = {};
+    if (!data.address?.trim()) newErrors.address = 'Address is required';
+    if (!data.gender?.trim()) newErrors.gender = 'Gender is required';
+    if (!data.citizenship?.trim()) newErrors.citizenship = 'Citizenship is required';
+    if (!data.voterStatus?.trim()) newErrors.voterStatus = 'Voter status is required';
+    if (!data.maritalStatus?.trim()) newErrors.maritalStatus = 'Marital status is required';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (validateStep3()) {
+      setIsSubmitting(true);
+      try {
+        const uniqueId = localStorage.getItem('signup_uniqueId');
+        const firebaseUid = localStorage.getItem('signup_firebaseUid');
+        
+        console.log('🔍 Step 3 Debug:', { uniqueId, firebaseUid });
+        
+        if (!uniqueId || !firebaseUid) {
+          console.error('❌ Missing registration data:', { uniqueId, firebaseUid });
+          throw new Error('Missing registration data. Please restart registration.');
+        }
+
+        // Submit Step 3 data to backend (without files)
+        const response = await fetch('/api/auth/signup/step3', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uniqueId: uniqueId,
+            firebaseUid: firebaseUid,
+            ...data,
+            uploadedFiles: [] // No files to upload
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Show verification modal instead of completing registration
+          setShowVerificationModal(true);
+        } else {
+          setErrors(prev => ({ ...prev, submit: result.error || 'Failed to complete registration' }));
+        }
+      } catch (error) {
+        console.error('Step 3 error:', error);
+        setErrors(prev => ({ ...prev, submit: 'Network error. Please try again.' }));
+      } finally {
+        setIsSubmitting(false);
+          }
+        }
+  };
+
+  const sendVerificationLink = async () => {
+    setIsSendingVerification(true);
+    try {
+      const uniqueId = localStorage.getItem('signup_uniqueId');
+      const firebaseUid = localStorage.getItem('signup_firebaseUid');
+      
+      const response = await fetch('/api/auth/send-verification-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uniqueId: uniqueId,
+            firebaseUid: firebaseUid,
+          method: verificationMethod,
+          email: accountData.email,
+          phoneNumber: accountData.contactNumber
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Clean up localStorage
+          localStorage.removeItem('signup_uniqueId');
+          localStorage.removeItem('signup_firebaseUid');
+          
+        alert(`Verification link sent to your ${verificationMethod}! Please check and click the link to complete your registration.`);
+        window.location.href = '/login';
+        } else {
+        alert(result.error || 'Failed to send verification link. Please try again.');
+        }
+      } catch (error) {
+      console.error('Verification link error:', error);
+      alert('Failed to send verification link. Please try again.');
+      } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">Complete Personal Information</h2>
+        <p className="text-white/80">Provide additional details to complete your profile</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Suffix</label>
+          <input
+            type="text"
+            name="suffix"
+            value={data.suffix || ''}
+            onChange={handleInputChange}
+            placeholder="Jr., Sr., III, etc."
+            className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Birthplace</label>
+          <input
+            type="text"
+            name="birthplace"
+            value={data.birthplace || ''}
+            onChange={handleInputChange}
+            placeholder="Enter birthplace"
+            className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Gender *</label>
+          <GlassDropdown
+            name="gender"
+            value={data.gender || ''}
+            onChange={handleInputChange}
+            options={[
+              { value: 'Male', label: 'Male' },
+              { value: 'Female', label: 'Female' },
+              { value: 'Other', label: 'Other' }
+            ]}
+            placeholder="Select Gender"
+            error={errors.gender}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Citizenship *</label>
+          <input
+            type="text"
+            name="citizenship"
+            value={data.citizenship || ''}
+            onChange={handleInputChange}
+            placeholder="Enter citizenship"
+            className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+              errors.citizenship ? 'border-red-500' : 'border-white/30'
+            }`}
+          />
+          {errors.citizenship && <p className="text-red-400 text-xs mt-1">{errors.citizenship}</p>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Voter Status *</label>
+          <GlassDropdown
+            name="voterStatus"
+            value={data.voterStatus || ''}
+            onChange={handleInputChange}
+            options={[
+              { value: 'Registered', label: 'Registered' },
+              { value: 'Not Registered', label: 'Not Registered' }
+            ]}
+            placeholder="Select Voter Status"
+            error={errors.voterStatus}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Marital Status *</label>
+          <GlassDropdown
+            name="maritalStatus"
+            value={data.maritalStatus || ''}
+            onChange={handleInputChange}
+            options={[
+              { value: 'Single', label: 'Single' },
+              { value: 'Married', label: 'Married' },
+              { value: 'Widowed', label: 'Widowed' },
+              { value: 'Separated', label: 'Separated' }
+            ]}
+            placeholder="Select Marital Status"
+            error={errors.maritalStatus}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Employment Status</label>
+          <GlassDropdown
+            name="employmentStatus"
+            value={data.employmentStatus || ''}
+            onChange={handleInputChange}
+            options={[
+              { value: 'Employed', label: 'Employed' },
+              { value: 'Unemployed', label: 'Unemployed' },
+              { value: 'Student', label: 'Student' },
+              { value: 'Retired', label: 'Retired' }
+            ]}
+            placeholder="Select Employment Status"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Occupation</label>
+          <input
+            type="text"
+            name="occupation"
+            value={data.occupation || ''}
+            onChange={handleInputChange}
+            placeholder="Enter occupation"
+            className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Educational Attainment</label>
+        <GlassDropdown
+          name="educationalAttainment"
+          value={data.educationalAttainment || ''}
+          onChange={handleInputChange}
+          options={[
+            { value: 'Elementary', label: 'Elementary' },
+            { value: 'High School', label: 'High School' },
+            { value: 'College', label: 'College' },
+            { value: 'Vocational', label: 'Vocational' },
+            { value: 'Post Graduate', label: 'Post Graduate' }
+          ]}
+          placeholder="Select Education Level"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Complete Address *</label>
+        <input
+          type="text"
+          name="address"
+          value={data.address || ''}
+          onChange={handleInputChange}
+          placeholder="Enter complete address"
+          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
+            errors.address ? 'border-red-500' : 'border-white/30'
+          }`}
+        />
+        {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
+      </div>
+
+
+
+      {/* Verification Modal */}
+      {showVerificationModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 max-w-md w-full mx-4 border border-white/20">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-white mb-2">Choose Verification Method</h3>
+              <p className="text-white/70">Select how you'd like to receive your verification link</p>
+          </div>
+
+            <div className="space-y-4 mb-6">
+                  <button
+                onClick={() => setVerificationMethod('email')}
+                className={`w-full flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                  verificationMethod === 'email'
+                    ? 'border-blue-500 bg-blue-500/20 text-white'
+                    : 'border-white/30 bg-white/10 text-white/80 hover:border-white/50'
+                }`}
+                  >
+                <Mail className="w-5 h-5" />
+                <div className="text-left">
+                  <div className="font-medium">Email Verification</div>
+                  <div className="text-sm opacity-70">{accountData.email}</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setVerificationMethod('phone')}
+                className={`w-full flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                  verificationMethod === 'phone'
+                    ? 'border-green-500 bg-green-500/20 text-white'
+                    : 'border-white/30 bg-white/10 text-white/80 hover:border-white/50'
+                }`}
+              >
+                <Phone className="w-5 h-5" />
+                <div className="text-left">
+                  <div className="font-medium">SMS Verification</div>
+                  <div className="text-sm opacity-70">{accountData.contactNumber}</div>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowVerificationModal(false)}
+                className="flex-1 px-4 py-3 text-white/80 hover:text-white transition duration-300"
+              >
+                Cancel
+              </button>
+                    <button
+                onClick={sendVerificationLink}
+                disabled={isSendingVerification}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition duration-300 ${
+                  isSendingVerification
+                    ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
+                }`}
+              >
+                {isSendingVerification ? 'Sending...' : 'Send Verification Link'}
+                    </button>
+                  </div>
+                </div>
+            </div>
+          )}
+
+      {errors.submit && (
+        <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <p className="text-red-400 text-sm">{errors.submit}</p>
+        </div>
+      )}
+
+      <div className="flex justify-between">
+        <button
+          onClick={onBack}
+          className="px-6 py-2 text-white/80 hover:text-white transition duration-300"
+        >
+          ← Back to OTP Verification
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className={`px-8 py-3 rounded-lg font-medium transition duration-300 ${
+            isSubmitting
+              ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
+              : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
+          }`}
+        >
+          {isSubmitting ? 'Processing...' : 'Complete Registration'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const SignupPage = () => {
+  const pathname = usePathname();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [accountData, setAccountData] = useState({});
+  const [otpData, setOtpData] = useState({});
+  const [personalData, setPersonalData] = useState({});
+  const [errors, setErrors] = useState({});
+
+  // Progress Bar Component
+  const ProgressBar = () => (
+    <div className="flex items-center justify-center gap-4 mb-8">
+      {steps.map((step, index) => (
+        <React.Fragment key={step.id}>
+          <button
+            onClick={() => setCurrentStep(step.id)}
+            className={`flex flex-col items-center group transition-all duration-300 ${
+              index <= currentStep
+                ? 'text-white'
+                : 'text-white/50 hover:text-white/70'
+            }`}
+          >
+            <div
+              className={`w-12 h-12 flex items-center justify-center rounded-full border-2 transition-all duration-300 mb-2 ${
+                index < currentStep
+                  ? 'bg-green-500 border-green-500 text-white'
+                  : index === currentStep
+                  ? 'bg-white border-green-500 text-green-600'
+                  : 'bg-white/20 border-white/30 text-white/50'
+              }`}
+            >
+              {index < currentStep ? (
+                <CheckCircle className="w-6 h-6" />
+              ) : (
+                <span className="text-lg">{step.icon}</span>
+              )}
+            </div>
+            <span className={`text-sm font-medium transition-all duration-300 ${
+              index <= currentStep ? 'text-white' : 'text-white/50'
+            }`}>
+              {step.label}
+            </span>
+          </button>
+          {index < steps.length - 1 && (
+            <div className={`w-16 h-0.5 transition-all duration-300 ${
+              index < currentStep ? 'bg-green-500' : 'bg-white/30'
+            }`} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+
+  // Navigation functions
+  const handleNext = () => {
+    setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
+
+  // Render current step
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <Step1Account
+            data={accountData}
+            setData={setAccountData}
+            onNext={handleNext}
+            errors={errors}
+            setErrors={setErrors}
+          />
+        );
+      case 1:
+        return (
+          <Step2OTP
+            data={otpData}
+            setData={setOtpData}
+            onNext={handleNext}
+            onBack={handleBack}
+            email={accountData.email}
+            contactNumber={accountData.contactNumber}
+            accountData={accountData}
+            errors={errors}
+            setErrors={setErrors}
+          />
+        );
+      case 2:
+        return (
+          <Step3Personal
+            data={personalData}
+            setData={setPersonalData}
+            onBack={handleBack}
+            accountData={accountData}
+            errors={errors}
+            setErrors={setErrors}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen relative overflow-hidden" style={{
+      backgroundImage: 'url("/images/bhall.jpg")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }}>
+      {/* Background Overlay */}
+      <div className="absolute inset-0 bg-black/50"></div>
+
       {/* Navbar */}
       <header className="fixed w-full z-50 bg-white/90 backdrop-blur-sm shadow-sm transition-all duration-300">
         <div className="container mx-auto flex justify-between items-center py-4 px-6">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <Image src="/images/logo.png" alt="Logo" width={50} height={50} />
             <h1 className="text-2xl font-extrabold bg-gradient-to-r from-green-600 to-green-900 text-transparent bg-clip-text">
               B-Sphere
             </h1>
-            </Link>
-          </div>
+          </Link>
           {/* <nav className="hidden md:flex items-center gap-8">
             <Link href="/" className="text-gray-600 hover:text-green-600 transition duration-300">Home</Link>
             <Link href="/features" className="text-gray-600 hover:text-green-600 transition duration-300">Features</Link>
@@ -175,460 +1434,71 @@ const SignupPage = () => {
           </nav> */}
           <div className="flex gap-4">
             <Link
-              href="/login"
-              className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
-                pathname === '/login'
-                  ? 'bg-green-700 text-white shadow-md scale-105'
-                  : 'text-green-600 hover:text-green-800'
-              }`}
-            >
-              Log In
-            </Link>
-            <Link
-              href="/signup"
-              className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
-                pathname === '/signup'
-                  ? 'bg-green-700 text-white shadow-md scale-105'
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
-            >
-              Sign Up
-            </Link>
+                href="/login"
+                className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
+                    pathname === '/login'
+                    ? 'bg-green-700 text-white shadow-md scale-105'
+                    : 'text-green-600 hover:text-green-800'
+                }`}
+                >
+                Log In
+                </Link>
+
+                <Link
+                href="/signup"
+                className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
+                    pathname === '/signup'
+                    ? 'bg-green-700 text-white shadow-md scale-105'
+                    : 'text-green-600 hover:text-green-800' // match "Log In" inactive state
+                }`}
+                >
+                Sign Up
+                </Link>
           </div>
         </div>
       </header>
 
-      {/* Signup Form Section with Background */}
-      <section className="pt-28 pb-20 px-6 min-h-screen flex items-center justify-center relative">
-        {/* Background Image */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/bhall.jpg"
-            alt="Background"
-            fill
-            className="object-cover blur-sm"
-            priority
-          />
-          <div className="absolute inset-0 bg-black/40"></div>
-        </div>
-        
-        {/* Split Panel Signup Form */}
-        <div className="max-w-4xl w-full relative z-10" data-aos="fade-up">
-          <div className="bg-white/20 backdrop-blur-md border-2 border-white/40 rounded-2xl overflow-hidden transform hover:scale-[1.01] transition-all duration-300 hover:shadow-[0_40px_100px_rgba(0,0,0,0.7),0_0_0_3px_rgba(34,197,94,0.4),inset_0_3px_0_rgba(255,255,255,0.5),inset_0_-3px_0_rgba(0,0,0,0.3)] shadow-[0_30px_80px_rgba(0,0,0,0.6),0_0_0_2px_rgba(34,197,94,0.25),inset_0_2px_0_rgba(255,255,255,0.4),inset_0_-2px_0_rgba(0,0,0,0.15)] before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-white/15 before:to-transparent before:pointer-events-none relative">
-            <div className="flex flex-col md:flex-row min-h-[500px]">
-              {/* Left Panel - Branding */}
-              <div className="md:w-1/2 bg-gradient-to-br from-green-600/90 to-green-800/90 p-8 flex flex-col justify-center items-center text-center text-white">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-6">
-                  <Image src="/images/logo.png" alt="Logo" width={40} height={40} />
-                </div>
-                <h1 className="text-4xl font-extrabold mb-6">B-Sphere</h1>
-                <p className="text-white/90 max-w-sm leading-relaxed">
-                  Join our comprehensive barangay information management system. 
-                  Connect with your community and access essential services with ease.
-                </p>
-              </div>
-
-              {/* Right Panel - Signup Form */}
-              <div className="md:w-1/2 p-8 bg-white/10 backdrop-blur-sm">
-                                <div className="flex items-center justify-center gap-3 mb-6">
-                  <div className="relative w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
-                    <div className="absolute -inset-1 bg-green-400/60 rounded-full animate-pulse blur-sm"></div>
-                    <div className="absolute -inset-2 bg-green-400/40 rounded-full animate-ping"></div>
-                    <div className="absolute inset-0 bg-green-500/50 rounded-full animate-pulse"></div>
-                    <Image src="/resources/resident.png" alt="Resident" width={16} height={16} className="relative z-10" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">Create your account</h3>
-                </div>
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-white/90 mb-1">First Name *</label>
-                      <input
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        placeholder="Juan"
-                        className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                          errors.firstName ? 'border-red-500' : 'border-white/30'
-                        }`}
-                      />
-                      {errors.firstName && <p className="text-red-400 text-xs mt-1">{errors.firstName}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-white/90 mb-1">Last Name *</label>
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        placeholder="Dela Cruz"
-                        className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                          errors.lastName ? 'border-red-500' : 'border-white/30'
-                        }`}
-                      />
-                      {errors.lastName && <p className="text-red-400 text-xs mt-1">{errors.lastName}</p>}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/90 mb-1">Middle Name (Optional)</label>
-                    <input
-                      type="text"
-                      name="middleName"
-                      value={formData.middleName}
-                      onChange={handleInputChange}
-                      placeholder="Santos"
-                      className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/90 mb-1">Email Address *</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="you@example.com"
-                      className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                        errors.email ? 'border-red-500' : 'border-white/30'
-                      }`}
-                    />
-                    {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/90 mb-1">Phone Number *</label>
-                    <input
-                      type="text"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="0921 234 5678"
-                      onInput={(e) => {
-                        const numbers = e.target.value.replace(/\D/g, '');
-                        let formatted = '';
-                        
-                        if (numbers.length > 11) {
-                          e.target.value = e.target.value.slice(0, -1);
-                          return;
-                        }
-                        
-                        if (numbers.length > 0) {
-                          if (numbers.length <= 4) {
-                            formatted = numbers;
-                          } else if (numbers.length <= 7) {
-                            formatted = `${numbers.substring(0, 4)} ${numbers.substring(4)}`;
-                          } else {
-                            formatted = `${numbers.substring(0, 4)} ${numbers.substring(4, 7)} ${numbers.substring(7, 11)}`;
-                          }
-                        }
-                        
-                        e.target.value = formatted;
-                      }}
-                      onKeyDown={(e) => {
-                        // Allow backspace, delete, tab, escape, enter, arrow keys
-                        if ([8, 9, 27, 13, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
-                          // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                          (e.keyCode === 65 && e.ctrlKey === true) ||
-                          (e.keyCode === 67 && e.ctrlKey === true) ||
-                          (e.keyCode === 86 && e.ctrlKey === true) ||
-                          (e.keyCode === 88 && e.ctrlKey === true) ||
-                          // Allow home, end
-                          (e.keyCode >= 35 && e.keyCode <= 36)) {
-                          return;
-                        }
-                        // Ensure that it is a number and stop the keypress
-                        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                        errors.phone ? 'border-red-500' : 'border-white/30'
-                      }`}
-                    />
-                    {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/90 mb-1">Birth Date *</label>
-                    <input
-                      type="date"
-                      name="birthdate"
-                      value={formData.birthdate}
-                      onChange={handleInputChange}
-                      max={new Date(new Date().setFullYear(new Date().getFullYear() - 13)).toISOString().split('T')[0]}
-                      className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                        errors.birthdate ? 'border-red-500' : 'border-white/30'
-                      }`}
-                    />
-                    {errors.birthdate && <p className="text-red-400 text-xs mt-1">{errors.birthdate}</p>}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-white/90 mb-1">Password *</label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          placeholder="••••••••"
-                          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                            errors.password ? 'border-red-500' : 'border-white/30'
-                          }`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
-                        >
-                          <Image
-                            src={showPassword ? "/resources/eye_slash_icon_white.jpg" : "/resources/eye_icon_white.jpg"}
-                            alt={showPassword ? "Hide password" : "Show password"}
-                            width={20}
-                            height={20}
-                            className="opacity-70 hover:opacity-100 transition-opacity"
-                          />
-                        </button>
-                      </div>
-                      {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-white/90 mb-1">Confirm Password *</label>
-                      <div className="relative">
-                        <input
-                          type={showConfirmPassword ? "text" : "password"}
-                          name="confirmPassword"
-                          value={formData.confirmPassword}
-                          onChange={handleInputChange}
-                          placeholder="••••••••"
-                          className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition ${
-                            errors.confirmPassword ? 'border-red-500' : 'border-white/30'
-                          }`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white transition-colors"
-                        >
-                          <Image
-                            src={showConfirmPassword ? "/resources/eye_slash_icon_white.jpg" : "/resources/eye_icon_white.jpg"}
-                            alt={showConfirmPassword ? "Hide password" : "Show password"}
-                            width={20}
-                            height={20}
-                            className="opacity-70 hover:opacity-100 transition-opacity"
-                          />
-                        </button>
-                      </div>
-                      {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
-                    </div>
-                  </div>
-                  <div className="flex items-start">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      checked={isTermsAccepted}
-                      onChange={handleTermsCheckbox}
-                      className="h-4 w-4 text-green-600 border-white/30 rounded focus:ring-green-500 bg-white/20 mt-1"
-                    />
-                    <div className="ml-2 flex-1">
-                      <label htmlFor="terms" className="text-sm text-white/90 cursor-pointer">
-                        I agree to the{' '}
-                        <button
-                          type="button"
-                          onClick={() => setShowTermsModal(true)}
-                          className="text-green-300 hover:text-green-100 transition duration-300 underline"
-                        >
-                          Terms & Conditions
-                        </button>
-                      </label>
-                      {errors.terms && <p className="text-red-400 text-xs mt-1">{errors.terms}</p>}
-                    </div>
-                  </div>
-                  {errors.submit && (
-                    <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-                      <p className="text-red-400 text-sm">{errors.submit}</p>
-                    </div>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`w-full py-3 rounded-lg font-medium transition duration-300 shadow-lg ${
-                      isSubmitting
-                        ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
-                    }`}
-                  >
-                    {isSubmitting ? 'Creating Account...' : 'Sign Up'}
-                  </button>
-                </form>
-                <p className="mt-4 text-center text-white/90 text-sm">
-                  Already have an account?{' '}
-                  <Link href="/login" className="text-green-300 hover:text-green-100 transition duration-300">
-                    Log In
-                  </Link>
-                </p>
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4 pt-28">
+        <div className="w-full max-w-4xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center mb-6">
+              <Image
+                src="/images/brgy_seal2.png"
+                alt="Barangay Seal"
+                width={80}
+                height={80}
+                className="rounded-full shadow-lg"
+              />
+              <div className="ml-4 text-left">
+                <h1 className="text-4xl font-bold text-white">B-Sphere</h1>
+                <p className="text-white/80">Barangay Information Management System</p>
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Terms & Conditions Modal */}
-      {showTermsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-white/20">
-              <h2 className="text-2xl font-bold text-white">Terms and Conditions</h2>
-            </div>
-            <div 
-              className="flex-1 overflow-y-auto p-6 text-white/90 text-sm leading-relaxed"
-              onScroll={handleTermsScroll}
-            >
-              <div className="space-y-4">
-                <p className="text-white/70 text-xs">Last Updated: {new Date().toLocaleDateString()}</p>
-                
-                <p>
-                  These Terms and Conditions ("Terms") govern your access to and use of the Barangay Information Management System (BIMS), 
-                  a web application operated and managed by the Barangay [Insert Name], [Insert City/Municipality/Province], Philippines 
-                  ("Barangay", "we", "us", or "our").
-                </p>
+          {/* Progress Bar */}
+          <ProgressBar />
 
-                <p>
-                  By creating an account, accessing, or using the System, you agree to be bound by these Terms. If you do not agree with 
-                  any part of these Terms, you must not use the System.
-                </p>
+          {/* Main Content */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
+            {renderCurrentStep()}
+          </div>
 
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">1. Definitions</h3>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li><strong>System</strong> – Refers to the Barangay Information Management System (BIMS), including all related pages, databases, services, and functionalities.</li>
-                    <li><strong>User</strong> – Any individual who registers and accesses the System, including residents, staff, and barangay officials.</li>
-                    <li><strong>Resident</strong> – A user who resides within the jurisdiction of the Barangay.</li>
-                    <li><strong>Admin Roles</strong> – Refers to super-admin, admin, sub-admin, and staff who are authorized to manage modules within the System.</li>
-                  </ul>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">2. Eligibility and User Registration</h3>
-                  <p><strong>2.1</strong> Only individuals who are:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>Residents of the barangay, or</li>
-                    <li>Authorized barangay officials and personnel</li>
-                  </ul>
-                  <p>are permitted to use this System.</p>
-                  
-                  <p><strong>2.2</strong> During registration, you agree to:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>Provide accurate, complete, and current information.</li>
-                    <li>Not impersonate or misrepresent any affiliation with a person or entity.</li>
-                  </ul>
-                  
-                  <p><strong>2.3</strong> Residents are strictly prohibited from registering accounts under administrative roles (e.g., admin, staff, sub-admin) unless explicitly authorized by the Barangay.</p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">3. User Roles and Access</h3>
-                  <p><strong>3.1</strong> The System supports role-based access. Access permissions and functionalities vary depending on the role assigned:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li><strong>Super Admin</strong> – Full system access, including configuration and user management.</li>
-                    <li><strong>Admin</strong> – Access to manage residents, requests, and reports within their assigned barangay.</li>
-                    <li><strong>Sub-Admin/Staff</strong> – Module-specific access (e.g., document processing, complaints).</li>
-                    <li><strong>Resident</strong> – Access limited to personal data management, document requests, and notifications.</li>
-                  </ul>
-                  
-                  <p><strong>3.2</strong> Unauthorized attempts to elevate role privileges or access restricted areas of the System may result in account suspension or legal action.</p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">4. Account Security</h3>
-                  <p><strong>4.1</strong> You are responsible for maintaining the confidentiality of your account credentials.</p>
-                  <p><strong>4.2</strong> You agree to notify the Barangay immediately of any unauthorized access or suspected breach of security.</p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">5. Data Privacy and Usage</h3>
-                  <p><strong>5.1</strong> The System complies with the Data Privacy Act of 2012 (Republic Act No. 10173) of the Philippines.</p>
-                  
-                  <p><strong>5.2</strong> Collected information will be used solely for:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>Processing official barangay transactions</li>
-                    <li>Validating user identity</li>
-                    <li>Service delivery and reporting</li>
-                  </ul>
-                  
-                  <p><strong>5.3</strong> Personal data shall not be shared with third parties without prior consent, unless required by law or a legitimate government function.</p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">6. Acceptable Use</h3>
-                  <p>You agree not to:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>Use the System for any unlawful purpose</li>
-                    <li>Submit false, fraudulent, or misleading information</li>
-                    <li>Interfere with or disrupt the integrity or performance of the System</li>
-                    <li>Attempt to gain unauthorized access to any part of the System</li>
-                  </ul>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">7. Termination and Suspension</h3>
-                  <p>We reserve the right to suspend or terminate your account:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>If you violate any of these Terms</li>
-                    <li>If your access is no longer authorized (e.g., separation from barangay office)</li>
-                    <li>For any conduct deemed inappropriate or harmful to the System or its users</li>
-                  </ul>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">8. Modifications</h3>
-                  <p>We may revise these Terms at any time. Updates will be posted on the System, and continued use after changes constitutes acceptance of the new Terms.</p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">9. Limitation of Liability</h3>
-                  <p>The Barangay is not liable for any:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>Loss or corruption of data</li>
-                    <li>Unauthorized access or use of accounts</li>
-                    <li>System downtime or unavailability</li>
-                    <li>Indirect or consequential damages arising from the use of the System</li>
-                  </ul>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-white">10. Governing Law</h3>
-                  <p>These Terms shall be governed and interpreted under the laws of the Republic of the Philippines. Any disputes shall be subject to the jurisdiction of the proper courts in [Insert City/Municipality].</p>
-                </div>
-
-                <div className="border-t border-white/20 pt-4 mt-6">
-                  <p className="font-semibold text-white">
-                    By registering or using this System, you confirm that you have read, understood, and agree to be bound by these Terms and Conditions.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-white/20 flex justify-between items-center">
-              <button
-                onClick={() => setShowTermsModal(false)}
-                className="px-4 py-2 text-white/70 hover:text-white transition duration-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAcceptTerms}
-                disabled={!canAcceptTerms}
-                className={`px-6 py-2 rounded-lg font-medium transition duration-300 ${
-                  canAcceptTerms
-                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
-                    : 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
-                }`}
-              >
-                {canAcceptTerms ? 'OK' : 'Scroll to bottom to continue'}
-              </button>
-            </div>
+          {/* Footer */}
+          <div className="text-center mt-8">
+            <p className="text-white/60 text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="text-green-300 hover:text-green-100 transition duration-300 underline">
+                Sign in here
+              </Link>
+            </p>
           </div>
         </div>
-      )}
+      </div>
+      
+      {/* Performance Monitor (Development Only) */}
+      <EmailPerformanceMonitor isVisible={true} />
     </div>
   );
 };

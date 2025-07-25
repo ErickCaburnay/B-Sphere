@@ -87,6 +87,34 @@ export async function PUT(request, { params }) {
 
     // Prepare update data, handling nested objects properly
     const updateData = { ...data };
+    // Force uppercase for all relevant fields
+    if (updateData.firstName) updateData.firstName = updateData.firstName.toUpperCase();
+    if (updateData.middleName) updateData.middleName = updateData.middleName.toUpperCase();
+    if (updateData.lastName) updateData.lastName = updateData.lastName.toUpperCase();
+    if (updateData.suffix) updateData.suffix = updateData.suffix.toUpperCase();
+    if (updateData.birthplace) updateData.birthplace = updateData.birthplace.toUpperCase();
+    if (updateData.citizenship) updateData.citizenship = updateData.citizenship.toUpperCase();
+    if (updateData.occupation) updateData.occupation = updateData.occupation.toUpperCase();
+    if (updateData.address) {
+      if (typeof updateData.address === 'object') {
+        const addr = updateData.address;
+        const addressParts = [
+          addr.street,
+          addr.barangay,
+          addr.city,
+          addr.province,
+          addr.zipCode
+        ].filter(part => part && part.trim());
+        if (addressParts.length > 0) {
+          updateData.address = addressParts.join(', ').toUpperCase();
+        } else {
+          delete updateData.address;
+        }
+      } else if (typeof updateData.address === 'string') {
+        updateData.address = updateData.address.toUpperCase();
+      }
+    }
+    // Do NOT uppercase email
     
     // Handle field name mapping for backwards compatibility
     if (updateData.phone && !updateData.contactNumber) {

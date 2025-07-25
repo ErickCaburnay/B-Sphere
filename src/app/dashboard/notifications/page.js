@@ -43,7 +43,9 @@ export default function NotificationsPage() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    loadMoreNotifications
+    loadMoreNotifications,
+    refreshNotifications,
+    setNotifications
   } = useNotifications();
 
   const getNotificationIcon = (type) => {
@@ -121,8 +123,8 @@ export default function NotificationsPage() {
     const matchesType = filterType === 'all' || notification.type === filterType;
     const matchesPriority = filterPriority === 'all' || notification.priority === filterPriority;
     const matchesStatus = filterStatus === 'all' || 
-                         (filterStatus === 'read' && notification.seen) ||
-                         (filterStatus === 'unread' && !notification.seen);
+                         (filterStatus === 'read' && notification.read) ||
+                         (filterStatus === 'unread' && !notification.read);
     
     return matchesSearch && matchesType && matchesPriority && matchesStatus;
   });
@@ -208,7 +210,7 @@ export default function NotificationsPage() {
   };
 
   const handleNotificationClick = async (notification) => {
-    if (!notification.seen) {
+    if (!notification.read) {
       await markAsRead(notification.id);
     }
     
@@ -426,8 +428,10 @@ export default function NotificationsPage() {
             paginatedNotifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
-                  !notification.seen ? 'bg-blue-50/30 border-l-4 border-l-blue-500' : ''
+                className={`p-6 transition-colors cursor-pointer border-l-4 ${
+                  !notification.read
+                    ? 'bg-blue-50/30 border-l-blue-500 hover:bg-blue-100'
+                    : 'bg-gray-50 border-l-gray-300 text-gray-400 hover:bg-gray-100'
                 } ${selectedNotifications.includes(notification.id) ? 'bg-blue-50' : ''}`}
                 onClick={() => handleNotificationClick(notification)}
               >
@@ -444,7 +448,7 @@ export default function NotificationsPage() {
                   />
 
                   {/* Icon */}
-                  <div className={`p-3 rounded-xl border ${getNotificationColor(notification.type, notification.priority)}`}>
+                  <div className={`p-3 rounded-xl border ${getNotificationColor(notification.type, notification.priority)}`}> 
                     {getNotificationIcon(notification.type)}
                   </div>
 
@@ -452,17 +456,16 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className={`text-base font-semibold ${!notification.seen ? 'text-gray-900' : 'text-gray-700'}`}>
+                        <h4 className={`text-base font-semibold ${!notification.read ? 'text-gray-900' : 'text-gray-400'}`}> 
                           {notification.title}
                         </h4>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className={`text-sm mt-1 ${!notification.read ? 'text-gray-600' : 'text-gray-400'}`}> 
                           {notification.message}
                         </p>
                       </div>
-                      
                       {/* Actions */}
                       <div className="flex items-center gap-2 ml-4">
-                        {!notification.seen && (
+                        {!notification.read && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -488,7 +491,6 @@ export default function NotificationsPage() {
                         </button>
                       </div>
                     </div>
-                    
                     {/* Metadata */}
                     <div className="flex items-center gap-3 mt-3">
                       <div className="flex items-center gap-1 text-sm text-gray-500">
@@ -501,7 +503,7 @@ export default function NotificationsPage() {
                           {notification.type.replace('_', ' ')}
                         </span>
                       )}
-                      {!notification.seen && (
+                      {!notification.read && (
                         <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
                           Unread
                         </span>
@@ -592,6 +594,154 @@ export default function NotificationsPage() {
 // Notification Detail Modal Component
 const NotificationDetailModal = ({ notification, onClose, onMarkAsRead, onDelete }) => {
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { setNotifications } = useNotifications();
+  // For info_update_request, reconstruct pendingUpdate from notification.data
+  const pendingUpdate = notification.type === 'info_update_request' && notification.data ? notification.data : null;
+
+  // Approve/Reject logic for info_update_request
+  const handleApprove = async () => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      if (!pendingUpdate) throw new Error('No pending update found');
+      // 1. Update resident record
+      let databaseUpdateSuccess = false;
+      try {
+        const checkResponse = await fetch(`/api/residents/${pendingUpdate.residentId}`);
+        if (!checkResponse.ok) throw new Error(`Resident not found: ${pendingUpdate.residentId}`);
+        const updateData = { ...pendingUpdate.requestedChanges };
+        if (updateData.phone && !updateData.contactNumber) {
+          updateData.contactNumber = updateData.phone;
+          delete updateData.phone;
+        }
+        if (updateData.address && typeof updateData.address === 'object') {
+          const addressValues = Object.values(updateData.address).filter(val => val && val.trim());
+          if (addressValues.length === 0) {
+            delete updateData.address;
+          }
+        }
+        const updateResponse = await fetch(`/api/residents/${pendingUpdate.residentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        });
+        if (!updateResponse.ok) throw new Error('Database update failed');
+        databaseUpdateSuccess = true;
+      } catch (dbError) {
+        setActionLoading(false);
+        setError('Database update failed: ' + dbError.message);
+        return;
+      }
+      // 2. Update notification status
+      let statusUpdateFailed = false;
+      try {
+        const statusResponse = await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationId: notification.id, status: 'approved' })
+        });
+        if (!statusResponse.ok) statusUpdateFailed = true;
+      } catch (statusError) {
+        statusUpdateFailed = true;
+      }
+      // 3. Send notification to resident
+      let residentNotifFailed = false;
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'info_update_approved',
+            title: 'Information Update Approved',
+            message: `Your personal information update request has been approved and your profile has been updated.`,
+            targetRole: 'resident',
+            targetUserId: pendingUpdate.residentId,
+            requestId: `approval_${notification.requestId}`,
+            priority: 'medium',
+            redirectTarget: 'page',
+            status: 'completed',
+            data: {
+              id: notification.requestId,
+              residentId: pendingUpdate.residentId,
+              requestedBy: pendingUpdate.requestedBy,
+              requestedAt: pendingUpdate.requestedAt,
+              approvedAt: new Date().toISOString(),
+              status: 'approved',
+              originalData: pendingUpdate.originalData,
+              requestedChanges: pendingUpdate.requestedChanges
+            }
+          })
+        });
+      } catch (notificationError) {
+        residentNotifFailed = true;
+      }
+      // 4. Optimistically update notification in UI
+      setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, status: 'approved' } : n));
+      setActionLoading(false);
+      onClose();
+    } catch (e) {
+      setActionLoading(false);
+      setError('Failed to approve request.');
+    }
+  };
+  const handleReject = async () => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      if (!pendingUpdate) throw new Error('No pending update found');
+      // 1. Update notification status
+      let updatedNotification = { ...notification, status: 'rejected' };
+      try {
+        const statusResponse = await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationId: notification.id, status: 'rejected' })
+        });
+        if (!statusResponse.ok) throw new Error('Failed to update notification status');
+      } catch (statusError) {
+        setError('Failed to update notification status.');
+      }
+      // 2. Send notification to resident
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'info_update_rejected',
+            title: 'Information Update Rejected',
+            message: `Your personal information update request has been reviewed and rejected. Please contact the admin for more details.`,
+            targetRole: 'resident',
+            targetUserId: pendingUpdate.residentId,
+            requestId: `rejection_${notification.requestId}`,
+            priority: 'medium',
+            redirectTarget: 'page',
+            status: 'completed',
+            data: {
+              id: notification.requestId,
+              residentId: pendingUpdate.residentId,
+              requestedBy: pendingUpdate.requestedBy,
+              requestedAt: pendingUpdate.requestedAt,
+              rejectedAt: new Date().toISOString(),
+              status: 'rejected',
+              originalData: pendingUpdate.originalData,
+              requestedChanges: pendingUpdate.requestedChanges
+            }
+          })
+        });
+      } catch (notificationError) {
+        setError('Failed to send rejection notification to resident.');
+      }
+      // 3. Optimistically update notification in UI
+      setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, status: 'rejected' } : n));
+      setActionLoading(false);
+      onClose();
+    } catch (e) {
+      setActionLoading(false);
+      setError('Failed to reject request.');
+    }
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -638,11 +788,53 @@ const NotificationDetailModal = ({ notification, onClose, onMarkAsRead, onDelete
     }
   };
 
+  function renderFieldComparison(label, originalValue, newValue) {
+    const hasChanged = originalValue !== newValue;
+    // For name fields, force uppercase
+    const isNameField = ['First Name', 'Middle Name', 'Last Name'].includes(label);
+    const displayOriginal = isNameField && originalValue ? originalValue.toUpperCase() : originalValue;
+    const displayNew = isNameField && newValue ? newValue.toUpperCase() : newValue;
+    return (
+      <div className={`p-3 rounded-lg border ${hasChanged ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
+        <div className="text-sm font-medium text-gray-700 mb-2">{label}</div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Current</div>
+            <div className="text-sm text-gray-900">{displayOriginal || 'Not provided'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Requested</div>
+            <div className={`text-sm ${hasChanged ? 'text-blue-600 font-medium' : 'text-gray-900'}`}>{displayNew || 'Not provided'}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function formatAddress(addressObj) {
+    if (!addressObj) return 'Not provided';
+    if (typeof addressObj === 'string') {
+      return addressObj.trim() ? addressObj : 'Not provided';
+    }
+    if (typeof addressObj === 'object') {
+      const parts = [
+        addressObj.street,
+        addressObj.barangay,
+        addressObj.city,
+        addressObj.province,
+        addressObj.zip,
+        addressObj.zipCode
+      ].filter(Boolean);
+      return parts.length > 0 ? parts.join(', ') : 'Not provided';
+    }
+    return 'Not provided';
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-green-50">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-green-50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/70 rounded-lg">
               {getNotificationIcon(notification.type)}
@@ -661,7 +853,7 @@ const NotificationDetailModal = ({ notification, onClose, onMarkAsRead, onDelete
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-96 overflow-y-auto">
+        <div className="px-8 py-8 max-h-[60vh] overflow-y-auto bg-white space-y-6">
           <div className="space-y-6">
             {/* Basic Info */}
             <div>
@@ -710,21 +902,70 @@ const NotificationDetailModal = ({ notification, onClose, onMarkAsRead, onDelete
             </div>
 
             {/* Additional Data */}
-            {notification.data && (
-              <div>
-                <h4 className="text-md font-semibold text-gray-900 mb-3">Additional Information</h4>
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {JSON.stringify(notification.data, null, 2)}
-                  </pre>
+            {/* Info Update Request Field Comparison UI */}
+            {notification.type === 'info_update_request' && notification.data && notification.data.originalData && notification.data.requestedChanges && (
+              <>
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 mb-4">
+                  <h3 className="font-medium text-gray-900 mb-3">Requested Changes</h3>
+                  <div className="space-y-3">
+                    {renderFieldComparison('First Name', notification.data.originalData.firstName, notification.data.requestedChanges.firstName)}
+                    {renderFieldComparison('Middle Name', notification.data.originalData.middleName, notification.data.requestedChanges.middleName)}
+                    {renderFieldComparison('Last Name', notification.data.originalData.lastName, notification.data.requestedChanges.lastName)}
+                    {renderFieldComparison('Email', notification.data.originalData.email, notification.data.requestedChanges.email)}
+                    {renderFieldComparison('Phone', notification.data.originalData.phone || notification.data.originalData.contactNumber, notification.data.requestedChanges.phone || notification.data.requestedChanges.contactNumber)}
+                    {renderFieldComparison('Birth Date', notification.data.originalData.birthdate, notification.data.requestedChanges.birthdate)}
+                    {renderFieldComparison('Address', formatAddress(notification.data.originalData.address), formatAddress(notification.data.requestedChanges.address))}
+                    {renderFieldComparison('Voter Status', notification.data.originalData.voterStatus, notification.data.requestedChanges.voterStatus)}
+                    {renderFieldComparison('Marital Status', notification.data.originalData.maritalStatus, notification.data.requestedChanges.maritalStatus)}
+                    {renderFieldComparison('Employment Status', notification.data.originalData.employmentStatus, notification.data.requestedChanges.employmentStatus)}
+                    {renderFieldComparison('Occupation', notification.data.originalData.occupation, notification.data.requestedChanges.occupation)}
+                    {renderFieldComparison('Educational Attainment', notification.data.originalData.educationalAttainment, notification.data.requestedChanges.educationalAttainment)}
+                  </div>
                 </div>
-              </div>
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 mb-4">
+                  <h3 className="font-medium text-gray-900 mb-3">Programs & Benefits</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <tbody>
+                        {['isTUPAD', 'is4Ps', 'isPWD', 'isSoloParent'].map((field) => {
+                          const oldValue = notification.data.originalData ? notification.data.originalData[field] : false;
+                          const newValue = notification.data.requestedChanges ? notification.data.requestedChanges[field] : false;
+                          const changed = oldValue !== newValue;
+                          const labelMap = {
+                            isTUPAD: 'TUPAD',
+                            is4Ps: '4Ps',
+                            isPWD: 'PWD',
+                            isSoloParent: 'Solo Parent',
+                          };
+                          const colorMap = {
+                            isTUPAD: 'blue',
+                            is4Ps: 'green',
+                            isPWD: 'purple',
+                            isSoloParent: 'orange',
+                          };
+                          return (
+                            <tr key={field} className={changed ? 'bg-yellow-50 font-semibold' : ''}>
+                              <td className="p-2 text-gray-600">{labelMap[field]}</td>
+                              <td className="p-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${oldValue ? `bg-${colorMap[field]}-100 text-${colorMap[field]}-700` : 'bg-gray-100 text-gray-400'}`}>{oldValue ? 'Yes' : 'No'}</span>
+                              </td>
+                              <td className="p-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${newValue ? `bg-${colorMap[field]}-100 text-${colorMap[field]}-700` : 'bg-gray-100 text-gray-400'}`}>{newValue ? 'Yes' : 'No'}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Read Status */}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-600">Read Status:</span>
-              {notification.seen ? (
+              {notification.read ? (
                 <span className="flex items-center gap-1 text-sm text-green-600">
                   <CheckCheck className="w-4 h-4" />
                   Read
@@ -736,35 +977,56 @@ const NotificationDetailModal = ({ notification, onClose, onMarkAsRead, onDelete
                 </span>
               )}
             </div>
+            {error && <div className="text-red-600 text-sm font-medium">{error}</div>}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100 flex justify-end space-x-4">
+          {/* Approve/Reject for pending info_update_request */}
+          {notification.type === 'info_update_request' && notification.status === 'pending' && (
+            <>
+              <button
+                onClick={handleReject}
+                disabled={actionLoading}
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
+              >
+                {actionLoading ? 'Processing...' : 'Reject'}
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading}
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+              >
+                {actionLoading ? 'Processing...' : 'Approve'}
+              </button>
+            </>
+          )}
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
           >
             Close
           </button>
-          
-          {!notification.seen && (
+          {/* Only show Mark as Read and Delete if not pending */}
+          {notification.status !== 'pending' && !notification.read && (
             <button
               onClick={handleMarkAsRead}
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
             >
               {loading ? 'Processing...' : 'Mark as Read'}
             </button>
           )}
-          
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Processing...' : 'Delete'}
-          </button>
+          {notification.status !== 'pending' && (
+            <button
+              onClick={handleDelete}
+              disabled={loading}
+              className="inline-flex items-center px-6 py-3 border border-red-600 shadow-sm text-sm font-medium rounded-xl text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
+            >
+              {loading ? 'Processing...' : 'Delete'}
+            </button>
+          )}
         </div>
       </div>
     </div>

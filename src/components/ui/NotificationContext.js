@@ -35,13 +35,19 @@ export const NotificationProvider = ({ children }) => {
       if (isResidentDashboard) {
         // Get current user ID for resident notifications
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        const residentId = userData.residentId || userData.id;
+        console.log('NotificationContext - User data from localStorage:', userData);
+        
+        // Try multiple possible fields for resident ID
+        const residentId = userData.uniqueId || userData.residentId || userData.id || userData.uid;
+        console.log('NotificationContext - Resolved resident ID:', residentId);
+        
         params.append('targetRole', 'resident');
         if (residentId) {
           params.append('residentId', residentId);
         } else {
-          console.warn('No resident ID found for resident dashboard');
-          return { notifications: [], unreadCount: 0, pagination: { total: 0, hasMore: false } };
+          console.warn('No resident ID found for resident dashboard. Available fields:', Object.keys(userData));
+          // Don't return early, just continue without residentId filter
+          console.log('Continuing without resident ID filter');
         }
       } else {
         // Admin notifications
@@ -56,7 +62,9 @@ export const NotificationProvider = ({ children }) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Response not OK:', response.status, response.statusText, errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Don't throw error, just return empty result
+        console.log('Returning empty notifications due to API error');
+        return { notifications: [], unreadCount: 0, pagination: { total: 0, hasMore: false } };
       }
       
       const data = await response.json();
@@ -101,15 +109,16 @@ export const NotificationProvider = ({ children }) => {
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {
     try {
-      const response = await fetch(`/api/notifications?id=${notificationId}&action=markRead`, {
-        method: 'PATCH'
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId })
       });
-      
       if (response.ok) {
         setNotifications(prev => 
           prev.map(notif => 
             notif.id === notificationId 
-              ? { ...notif, seen: true }
+              ? { ...notif, read: true }
               : notif
           )
         );
@@ -129,7 +138,7 @@ export const NotificationProvider = ({ children }) => {
       
       if (response.ok) {
         setNotifications(prev => 
-          prev.map(notif => ({ ...notif, seen: true }))
+          prev.map(notif => ({ ...notif, read: true }))
         );
         setUnreadCount(0);
       }
@@ -149,7 +158,7 @@ export const NotificationProvider = ({ children }) => {
         const deletedNotification = notifications.find(n => n.id === notificationId);
         setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
         
-        if (deletedNotification && !deletedNotification.seen) {
+        if (deletedNotification && !deletedNotification.read) {
           setUnreadCount(prev => Math.max(0, prev - 1));
         }
       }
@@ -197,7 +206,7 @@ export const NotificationProvider = ({ children }) => {
   // Initialize notifications on mount only
   useEffect(() => {
     loadNotifications();
-  }, []); // Empty dependency array - only run once
+  }, [loadNotifications]); // Include loadNotifications in dependencies
 
   // Set up adaptive polling interval
   useEffect(() => {

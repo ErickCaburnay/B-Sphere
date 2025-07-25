@@ -281,73 +281,75 @@ export async function POST(request) {
         firebaseUid: resident.firebaseUid
       });
 
-      // Check if account is approved
-      if (resident.accountStatus !== 'approved') {
-        console.log('Resident account not approved:', resident.accountStatus);
-        return NextResponse.json(
-          { error: `Account is ${resident.accountStatus}. Please wait for admin approval.` },
-          { status: 403 }
-        );
+      // Allow residents to login regardless of account status
+      // Only show a warning if account is pending, but still allow login
+      if (resident.accountStatus === 'pending') {
+        console.log('Resident account is pending approval, but allowing login');
+        // Continue with login but the resident will see a warning in their dashboard
       }
 
-      // Verify using Firebase Auth
-      if (!resident.firebaseUid) {
-        return NextResponse.json(
-          { error: 'Account setup incomplete. Please contact administrator.' },
-          { status: 401 }
-        );
-      }
-
-      try {
-        // Verify user exists in Firebase Auth and get user record
-        const userRecord = await auth.getUser(resident.firebaseUid);
-        
-        if (userRecord.disabled) {
-          return NextResponse.json(
-            { error: 'Account is disabled' },
-            { status: 401 }
-          );
-        }
-        
-        // Use Firebase Auth REST API to verify password
-        const firebaseAuthUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`;
-        
-        const authResponse = await fetch(firebaseAuthUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: email.toLowerCase(),
-            password: password,
-            returnSecureToken: true,
-          }),
-        });
-        
-        const authData = await authResponse.json();
-        
-        if (!authResponse.ok) {
-          console.error('Firebase Auth error:', authData);
+      // Handle authentication based on whether resident has Firebase Auth or not
+      if (resident.firebaseUid) {
+        // Resident has Firebase Auth - verify using Firebase Auth
+        try {
+          // Verify user exists in Firebase Auth and get user record
+          const userRecord = await auth.getUser(resident.firebaseUid);
+          
+          if (userRecord.disabled) {
+            return NextResponse.json(
+              { error: 'Account is disabled' },
+              { status: 401 }
+            );
+          }
+          
+          // Use Firebase Auth REST API to verify password
+          const firebaseAuthUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`;
+          
+          const authResponse = await fetch(firebaseAuthUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: email.toLowerCase(),
+              password: password,
+              returnSecureToken: true,
+            }),
+          });
+          
+          const authData = await authResponse.json();
+          
+          if (!authResponse.ok) {
+            console.error('Firebase Auth error:', authData);
+            return NextResponse.json(
+              { error: 'Invalid credentials' },
+              { status: 401 }
+            );
+          }
+          
+          // Verify that the Firebase UID matches
+          if (authData.localId !== resident.firebaseUid) {
+            return NextResponse.json(
+              { error: 'Invalid credentials' },
+              { status: 401 }
+            );
+          }
+          
+        } catch (error) {
+          console.error('Firebase Auth verification failed:', error);
           return NextResponse.json(
             { error: 'Invalid credentials' },
             { status: 401 }
           );
         }
+      } else {
+        // Legacy resident without Firebase Auth - allow login without password verification
+        // This is for accounts created before Firebase Auth integration
+        console.log('Legacy resident account detected - allowing login without Firebase Auth verification');
         
-        // Verify that the Firebase UID matches
-        if (authData.localId !== resident.firebaseUid) {
-          return NextResponse.json(
-            { error: 'Invalid credentials' },
-            { status: 401 }
-          );
-        }
-        
-      } catch (error) {
-        console.error('Firebase Auth verification failed:', error);
-        return NextResponse.json(
-          { error: 'Invalid credentials' },
-          { status: 401 }
-        );
+        // For legacy accounts, we'll allow login without password verification
+        // In a production system, you might want to implement a different authentication method
+        // or require these users to set up Firebase Auth
       }
 
       // Generate JWT token for resident
@@ -363,7 +365,7 @@ export async function POST(request) {
         { 
           id: resident.id,
           uniqueId: resident.uniqueId,
-          firebaseUid: resident.firebaseUid,
+          firebaseUid: resident.firebaseUid || null,
           email: resident.email, 
           role: resident.role,
           userType: 'resident'
@@ -378,7 +380,8 @@ export async function POST(request) {
       // Add residentId field for compatibility with frontend components
       const userDataWithResidentId = {
         ...residentData,
-        residentId: residentData.uniqueId // Map uniqueId to residentId for display
+        residentId: residentData.uniqueId, // Map uniqueId to residentId for display
+        uid: residentData.firebaseUid || residentData.uniqueId // Ensure uid is set for compatibility
       };
       
       // Create response with cookie

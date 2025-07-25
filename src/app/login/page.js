@@ -7,9 +7,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { usePathname, useRouter } from 'next/navigation';
 import LoadingAnimation from '@/components/ui/LoadingAnimation';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+// Firebase imports removed - using API-based authentication instead
 
 const LoginPage = () => {
     const pathname = usePathname();
@@ -59,43 +57,38 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const auth = getAuth();
-      
-      // Sign in with Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
+      // Use API-based login instead of direct Firebase Auth
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          userType: userType
+        }),
+      });
 
-      // Check admin status in both collections
-      const adminAccountRef = doc(db, 'admin_accounts', user.uid);
-      const residentRef = doc(db, 'residents', user.uid);
-      
-      const [adminDoc, residentDoc] = await Promise.all([
-        getDoc(adminAccountRef),
-        getDoc(residentRef)
-      ]);
+      const data = await response.json();
 
-      // Check if user is admin in either collection
-      const isAdminAccount = adminDoc.exists() && adminDoc.data().role === 'admin';
-      const isAdminResident = residentDoc.exists() && ['admin', 'sub-admin'].includes(residentDoc.data().role);
-
-      if (userType === 'admin' && !isAdminAccount && !isAdminResident) {
-        // User is not an admin but trying to log in as one
-        await auth.signOut();
-        throw new Error('You do not have admin privileges');
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
       }
 
-      if (userType === 'resident' && (isAdminAccount || isAdminResident)) {
-        // Admin trying to log in as resident
-        await auth.signOut();
-        throw new Error('Please use admin login for your account');
-      }
-
-      // Store minimal user info in localStorage
+      // Store user info in localStorage
       localStorage.setItem('userType', userType);
-      localStorage.setItem('user', JSON.stringify({
-        email: user.email,
-        uid: user.uid
-      }));
+      
+      // Store complete user data from the API response
+      const userDataToStore = {
+        ...data.user, // Include all user data from API
+        email: formData.email,
+        uid: data.user?.uid || data.user?.id || data.user?.uniqueId,
+        token: data.token
+      };
+      
+      console.log('Storing user data in localStorage:', userDataToStore);
+      localStorage.setItem('user', JSON.stringify(userDataToStore));
       
       // Redirect based on user type
       if (userType === 'resident') {
@@ -106,13 +99,6 @@ const LoginPage = () => {
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message || 'Login failed. Please check your credentials.');
-      
-      // Handle specific Firebase Auth errors
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        setError('Invalid email or password');
-      } else if (error.code === 'auth/too-many-requests') {
-        setError('Too many failed attempts. Please try again later.');
-      }
     } finally {
       setIsLoading(false);
     }
@@ -129,8 +115,12 @@ const LoginPage = () => {
     setResetMessage('');
 
     try {
+      // Use Firebase Auth for password reset (this still works for residents)
+      const { getAuth, sendPasswordResetEmail } = await import('firebase/auth');
+      const { db } = await import('@/lib/firebase');
       const auth = getAuth();
-      await auth.sendPasswordResetEmail(resetEmail);
+      
+      await sendPasswordResetEmail(auth, resetEmail);
       setResetMessage('Password reset email sent. Please check your inbox.');
       setShowForgotPassword(false);
       setResetEmail('');

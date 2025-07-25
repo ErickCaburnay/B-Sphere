@@ -27,6 +27,7 @@ import { useTheme } from '@/components/ui/ThemeContext';
 import AccountMenu from '@/components/AccountMenu';
 import { NotificationProvider } from '@/components/ui/NotificationContext';
 import NotificationBell from '@/components/ui/NotificationBell';
+import NotificationTest from '@/components/ui/NotificationTest';
 
 export default function ResidentDashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -75,10 +76,57 @@ export default function ResidentDashboardLayout({ children }) {
     handleResize();
     window.addEventListener('resize', handleResize);
 
+    // Fetch latest resident data from API and update sidebar
+    const fetchLatestResident = async (id) => {
+      if (!id) return;
+      try {
+        const res = await fetch(`/api/residents/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+          localStorage.setItem('user', JSON.stringify(data));
+        }
+      } catch (e) {
+        // Ignore errors, fallback to localStorage
+      }
+    };
+    // Listen for residentDataUpdated event
+    const handleResidentDataUpdate = (event) => {
+      const { residentId } = event.detail || {};
+      const id = residentId || (user && (user.uniqueId || user.residentId || user.id));
+      fetchLatestResident(id);
+    };
+    window.addEventListener('residentDataUpdated', handleResidentDataUpdate);
+    // On mount, fetch latest data
+    const id = userData ? (JSON.parse(userData).uniqueId || JSON.parse(userData).residentId || JSON.parse(userData).id) : null;
+    fetchLatestResident(id);
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('residentDataUpdated', handleResidentDataUpdate);
     };
   }, [router]);
+
+  useEffect(() => {
+    // Poll for real-time updates to resident name
+    let pollingInterval = null;
+    const pollResidentName = () => {
+      const id = user?.uniqueId || user?.residentId || user?.id;
+      if (!id) return;
+      fetch(`/api/residents/${id}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && (data.firstName !== user?.firstName || data.middleName !== user?.middleName || data.lastName !== user?.lastName)) {
+            setUser(data);
+            localStorage.setItem('user', JSON.stringify(data));
+          }
+        })
+        .catch(() => {});
+    };
+    pollingInterval = setInterval(pollResidentName, 5000);
+    return () => {
+      clearInterval(pollingInterval);
+    };
+  }, [user]);
 
   // Add navigation loading state
   useEffect(() => {
@@ -89,7 +137,9 @@ export default function ResidentDashboardLayout({ children }) {
     const originalPush = router.push;
     router.push = (...args) => {
       handleStart();
-      return originalPush.apply(router, args).finally(handleComplete);
+      const result = originalPush.apply(router, args);
+      handleComplete();
+      return result;
     };
 
     return () => {
@@ -356,14 +406,11 @@ export default function ResidentDashboardLayout({ children }) {
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <User className="w-6 h-6 text-white" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">
-                      {user ? `${user.firstName} ${user.lastName}` : 'Loading...'}
-                    </p>
-                    <p className="text-xs text-blue-200">Resident</p>
-                    {user?.residentId && (
-                      <p className="text-xs text-blue-100 font-medium">ID: {user.residentId}</p>
-                    )}
+                  <div className="sidebar-user-info">
+                    <div className="sidebar-user-name font-bold text-lg">
+                      {user?.firstName} {user?.middleName ? user.middleName.charAt(0) + '. ' : ''}{user?.lastName}
+                    </div>
+                    <div className="sidebar-user-id text-xs text-gray-400">ID: {user?.uniqueId || user?.residentId}</div>
                   </div>
                 </div>
               </div>
@@ -420,6 +467,7 @@ export default function ResidentDashboardLayout({ children }) {
           {children}
         </main>
       </div>
+      
     </NotificationProvider>
   );
 }
@@ -481,4 +529,4 @@ function SidebarLink({ icon, label, href, collapsed = false, isActive = false, p
       </div>
     </Link>
   );
-} 
+}

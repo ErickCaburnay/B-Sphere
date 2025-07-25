@@ -26,8 +26,11 @@ export default function ResidentDashboard() {
     // Get user data from localStorage
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      console.log('Resident dashboard - User data from localStorage:', parsedUser);
+      setUser(parsedUser);
     } else {
+      console.log('No user data found in localStorage, redirecting to login');
       router.push('/login');
     }
     setLoading(false);
@@ -97,6 +100,21 @@ export default function ResidentDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Account Status Warning */}
+      {user?.accountStatus === 'pending' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <div>
+              <h3 className="text-sm font-medium text-yellow-800">Account Pending Approval</h3>
+              <p className="text-sm text-yellow-700 mt-1">
+                Your account is currently pending admin approval. You can still use the system, but some features may be limited.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 rounded-xl shadow-lg p-8 text-white">
         <div className="flex items-center justify-between">
@@ -132,7 +150,7 @@ export default function ResidentDashboard() {
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900">
-              Welcome, {user ? `${user.firstName} ${user.lastName}` : 'Resident'}!
+              {user ? `${user.firstName?.toUpperCase()}${user.middleName ? ' ' + user.middleName.charAt(0).toUpperCase() + '. ' : ' '}${user.lastName?.toUpperCase()}` : 'Resident'}
             </h2>
             <p className="text-gray-600 mt-1">
               Manage your information and access barangay services
@@ -227,7 +245,7 @@ export default function ResidentDashboard() {
                 <div>
                   <p className="text-sm text-gray-600">Full Name</p>
                   <p className="font-semibold text-gray-900">
-                    {`${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`}
+                    {`${user.firstName?.toUpperCase()}${user.middleName ? ' ' + user.middleName.charAt(0).toUpperCase() + '. ' : ' '}${user.lastName?.toUpperCase()}`}
                   </p>
                 </div>
               </div>
@@ -248,7 +266,7 @@ export default function ResidentDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Phone</p>
-                  <p className="font-semibold text-gray-900">{user.phone}</p>
+                  <p className="font-semibold text-gray-900">{user.contactNumber}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
@@ -274,7 +292,8 @@ export default function ResidentDashboard() {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Address</p>
                   <p className="font-semibold text-gray-900">
-                    {`${user.address.street || ''} ${user.address.barangay || ''} ${user.address.city || ''} ${user.address.province || ''} ${user.address.zipCode || ''}`.trim()}
+                    {typeof user.address === 'string' ? user.address : 
+                     `${user.address.street || ''} ${user.address.barangay || ''} ${user.address.city || ''} ${user.address.province || ''} ${user.address.zipCode || ''}`.trim()}
                   </p>
                 </div>
               </div>

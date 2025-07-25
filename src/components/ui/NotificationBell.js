@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, X, Check, CheckCheck, Eye, Trash2, Clock, FileText, User, UserPlus, MessageSquare, CreditCard, FileCheck, Award } from 'lucide-react';
+import { Bell, X, Check, CheckCheck, Eye, Trash2, Clock, FileText, User, UserPlus, MessageSquare, CreditCard, FileCheck, Award, CheckCircle } from 'lucide-react';
 import { useNotifications } from './NotificationContext';
 import { useRouter } from 'next/navigation';
+import NotificationItem from './NotificationItem';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,8 @@ const NotificationBell = () => {
   const panelRef = useRef(null);
   const bellRef = useRef(null);
   const router = useRouter();
+  const [residentModalOpen, setResidentModalOpen] = useState(false);
+  const [residentModalNotification, setResidentModalNotification] = useState(null);
   
   const {
     notifications,
@@ -138,72 +141,65 @@ const NotificationBell = () => {
   // Smart notification click handler with routing logic
   const handleNotificationClick = async (notification) => {
     // Mark as read first (don't wait for it)
-    if (!notification.seen) {
-      markAsRead(notification.id).catch(error => {
-        console.error('Error marking notification as read:', error);
-      });
+    if (!notification.read) {
+      await markAsRead(notification.id);
+      // Optionally refresh notifications for reliability
+      await refreshNotifications();
     }
-
-    // Close the notification panel immediately
+    // Get the updated notification from state
+    const updatedNotification = notifications.find(n => n.id === notification.id) || notification;
     setIsOpen(false);
 
     // Detect if we're on resident dashboard or admin dashboard
     const isResidentDashboard = window.location.pathname.startsWith('/resident-dashboard');
 
     if (isResidentDashboard) {
-      // For residents, always navigate to notifications page
-      console.log('Resident notification clicked, navigating to notifications page');
-      try {
-        // Use window.location for more reliable navigation
-        window.location.href = `/resident-dashboard/notifications?highlight=${notification.id}`;
-      } catch (navError) {
-        console.error('Navigation error:', navError);
-        // Fallback to router
-        router.push(`/resident-dashboard/notifications?highlight=${notification.id}`);
-      }
+      // For residents, show modal with details and navigation button
+      setResidentModalNotification(updatedNotification);
+      setResidentModalOpen(true);
       return;
     } else {
       // Admin dashboard routing (existing logic)
-      switch (notification.type) {
+      switch (updatedNotification.type) {
         case 'info_update_request':
           // Use modal for info update requests (quick review)
-          setSelectedNotification(notification);
+          setSelectedNotification(updatedNotification);
           setShowInfoUpdateModal(true);
           break;
           
         case 'brgy_id_request':
           // Redirect to ID requests page (complex action - printing)
-          router.push(`/dashboard/residents?highlight=${notification.dataId}&action=id-request`);
+          router.push(`/dashboard/residents?highlight=${updatedNotification.dataId}&action=id-request`);
           break;
           
         case 'document_clearance':
           // Redirect to documents page with clearance filter
-          router.push(`/dashboard/services?type=clearance&request=${notification.dataId}`);
+          router.push(`/dashboard/services?type=clearance&request=${updatedNotification.dataId}`);
           break;
           
         case 'document_certificate':
           // Redirect to documents page with certificate filter
-          router.push(`/dashboard/services?type=certificate&request=${notification.dataId}`);
+          router.push(`/dashboard/services?type=certificate&request=${updatedNotification.dataId}`);
           break;
           
         case 'document_permit':
           // Redirect to documents page with permit filter
-          router.push(`/dashboard/services?type=permit&request=${notification.dataId}`);
+          router.push(`/dashboard/services?type=permit&request=${updatedNotification.dataId}`);
           break;
           
         case 'document_request':
           // Generic document request - redirect to services
-          router.push(`/dashboard/services?request=${notification.dataId}`);
+          router.push(`/dashboard/services?request=${updatedNotification.dataId}`);
           break;
           
         case 'new_registration':
           // Redirect to residents page to review new registration
-          router.push(`/dashboard/residents?highlight=${notification.residentId}&action=review`);
+          router.push(`/dashboard/residents?highlight=${updatedNotification.residentId}&action=review`);
           break;
           
         case 'complaint':
           // Could redirect to a complaints management page (if exists)
-          router.push(`/dashboard/services?type=complaint&id=${notification.dataId}`);
+          router.push(`/dashboard/services?type=complaint&id=${updatedNotification.dataId}`);
           break;
           
         default:
@@ -290,166 +286,17 @@ const NotificationBell = () => {
             </div>
 
             {/* Notifications List */}
-            <div className="max-h-96 overflow-y-auto">
-              {loading ? (
-                <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
-                  <span className="ml-2 text-gray-600">Loading...</span>
-                </div>
-              ) : error ? (
-                <div className="flex flex-col items-center justify-center p-8 text-red-500">
-                  <X className="w-12 h-12 mb-2 opacity-50" />
-                  <p className="text-sm mb-2">{error}</p>
-                  <button
-                    onClick={() => refreshNotifications()}
-                    className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : recentNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-gray-500">
-                  <Bell className="w-12 h-12 mb-2 opacity-50" />
-                  <p className="text-sm">No notifications yet</p>
-                </div>
+            <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
+              {notifications.length === 0 ? (
+                <div className="p-6 text-center text-gray-400">No notifications</div>
               ) : (
-                <div className="divide-y divide-gray-100">
-                  {recentNotifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`group p-4 transition-colors cursor-pointer border-l-4 ${
-                        !notification.seen 
-                          ? 'bg-blue-50/50 border-l-blue-500 hover:bg-blue-50' 
-                          : 'bg-white border-l-gray-200 hover:bg-gray-50 opacity-75'
-                      }`}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Icon with read/unread styling */}
-                        <div className={`p-2 rounded-lg ${getNotificationColor(notification.type, notification.priority)} ${
-                          notification.seen ? 'opacity-70' : ''
-                        }`}>
-                          {getNotificationIcon(notification.type)}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className={`text-sm font-medium ${
-                                  !notification.seen ? 'text-gray-900' : 'text-gray-600'
-                                }`}>
-                                  {notification.title}
-                                </p>
-                                
-                                {/* Read status indicator */}
-                                {notification.seen ? (
-                                  <CheckCheck className="w-4 h-4 text-green-500 flex-shrink-0" title="Read" />
-                                ) : (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="Unread"></div>
-                                )}
-                              </div>
-                              
-                              <p className={`text-xs mt-1 line-clamp-2 ${
-                                !notification.seen ? 'text-gray-700' : 'text-gray-500'
-                              }`}>
-                                {notification.message}
-                              </p>
-                              
-                              {/* Notification type badge */}
-                              <div className="flex items-center gap-2 mt-2">
-                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  notification.seen ? 'opacity-70' : ''
-                                } ${
-                                  notification.type === 'info_update_request' ? 'bg-purple-100 text-purple-700' :
-                                  notification.type === 'info_update_approved' ? 'bg-green-100 text-green-700' :
-                                  notification.type === 'info_update_rejected' ? 'bg-red-100 text-red-700' :
-                                  notification.type === 'brgy_id_request' ? 'bg-indigo-100 text-indigo-700' :
-                                  notification.type === 'document_clearance' ? 'bg-green-100 text-green-700' :
-                                  notification.type === 'document_certificate' ? 'bg-yellow-100 text-yellow-700' :
-                                  notification.type === 'document_permit' ? 'bg-blue-100 text-blue-700' :
-                                  notification.type === 'new_registration' ? 'bg-emerald-100 text-emerald-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {notification.type === 'info_update_request' ? 'Info Update' :
-                                   notification.type === 'info_update_approved' ? 'Approved' :
-                                   notification.type === 'info_update_rejected' ? 'Rejected' :
-                                   notification.type === 'brgy_id_request' ? 'ID Request' :
-                                   notification.type === 'document_clearance' ? 'Clearance' :
-                                   notification.type === 'document_certificate' ? 'Certificate' :
-                                   notification.type === 'document_permit' ? 'Permit' :
-                                   notification.type === 'new_registration' ? 'New Registration' :
-                                   notification.type.replace('_', ' ')}
-                                </span>
-                                
-                                {notification.priority === 'urgent' && (
-                                  <span className={`px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full ${
-                                    notification.read ? 'opacity-70' : ''
-                                  }`}>
-                                    Urgent
-                                  </span>
-                                )}
-                                
-                                {/* Status indicator */}
-                                {notification.status && (
-                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                    notification.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                    notification.status === 'approved' ? 'bg-green-100 text-green-700' :
-                                    notification.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                    notification.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-700'
-                                  } ${notification.seen ? 'opacity-70' : ''}`}>
-                                    {notification.status.charAt(0).toUpperCase() + notification.status.slice(1)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Time and actions */}
-                            <div className="flex flex-col items-end gap-1 ml-2">
-                              <span className={`text-xs ${
-                                !notification.seen ? 'text-gray-500' : 'text-gray-400'
-                              }`}>
-                                {formatTimeAgo(notification.createdAt)}
-                              </span>
-                              
-                              <div className="flex items-center gap-1">
-                                {/* Mark as read/unread button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    markAsRead(notification.id);
-                                  }}
-                                  className={`p-1 transition-colors opacity-0 group-hover:opacity-100 ${
-                                    notification.seen 
-                                      ? 'text-gray-400 hover:text-blue-500' 
-                                      : 'text-blue-500 hover:text-blue-600'
-                                  }`}
-                                  title={notification.seen ? 'Mark as unread' : 'Mark as read'}
-                                >
-                                  {notification.seen ? <Eye className="w-3 h-3" /> : <Check className="w-3 h-3" />}
-                                </button>
-                                
-                                {/* Delete button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteNotification(notification.id);
-                                  }}
-                                  className="p-1 text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                  title="Delete notification"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                notifications.map((notif) => (
+                  <NotificationItem
+                    key={notif.id}
+                    notification={notif}
+                    onClick={() => handleNotificationClick(notif)}
+                  />
+                ))
               )}
             </div>
 
@@ -522,6 +369,37 @@ const NotificationBell = () => {
           handleNotificationClick={handleNotificationClick}
         />
       )}
+      {/* Resident Notification Modal */}
+      {residentModalOpen && residentModalNotification && (
+        <div className="fixed inset-0 bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-blue-900/80 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <h2 className="text-lg font-bold text-gray-900">Information Update Approved</h2>
+              </div>
+              <button onClick={() => setResidentModalOpen(false)} className="text-gray-400 hover:text-gray-600 rounded-full p-2 transition-all">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Content */}
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2">Your personal information update request has been approved and your profile has been updated.</p>
+              <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                <span>Received: 9m ago</span>
+                <span className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-semibold ml-2">completed</span>
+              </div>
+            </div>
+            <button className="w-full mt-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold shadow-md hover:from-blue-700 hover:to-blue-600 transition-all text-base" onClick={() => {
+                setResidentModalOpen(false);
+                router.push('/resident-dashboard/notifications');
+              }}>
+              Go to Notifications Page
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -580,6 +458,30 @@ const InfoUpdateModal = ({ notification, onClose }) => {
 
     loadPendingUpdate();
   }, [notification.requestId, notification.data, notification.senderUserId, notification.createdAt, notification.status]);
+
+  // Add this useEffect inside InfoUpdateModal to sync notificationStatus with notification.status
+  useEffect(() => {
+    setNotificationStatus(notification?.status || 'pending');
+  }, [notification]);
+
+  // In InfoUpdateModal, add useEffect to fetch the latest notification status from the backend when the modal opens
+  useEffect(() => {
+    async function fetchLatestStatus() {
+      if (!notification?.id) return;
+      try {
+        const res = await fetch(`/api/notifications?id=${notification.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setNotificationStatus(data.notification?.status || 'pending');
+        } else {
+          setNotificationStatus(notification?.status || 'pending');
+        }
+      } catch {
+        setNotificationStatus(notification?.status || 'pending');
+      }
+    }
+    fetchLatestStatus();
+  }, [notification]);
 
   const handleApprove = async () => {
     setLoading(true);
@@ -665,6 +567,14 @@ const InfoUpdateModal = ({ notification, onClose }) => {
           };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           console.log('LocalStorage updated for current user');
+          
+          // Also update the pendingUpdates in localStorage to remove the approved request
+          const pendingUpdates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
+          const updatedPendingUpdates = pendingUpdates.filter(update => 
+            update.id !== pendingUpdate.id && update.status !== 'approved'
+          );
+          localStorage.setItem('pendingUpdates', JSON.stringify(updatedPendingUpdates));
+          console.log('Pending updates cleaned up in localStorage');
         } else {
           console.log('Current user is not the resident being updated, skipping localStorage update');
         }
@@ -675,8 +585,10 @@ const InfoUpdateModal = ({ notification, onClose }) => {
       // Step 4: Update the original notification status
       try {
         console.log('Updating notification status to approved for ID:', notification.id);
-        const statusResponse = await fetch(`/api/notifications?id=${notification.id}&action=updateStatus&status=approved`, {
-          method: 'PATCH'
+        const statusResponse = await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationId: notification.id, status: 'approved' })
         });
         
         const responseData = await statusResponse.json();
@@ -739,23 +651,36 @@ const InfoUpdateModal = ({ notification, onClose }) => {
         console.error('Failed to send approval notification:', notificationError);
       }
 
-      // Step 6: Trigger refresh events for admin side
+      // Step 6: Trigger refresh events for both admin and resident sides
       if (typeof window !== 'undefined') {
-        const refreshEvent = new CustomEvent('residentDataUpdated', {
-          detail: { 
-            residentId: pendingUpdate.residentId,
-            updatedData: pendingUpdate.requestedChanges
-          }
-        });
-        window.dispatchEvent(refreshEvent);
-        console.log('Refresh event dispatched');
-        
-        // Also trigger a general admin refresh event
+        // Event for admin side refresh
         const adminRefreshEvent = new CustomEvent('adminDataRefresh', {
           detail: { type: 'resident_updated', residentId: pendingUpdate.residentId }
         });
         window.dispatchEvent(adminRefreshEvent);
         console.log('Admin refresh event dispatched');
+        
+        // Event for resident side refresh (personal info page)
+        const residentRefreshEvent = new CustomEvent('residentDataUpdated', {
+          detail: { 
+            residentId: pendingUpdate.residentId,
+            updatedData: pendingUpdate.requestedChanges,
+            action: 'approved'
+          }
+        });
+        window.dispatchEvent(residentRefreshEvent);
+        console.log('Resident refresh event dispatched');
+        
+        // Event specifically for personal info page
+        const personalInfoRefreshEvent = new CustomEvent('personalInfoUpdated', {
+          detail: { 
+            residentId: pendingUpdate.residentId,
+            updatedData: pendingUpdate.requestedChanges,
+            action: 'approved'
+          }
+        });
+        window.dispatchEvent(personalInfoRefreshEvent);
+        console.log('Personal info refresh event dispatched');
       }
 
       console.log('=== APPROVAL PROCESS COMPLETED ===');
@@ -765,8 +690,11 @@ const InfoUpdateModal = ({ notification, onClose }) => {
         window.notificationContext.refreshNotifications();
       }
       
-      // Don't close modal - let user see the updated status
+      // Show success message and close modal
       alert('Information update approved successfully! Resident has been notified and database updated.');
+      
+      // Close the modal after approval
+      onClose();
     } catch (error) {
       console.error('Error in approval process:', error);
       alert(`Failed to approve update: ${error.message}`);
@@ -785,8 +713,10 @@ const InfoUpdateModal = ({ notification, onClose }) => {
       // Update the original notification status to rejected
       try {
         console.log('Updating notification status to rejected for ID:', notification.id);
-        const statusResponse = await fetch(`/api/notifications?id=${notification.id}&action=updateStatus&status=rejected`, {
-          method: 'PATCH'
+        const statusResponse = await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notificationId: notification.id, status: 'rejected' })
         });
         
         const responseData = await statusResponse.json();
@@ -849,10 +779,36 @@ const InfoUpdateModal = ({ notification, onClose }) => {
         window.notificationContext.refreshNotifications();
       }
 
+      // Trigger events for resident side to handle rejection
+      if (typeof window !== 'undefined') {
+        // Event for resident side to clear pending status
+        const residentRejectionEvent = new CustomEvent('residentDataUpdated', {
+          detail: { 
+            residentId: pendingUpdate.residentId,
+            action: 'rejected'
+          }
+        });
+        window.dispatchEvent(residentRejectionEvent);
+        console.log('Resident rejection event dispatched');
+        
+        // Event specifically for personal info page
+        const personalInfoRejectionEvent = new CustomEvent('personalInfoUpdated', {
+          detail: { 
+            residentId: pendingUpdate.residentId,
+            action: 'rejected'
+          }
+        });
+        window.dispatchEvent(personalInfoRejectionEvent);
+        console.log('Personal info rejection event dispatched');
+      }
+
       console.log('Info update rejected for:', pendingUpdate.residentId);
       
-      // Don't close modal - let user see the updated status
+      // Show success message and close modal
       alert('Information update rejected. Resident has been notified.');
+      
+      // Close the modal after rejection
+      onClose();
     } catch (error) {
       console.error('Error rejecting info update:', error);
       alert('Failed to reject update. Please try again.');
@@ -883,172 +839,212 @@ const InfoUpdateModal = ({ notification, onClose }) => {
     );
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <User className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Information Update Request</h2>
-              <p className="text-sm text-gray-600">Review and approve changes</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  // Helper to format address object or string as a string
+  const formatAddress = (addressObj) => {
+    if (!addressObj) return 'Not provided';
+    if (typeof addressObj === 'string') {
+      return addressObj.trim() ? addressObj : 'Not provided';
+    }
+    if (typeof addressObj === 'object') {
+      const parts = [
+        addressObj.street,
+        addressObj.barangay,
+        addressObj.city,
+        addressObj.province,
+        addressObj.zip,
+        addressObj.zipCode // support both zip and zipCode
+      ].filter(Boolean);
+      return parts.length > 0 ? parts.join(', ') : 'Not provided';
+    }
+    return 'Not provided';
+  };
 
-        {/* Content */}
-        <div className="p-6 max-h-96 overflow-y-auto">
-          {loadingData ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
-              <span className="ml-2 text-gray-600">Loading update details...</span>
+  return (
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all border border-gray-100">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 px-8 py-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-600/20"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                <User className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Information Update Request</h2>
+                <p className="text-green-100 text-sm">Review and approve changes</p>
+              </div>
             </div>
-          ) : !pendingUpdate ? (
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+        {/* Content Section */}
+        <div className="px-8 py-8 max-h-[60vh] overflow-y-auto bg-white space-y-6">
+          {/* Request Info and Field Comparison Cards */}
+          {!pendingUpdate ? (
             <div className="text-center py-8">
               <p className="text-gray-500">Update request not found or has already been processed.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Request Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <>
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 mb-4">
                 <h3 className="font-medium text-blue-900 mb-2">Request Information</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-blue-700">Resident ID:</span> {pendingUpdate.residentId}
+                    <span className="text-blue-700">Resident ID:</span> {pendingUpdate?.residentId || <span className="text-gray-400 italic">N/A</span>}
                   </div>
                   <div>
-                    <span className="text-blue-700">Requested by:</span> {pendingUpdate.requestedBy}
+                    <span className="text-blue-700">Requested by:</span> {pendingUpdate?.requestedBy || <span className="text-gray-400 italic">N/A</span>}
                   </div>
                   <div>
-                    <span className="text-blue-700">Request Date:</span> {new Date(pendingUpdate.requestedAt).toLocaleString()}
+                    <span className="text-blue-700">Request Date:</span> {pendingUpdate?.requestedAt ? new Date(pendingUpdate.requestedAt).toLocaleString() : <span className="text-gray-400 italic">N/A</span>}
                   </div>
                   <div>
-                    <span className="text-blue-700">Status:</span> 
-                    <span className={`ml-1 px-2 py-1 rounded-full text-xs ${
-                      notificationStatus === 'approved' ? 'bg-green-100 text-green-800' :
-                      notificationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {notificationStatus}
-                    </span>
+                    <span className="text-blue-700">Status:</span>
+                    <span className={`ml-1 px-2 py-1 rounded-full text-xs ${notificationStatus === 'approved' ? 'bg-green-100 text-green-800' : notificationStatus === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{notificationStatus}</span>
                   </div>
                 </div>
               </div>
-
               {/* Field Comparisons */}
-              <div>
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 mb-4">
                 <h3 className="font-medium text-gray-900 mb-3">Requested Changes</h3>
                 <div className="space-y-3">
                   {renderFieldComparison(
                     'First Name',
-                    pendingUpdate.originalData.firstName,
-                    pendingUpdate.requestedChanges.firstName
+                    pendingUpdate?.originalData?.firstName,
+                    pendingUpdate?.requestedChanges?.firstName
                   )}
                   {renderFieldComparison(
                     'Middle Name',
-                    pendingUpdate.originalData.middleName,
-                    pendingUpdate.requestedChanges.middleName
+                    pendingUpdate?.originalData?.middleName,
+                    pendingUpdate?.requestedChanges?.middleName
                   )}
                   {renderFieldComparison(
                     'Last Name',
-                    pendingUpdate.originalData.lastName,
-                    pendingUpdate.requestedChanges.lastName
+                    pendingUpdate?.originalData?.lastName,
+                    pendingUpdate?.requestedChanges?.lastName
                   )}
                   {renderFieldComparison(
                     'Email',
-                    pendingUpdate.originalData.email,
-                    pendingUpdate.requestedChanges.email
+                    pendingUpdate?.originalData?.email,
+                    pendingUpdate?.requestedChanges?.email
                   )}
                   {renderFieldComparison(
                     'Phone',
-                    pendingUpdate.originalData.phone,
-                    pendingUpdate.requestedChanges.phone
+                    pendingUpdate?.originalData?.phone,
+                    pendingUpdate?.requestedChanges?.phone
                   )}
                   {renderFieldComparison(
                     'Birth Date',
-                    pendingUpdate.originalData.birthdate,
-                    pendingUpdate.requestedChanges.birthdate
+                    pendingUpdate?.originalData?.birthdate,
+                    pendingUpdate?.requestedChanges?.birthdate
+                  )}
+                  {/* Address field (combined) */}
+                  {renderFieldComparison(
+                    'Address',
+                    formatAddress(pendingUpdate?.originalData?.address),
+                    formatAddress(pendingUpdate?.requestedChanges?.address)
                   )}
                   {renderFieldComparison(
-                    'Street Address',
-                    pendingUpdate.originalData.address?.street,
-                    pendingUpdate.requestedChanges.address?.street
+                    'Voter Status',
+                    pendingUpdate?.originalData?.voterStatus,
+                    pendingUpdate?.requestedChanges?.voterStatus
                   )}
                   {renderFieldComparison(
-                    'Barangay',
-                    pendingUpdate.originalData.address?.barangay,
-                    pendingUpdate.requestedChanges.address?.barangay
+                    'Marital Status',
+                    pendingUpdate?.originalData?.maritalStatus,
+                    pendingUpdate?.requestedChanges?.maritalStatus
+                  )}
+                  {renderFieldComparison(
+                    'Employment Status',
+                    pendingUpdate?.originalData?.employmentStatus,
+                    pendingUpdate?.requestedChanges?.employmentStatus
+                  )}
+                  {renderFieldComparison(
+                    'Occupation',
+                    pendingUpdate?.originalData?.occupation,
+                    pendingUpdate?.requestedChanges?.occupation
+                  )}
+                  {renderFieldComparison(
+                    'Educational Attainment',
+                    pendingUpdate?.originalData?.educationalAttainment,
+                    pendingUpdate?.requestedChanges?.educationalAttainment
                   )}
                 </div>
               </div>
-            </div>
+              {/* --- In the Requested Changes section, wrap the program <tr> rows in a <table><tbody> ... </tbody></table> --- */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 mb-4">
+                <h3 className="font-medium text-gray-900 mb-3">Programs & Benefits</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <tbody>
+                      {['isTUPAD', 'is4Ps', 'isPWD', 'isSoloParent'].map((field) => {
+                        const oldValue = pendingUpdate?.originalData ? pendingUpdate.originalData[field] : false;
+                        const newValue = pendingUpdate?.requestedChanges ? pendingUpdate.requestedChanges[field] : false;
+                        const changed = oldValue !== newValue;
+                        const labelMap = {
+                          isTUPAD: 'TUPAD',
+                          is4Ps: '4Ps',
+                          isPWD: 'PWD',
+                          isSoloParent: 'Solo Parent',
+                        };
+                        const colorMap = {
+                          isTUPAD: 'blue',
+                          is4Ps: 'green',
+                          isPWD: 'purple',
+                          isSoloParent: 'orange',
+                        };
+                        return (
+                          <tr key={field} className={changed ? 'bg-yellow-50 font-semibold' : ''}>
+                            <td className="p-2 text-gray-600">{labelMap[field]}</td>
+                            <td className="p-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${oldValue ? `bg-${colorMap[field]}-100 text-${colorMap[field]}-700` : 'bg-gray-100 text-gray-400'}`}>{oldValue ? 'Yes' : 'No'}</span>
+                            </td>
+                            <td className="p-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${newValue ? `bg-${colorMap[field]}-100 text-${colorMap[field]}-700` : 'bg-gray-100 text-gray-400'}`}>{newValue ? 'Yes' : 'No'}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
-
-                {/* Actions */}
-        {!loadingData && pendingUpdate && (
-          <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-200 bg-gray-50">
-            {/* Left side: Status info for processed requests */}
-            {(notificationStatus !== 'pending') && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Request Status:</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  notificationStatus === 'approved' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {notificationStatus}
-                </span>
-                {(notificationStatus === 'approved') && (
-                  <span className="text-sm text-gray-500">• Changes have been applied</span>
-                )}
-              </div>
-            )}
-            
-            {/* Spacer for pending requests to push buttons to the right */}
-            {(notificationStatus === 'pending') && <div className="flex-1"></div>}
-            
-            {/* Right side: Action buttons */}
-            <div className="flex items-center gap-3">
-              {/* Only show approve/reject buttons if status is pending */}
-              {(notificationStatus === 'pending') && (
-                <>
-                  <button
-                    onClick={handleReject}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                  >
-                    {loading ? 'Processing...' : 'Reject'}
-                  </button>
-                  <button
-                    onClick={handleApprove}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                  >
-                    {loading ? 'Processing...' : 'Approve'}
-                  </button>
-                </>
-              )}
-              
-              {/* Close button - always visible */}
+        {/* Footer */}
+        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100 flex justify-end space-x-4">
+          {notificationStatus === 'pending' && (
+            <>
               <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={handleReject}
+                disabled={loading}
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
               >
-                Close
+                {loading ? 'Processing...' : 'Reject'}
               </button>
-            </div>
-          </div>
-        )}
+              <button
+                onClick={handleApprove}
+                disabled={loading}
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+              >
+                {loading ? 'Processing...' : 'Approve'}
+              </button>
+            </>
+          )}
+          <button
+            onClick={onClose}
+            className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1126,86 +1122,14 @@ const NotificationModal = ({
           ) : (
             <div className="divide-y divide-gray-100">
               {notifications.map((notification) => (
-                <div
+                <NotificationItem
                   key={notification.id}
-                  className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
-                    !notification.seen ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''
-                  }`}
+                  notification={notification}
                   onClick={() => {
                     handleNotificationClick(notification);
                     onClose();
                   }}
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Icon */}
-                    <div className={`p-3 rounded-xl ${getNotificationColor(notification.type, notification.priority)}`}>
-                      {getNotificationIcon(notification.type)}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className={`text-base font-semibold ${!notification.seen ? 'text-gray-900' : 'text-gray-700'}`}>
-                            {notification.title}
-                          </h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {notification.message}
-                          </p>
-                        </div>
-                        
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 ml-4">
-                          {!notification.seen && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markAsRead(notification.id);
-                              }}
-                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                              title="Mark as read"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteNotification(notification.id);
-                            }}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Time and Priority */}
-                      <div className="flex items-center gap-3 mt-3">
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
-                          <Clock className="w-4 h-4" />
-                          {formatTimeAgo(notification.createdAt)}
-                        </div>
-                        {notification.priority === 'urgent' && (
-                          <span className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">
-                            Urgent
-                          </span>
-                        )}
-                        {notification.priority === 'high' && (
-                          <span className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-100 rounded-full">
-                            High
-                          </span>
-                        )}
-                        {notification.type && (
-                          <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full capitalize">
-                            {notification.type.replace('_', ' ')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                />
               ))}
             </div>
           )}
