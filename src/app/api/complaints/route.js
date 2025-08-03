@@ -122,31 +122,31 @@ export async function PUT(request) {
 }
 
 // DELETE - Delete a complaint
-// export async function DELETE(request) {
-//   try {
-//     if (!adminDb) {
-//       return NextResponse.json({ error: 'Database not available' }, { status: 503 });
-//     }
+export async function DELETE(request) {
+  try {
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database not available' }, { status: 503 });
+    }
 
-//     const { searchParams } = new URL(request.url);
-//     const complaintId = searchParams.get('id');
+    const { searchParams } = new URL(request.url);
+    const complaintId = searchParams.get('id');
 
-//     if (!complaintId) {
-//       return NextResponse.json({ error: 'Complaint ID is required' }, { status: 400 });
-//     }
+    if (!complaintId) {
+      return NextResponse.json({ error: 'Complaint ID is required' }, { status: 400 });
+    }
 
-//     const complaintRef = adminDb.collection('complaints').doc(complaintId);
-//     const complaintDoc = await complaintRef.get();
+    const complaintRef = adminDb.collection('complaints').doc(complaintId);
+    const complaintDoc = await complaintRef.get();
 
-//     if (!complaintDoc.exists) {
-//       return NextResponse.json({ error: 'Complaint not found' }, { status: 404 });
-//     }
+    if (!complaintDoc.exists) {
+      return NextResponse.json({ error: 'Complaint not found' }, { status: 404 });
+    }
 
-//     await complaintRef.delete();
+    await complaintRef.delete();
     
-//     return NextResponse.json({ message: 'Complaint deleted successfully' });
-//   } catch (error) {
-//     console.error('Error deleting complaint:', error);
-//     return NextResponse.json({ error: 'Failed to delete complaint' }, { status: 500 });
-//   }
-// } 
+    return NextResponse.json({ message: 'Complaint deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting complaint:', error);
+    return NextResponse.json({ error: 'Failed to delete complaint' }, { status: 500 });
+  }
+} 

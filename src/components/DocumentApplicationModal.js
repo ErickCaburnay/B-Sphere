@@ -30,7 +30,7 @@ export default function DocumentApplicationModal({ isOpen, onClose, onSelectDocu
       name: "Barangay Business Permit",
       description: "Permit for business operations",
       icon: "🏢"
-    },
+    }
   ];
 
   return (

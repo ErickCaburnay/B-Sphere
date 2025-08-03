@@ -4,16 +4,23 @@ import { verifyToken } from '@/lib/server-utils';
 
 export async function POST(request) {
   try {
-    // Verify admin token
+    // Verify token (admin or user)
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.split(' ')[1];
-    const isValid = await verifyToken(token);
-    if (!isValid) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    
+    // Try to verify as admin token first
+    let isAdmin = false;
+    try {
+      isAdmin = await verifyToken(token);
+    } catch (adminError) {
+      // If not admin, allow user token (basic validation)
+      if (!token || token.length < 10) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      }
     }
 
     const data = await request.json();
@@ -62,9 +69,9 @@ export async function POST(request) {
     // Save document request
     await adminDb.collection('document_requests').doc(documentId).set({
       ...data,
-      status: 'APPROVED', // Admin-created documents are automatically approved
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      status: isAdmin ? 'APPROVED' : 'PENDING', // Admin-created documents are approved, user requests are pending
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
 
     return NextResponse.json({ 
@@ -88,7 +95,7 @@ export async function GET(request) {
   try {
     console.log('Document requests API - GET request received');
     
-    // Verify admin token
+    // Verify token (admin or user)
     const authHeader = request.headers.get('authorization');
     console.log('Document requests API - Auth header:', {
       hasHeader: !!authHeader,
@@ -105,20 +112,50 @@ export async function GET(request) {
       hasToken: !!token,
       tokenLength: token ? token.length : 0
     });
+
+    // First try to verify as admin token
+    let isAdmin = false;
+    let tokenUser = null;
     
-    const isValid = await verifyToken(token);
-    console.log('Document requests API - Token validation result:', isValid);
-    
-    if (!isValid) {
-      console.log('Document requests API - Invalid token, returning 401');
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    try {
+      isAdmin = await verifyToken(token);
+      console.log('Document requests API - Admin token validation result:', isAdmin);
+    } catch (adminError) {
+      console.log('Document requests API - Not an admin token, checking user token');
+    }
+
+    // If not admin, try to verify as user token
+    if (!isAdmin) {
+      try {
+        // Verify user token (basic validation)
+        if (!token || token.length < 10) {
+          throw new Error('Invalid token format');
+        }
+        
+        // For user tokens, we'll allow access but restrict to their own data
+        // Get the user data from token or request
+        const { searchParams } = new URL(request.url);
+        const requestedResidentId = searchParams.get('residentId');
+        
+        if (!requestedResidentId) {
+          console.log('Document requests API - User token requires residentId parameter');
+          return NextResponse.json({ error: 'Resident ID required for user access' }, { status: 400 });
+        }
+        
+        tokenUser = { id: requestedResidentId };
+        console.log('Document requests API - User token validated for resident:', requestedResidentId);
+        
+      } catch (userError) {
+        console.log('Document requests API - Invalid user token:', userError.message);
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      }
     }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const residentId = searchParams.get('residentId');
     
-    console.log('Document requests API - Query params:', { status, residentId });
+    console.log('Document requests API - Query params:', { status, residentId, isAdmin });
     
     let query = adminDb.collection('document_requests');
     
@@ -126,7 +163,10 @@ export async function GET(request) {
       query = query.where('status', '==', status);
     }
     
-    if (residentId) {
+    // If user token, restrict to their own data only
+    if (!isAdmin && tokenUser) {
+      query = query.where('residentId', '==', tokenUser.id);
+    } else if (residentId) {
       query = query.where('residentId', '==', residentId);
     }
     

@@ -38,36 +38,72 @@ export default function DocumentRequest() {
     setLoading(false);
   }, [router]);
 
-  const loadRequests = () => {
-    // Mock data for demonstration
-    const mockRequests = [
-      {
-        id: 1,
-        documentType: 'Barangay Clearance',
-        purpose: 'Employment Requirements',
-        status: 'pending',
-        requestDate: '2024-01-15',
-        expectedDate: '2024-01-20'
-      },
-      {
-        id: 2,
-        documentType: 'Certificate of Residency',
-        purpose: 'Bank Account Opening',
-        status: 'completed',
-        requestDate: '2024-01-10',
-        completedDate: '2024-01-12'
-      },
-      {
-        id: 3,
-        documentType: 'Barangay Indigency',
-        purpose: 'Scholarship Application',
-        status: 'rejected',
-        requestDate: '2024-01-08',
-        rejectedDate: '2024-01-09',
-        remarks: 'Incomplete requirements'
+  const loadRequests = async () => {
+    try {
+      const userData = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      const user = userData ? JSON.parse(userData) : null;
+      
+      if (!user || !token) {
+        console.log('No user or token found');
+        return;
       }
-    ];
-    setRequests(mockRequests);
+
+      // Fetch user's document requests
+      const response = await fetch(`/api/document-requests?residentId=${user.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error('Failed to fetch requests:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      
+      // Helper function to safely parse dates
+      const parseDate = (dateField) => {
+        if (!dateField) return null;
+        
+        // Handle Firestore timestamp format
+        if (dateField.seconds) {
+          return new Date(dateField.seconds * 1000).toISOString().split('T')[0];
+        }
+        
+        // Handle ISO string format
+        if (typeof dateField === 'string') {
+          return new Date(dateField).toISOString().split('T')[0];
+        }
+        
+        // Handle Date object
+        if (dateField instanceof Date) {
+          return dateField.toISOString().split('T')[0];
+        }
+        
+        return new Date().toISOString().split('T')[0];
+      };
+
+      const userRequests = (data.data || []).map(doc => ({
+        id: doc.id,
+        documentType: doc.documentType,
+        purpose: doc.purpose,
+        status: doc.status.toLowerCase(),
+        requestDate: parseDate(doc.createdAt),
+        expectedDate: parseDate(doc.estimatedCompletion),
+        completedDate: parseDate(doc.issuedAt),
+        remarks: doc.remarks || null
+      }));
+
+      setRequests(userRequests);
+    } catch (error) {
+      console.error('Error loading requests:', error);
+      // Set empty array as fallback
+      setRequests([]);
+    }
   };
 
   const documentTypes = [
@@ -114,27 +150,65 @@ export default function DocumentRequest() {
       return;
     }
 
-    const newRequest = {
-      id: Date.now(),
-      documentType: selectedDocument,
-      purpose: purpose.trim(),
-      status: 'pending',
-      requestDate: new Date().toISOString().split('T')[0],
-      expectedDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    };
-
-    setRequests(prev => [newRequest, ...prev]);
-    setShowRequestModal(false);
-    setSelectedDocument('');
-    setPurpose('');
-    
-    // Create notification for admin about new document request
     try {
       // Get user data from localStorage
       const userData = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
       const user = userData ? JSON.parse(userData) : null;
       
-      if (user) {
+      if (!user || !token) {
+        alert('Please log in to submit a request.');
+        return;
+      }
+
+      // Create document request in Firebase
+      const requestData = {
+        documentType: selectedDocument,
+        purpose: purpose.trim(),
+        fullName: `${user.firstName} ${user.lastName}`,
+        contactNumber: user.contactNumber || user.phoneNumber || '',
+        email: user.email || '',
+        address: user.address || '',
+        residentId: user.id,
+        status: 'PENDING',
+        priority: 'medium',
+        fee: getDocumentFee(selectedDocument),
+        estimatedCompletion: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      };
+
+      const response = await fetch('/api/document-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit request');
+      }
+
+      const result = await response.json();
+      
+      // Create a local representation for immediate display
+      const newRequest = {
+        id: result.requestId,
+        documentType: selectedDocument,
+        purpose: purpose.trim(),
+        status: 'pending',
+        requestDate: new Date().toISOString().split('T')[0],
+        expectedDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      };
+
+      setRequests(prev => [newRequest, ...prev]);
+      setShowRequestModal(false);
+      setSelectedDocument('');
+      setPurpose('');
+      
+      // Create notification for admin about new document request
+      try {
         await fetch('/api/notifications', {
           method: 'POST',
           headers: {
@@ -144,17 +218,26 @@ export default function DocumentRequest() {
             type: 'document_request',
             title: 'New Document Request',
             message: `${user.firstName} ${user.lastName} has requested a ${selectedDocument}`,
-            relatedId: newRequest.id.toString(),
+            relatedId: result.requestId,
             priority: 'medium'
           })
         });
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+        // Don't fail the request process if notification fails
       }
-    } catch (notificationError) {
-      console.error('Failed to create notification:', notificationError);
-      // Don't fail the request process if notification fails
+      
+      alert('Document request submitted successfully!');
+      
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      alert(`Failed to submit request: ${error.message}`);
     }
-    
-    alert('Document request submitted successfully!');
+  };
+
+  const getDocumentFee = (documentType) => {
+    const doc = documentTypes.find(d => d.name === documentType);
+    return doc ? doc.fee : '₱0.00';
   };
 
   const getStatusColor = (status) => {
