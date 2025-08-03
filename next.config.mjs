@@ -1,13 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Re-enable React Strict Mode
+  reactStrictMode: true,
+  
   // Disable ESLint during builds to avoid blocking deployment
   eslint: {
     ignoreDuringBuilds: true,
   },
   
-  // Compress responses
+  // Basic compression and performance settings
   compress: true,
-
+  poweredByHeader: false,
+  
   // Image optimization
   images: {
     formats: ['image/webp', 'image/avif'],
@@ -19,7 +23,7 @@ const nextConfig = {
   // Enable static optimization
   trailingSlash: false,
   
-  // Headers for better caching
+  // Basic headers for caching
   async headers() {
     return [
       {

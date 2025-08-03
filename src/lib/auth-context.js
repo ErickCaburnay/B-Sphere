@@ -12,73 +12,102 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // OPTIMIZATION: Removed excessive logging for better performance
+        if (process.env.NODE_ENV === 'development') {
+          console.log('AuthProvider - Starting authentication initialization');
+        }
+        
         // Get user data from localStorage
         const userData = localStorage.getItem('user');
         const jwtToken = localStorage.getItem('token');
+        
+        // OPTIMIZATION: Reduced logging, only in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('AuthProvider - Initial localStorage check:', {
+            hasUserData: !!userData,
+            hasJwtToken: !!jwtToken
+          });
+        }
 
         if (userData && jwtToken) {
           const parsedUser = JSON.parse(userData);
           
-          // Ensure token cookie is set for middleware
-          ensureTokenCookie();
+          // OPTIMIZATION: Set user immediately without waiting for cookie
+          setUser({ 
+            uid: parsedUser.firebaseUid || parsedUser.uid, 
+            email: parsedUser.email,
+            role: parsedUser.role,
+            userType: parsedUser.userType
+          });
           
-          try {
-            // Get Firebase custom token from your backend
-            const response = await fetch('/api/auth/firebase-token', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${jwtToken}`
-              },
-              body: JSON.stringify({
-                uid: parsedUser.firebaseUid || parsedUser.uid,
-                claims: {
-                  role: parsedUser.role || 'resident',
-                  userType: parsedUser.userType || 'resident',
-                  uniqueId: parsedUser.uniqueId,
-                  residentId: parsedUser.residentId,
-                  email: parsedUser.email
-                }
-              })
-            });
-
-            if (response.ok) {
-              const { customToken } = await response.json();
-              
-              // Sign in with custom token
-              const userCredential = await signInWithCustomToken(auth, customToken);
-              setUser(userCredential.user);
-            } else {
-              // If Firebase token generation fails, still keep user logged in
-              // The app can function without Firebase Auth for basic operations
-              console.warn('Firebase custom token generation failed, but keeping user session');
-              setUser({ uid: parsedUser.firebaseUid || parsedUser.uid, email: parsedUser.email });
+          // OPTIMIZATION: Set cookie asynchronously to avoid blocking
+          setTimeout(() => {
+            try {
+              ensureTokenCookie();
+            } catch (error) {
+              if (process.env.NODE_ENV === 'development') {
+                console.error('Cookie error:', error);
+              }
             }
-          } catch (firebaseError) {
-            console.warn('Firebase authentication failed, but keeping user session:', firebaseError);
-            // Keep user logged in even if Firebase Auth fails
-            setUser({ uid: parsedUser.firebaseUid || parsedUser.uid, email: parsedUser.email });
-          }
+          }, 0);
+          
+        } else if (process.env.NODE_ENV === 'development') {
+          console.log('AuthProvider - No user data or token found in localStorage');
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Auth initialization error:', error);
+        }
         // Don't logout user on initialization errors
       } finally {
         setLoading(false);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('AuthProvider - Authentication initialization complete');
+        }
       }
     };
 
     initializeAuth();
   }, []);
 
+  // Remove Firebase Auth state listener to prevent automatic logout
+  // useEffect(() => {
+  //   const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+  //     // Disabled to prevent automatic logout
+  //   });
+  //   return () => unsubscribe();
+  // }, []);
+
   const logout = async () => {
     try {
-      await signOut(auth);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('AuthProvider - Logging out user');
+      }
+      
+      // Clear Firebase Auth if available, but don't wait for it
+      try {
+        await signOut(auth);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('AuthProvider - Firebase sign out successful');
+        }
+      } catch (firebaseError) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('AuthProvider - Firebase sign out failed, continuing with logout:', firebaseError);
+        }
+      }
+      
+      // Clear all auth data
       clearAuthToken();
       setUser(null);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('AuthProvider - Logout complete');
+      }
     } catch (error) {
-      console.error('Logout error:', error);
-      // Still clear auth data even if Firebase signOut fails
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Logout error:', error);
+      }
+      // Still clear auth data even if everything fails
       clearAuthToken();
       setUser(null);
     }

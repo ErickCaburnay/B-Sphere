@@ -1,40 +1,37 @@
 import React from 'react';
+import SmartHomeLoader from './SmartHomeLoader';
 
 export function LoadingSpinner({ size = 'md', message = 'Loading...', className = '' }) {
-  const sizeClasses = {
-    sm: 'h-4 w-4',
-    md: 'h-8 w-8',
-    lg: 'h-12 w-12',
-    xl: 'h-16 w-16'
+  const sizeMapping = {
+    sm: 40,
+    md: 60,
+    lg: 80,
+    xl: 100
   };
 
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
-      <div 
-        className={`animate-spin rounded-full border-b-2 border-green-600 ${sizeClasses[size]}`}
-        aria-label="Loading"
+      <SmartHomeLoader 
+        size={sizeMapping[size]} 
+        message={message}
+        color="#14B8A6"
       />
-      {message && (
-        <span className="mt-2 text-sm text-gray-600 animate-pulse">
-          {message}
-        </span>
-      )}
     </div>
   );
 }
 
 export function PageLoadingSpinner() {
   return (
-    <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <LoadingSpinner size="lg" message="Loading page..." />
+    <div className="flex flex-col justify-center items-center min-h-screen">
+      <SmartHomeLoader size={120} message="Loading page..." />
     </div>
   );
 }
 
 export function TableLoadingSpinner() {
   return (
-    <div className="flex items-center justify-center p-8 bg-gray-50 rounded-lg">
-      <LoadingSpinner size="md" message="Loading data..." />
+    <div className="flex flex-col items-center justify-center py-12">
+      <SmartHomeLoader size={80} message="Loading data..." />
     </div>
   );
 }

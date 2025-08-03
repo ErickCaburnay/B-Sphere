@@ -41,7 +41,7 @@ export async function POST(request) {
       { header: 'Complainant', key: 'complainant', width: 25 },
       { header: 'Respondent', key: 'respondent', width: 25 },
       { header: 'Date Filed', key: 'dateFiled', width: 20 },
-      { header: 'Assigned Officer', key: 'assignedOfficer', width: 20 },
+      { header: 'Assigned Officer', key: 'officer', width: 20 },
       { header: 'Status', key: 'status', width: 15 },
       { header: 'Resolution Date', key: 'resolutionDate', width: 20 },
     ];

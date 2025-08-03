@@ -108,7 +108,7 @@ export default function ResidentDashboardLayout({ children }) {
   }, [router]);
 
   useEffect(() => {
-    // Poll for real-time updates to resident name
+    // Poll for real-time updates to resident name - OPTIMIZED: Reduced frequency
     let pollingInterval = null;
     const pollResidentName = () => {
       const id = user?.uniqueId || user?.residentId || user?.id;
@@ -123,7 +123,8 @@ export default function ResidentDashboardLayout({ children }) {
         })
         .catch(() => {});
     };
-    pollingInterval = setInterval(pollResidentName, 5000);
+    // OPTIMIZATION: Reduced from 5000ms to 30000ms (30 seconds)
+    pollingInterval = setInterval(pollResidentName, 30000);
     return () => {
       clearInterval(pollingInterval);
     };

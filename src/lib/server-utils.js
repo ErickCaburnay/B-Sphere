@@ -8,9 +8,23 @@ import { adminDb } from './firebase-admin';
  */
 export async function verifyToken(token) {
   try {
+    console.log('verifyToken - Starting verification:', {
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0,
+      hasJWTSecret: !!process.env.JWT_SECRET
+    });
+    
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('verifyToken - JWT decoded:', {
+      hasDecoded: !!decoded,
+      email: decoded?.email,
+      role: decoded?.role,
+      userType: decoded?.userType
+    });
+    
     if (!decoded || !decoded.email) {
+      console.log('verifyToken - No decoded token or email');
       return false;
     }
 
@@ -20,7 +34,13 @@ export async function verifyToken(token) {
       .limit(1)
       .get();
 
+    console.log('verifyToken - Legacy admin check:', {
+      empty: legacyAdminSnapshot.empty,
+      size: legacyAdminSnapshot.size
+    });
+
     if (!legacyAdminSnapshot.empty) {
+      console.log('verifyToken - Found in admin_accounts, returning true');
       return true;
     }
 
@@ -31,9 +51,16 @@ export async function verifyToken(token) {
       .limit(1)
       .get();
 
-    return !residentSnapshot.empty;
+    console.log('verifyToken - Resident admin check:', {
+      empty: residentSnapshot.empty,
+      size: residentSnapshot.size
+    });
+
+    const result = !residentSnapshot.empty;
+    console.log('verifyToken - Final result:', result);
+    return result;
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('verifyToken - Error:', error);
     return false;
   }
 }

@@ -1,11 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import dynamic from 'next/dynamic';
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
 import Image from "next/image";
 import { demographicsData, calculatePercentage } from "@/lib/mockData";
+
+// Custom Image component that handles errors gracefully
+const SafeImage = memo(({ src, alt, ...props }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleError = useCallback(() => {
+    setImageError(true);
+  }, []);
+
+  const handleLoad = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
+
+  if (imageError) {
+    return null; // Don't render anything if image fails to load
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      {...props}
+      onError={handleError}
+      onLoad={handleLoad}
+      style={{ opacity: imageLoaded ? 1 : 0 }}
+    />
+  );
+});
+
+SafeImage.displayName = 'SafeImage';
 
 // Dynamically import ApexCharts to avoid SSR issues
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -32,7 +63,7 @@ const AnimatedCounter = ({ value, decimals = 0, suffix = "" }) => (
   />
 );
 
-export default function DemographicCharts() {
+const DemographicCharts = memo(() => {
   const [startAnimation, setStartAnimation] = useState(false);
 
   useEffect(() => {
@@ -1227,15 +1258,12 @@ export default function DemographicCharts() {
     >
       {/* Icon Background - Blurred */}
       <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity duration-500">
-        <Image 
+        <SafeImage 
           src={`/resources/${icon}`} 
           alt={title} 
           width={120} 
           height={120}
           className="filter blur-[1px] scale-110 grayscale-[20%] brightness-75"
-          onError={(e) => {
-            e.target.style.display = 'none';
-          }}
         />
       </div>
       
@@ -1298,6 +1326,7 @@ export default function DemographicCharts() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 1. Population Overview */}
         <DemographicCard
+          key="population-overview"
           icon="users.png"
           title="Population Overview"
           subtitle="Total registered residents"
@@ -1323,6 +1352,7 @@ export default function DemographicCharts() {
 
         {/* 2. Population Growth */}
         <DemographicCard
+          key="population-growth"
           icon="arrow_up.png"
           title="Population Growth"
           subtitle="6-month trend analysis"
@@ -1343,6 +1373,7 @@ export default function DemographicCharts() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 3. Age & Gender Distribution */}
         <DemographicCard
+          key="age-gender-distribution"
           icon="senior.png"
           title="Age & Gender Distribution"
           subtitle="Population by age groups and gender"
@@ -1373,6 +1404,7 @@ export default function DemographicCharts() {
 
         {/* 4. Household Types */}
         <DemographicCard
+          key="household-types"
           icon="household.png"
           title="Household Types"
           subtitle="Family composition"
@@ -1392,6 +1424,7 @@ export default function DemographicCharts() {
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* 5. Educational Level */}
         <DemographicCard
+          key="educational-level"
           icon="educ-icon.png"
           title="Educational Level"
           subtitle="Completion rate by level"
@@ -1412,6 +1445,7 @@ export default function DemographicCharts() {
 
         {/* 6. Employment Rate */}
         <DemographicCard
+          key="employment-rate"
           icon="users.png"
           title="Employment Rate"
           subtitle="Working age employment"
@@ -1436,6 +1470,7 @@ export default function DemographicCharts() {
 
         {/* 7. Voters & Non-Voters */}
         <DemographicCard
+          key="voters-non-voters"
           icon="fingerprint.png"
           title="Voters & Non-Voters"
           subtitle="Registration progress"
@@ -1463,6 +1498,7 @@ export default function DemographicCharts() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 8. Special Programs */}
         <DemographicCard
+          key="special-programs"
           icon="social-welfare.png"
           title="Special Programs"
           subtitle="PWD, 4Ps, Solo Parents, TUPAD"
@@ -1499,6 +1535,7 @@ export default function DemographicCharts() {
 
         {/* 9. Religious Groups */}
         <DemographicCard
+          key="religious-groups"
           icon="gov.png"
           title="Religious Groups"
           subtitle="Faith communities"
@@ -1516,4 +1553,6 @@ export default function DemographicCharts() {
 
     </div>
   );
-} 
+});
+
+export default DemographicCharts; 

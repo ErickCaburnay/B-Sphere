@@ -193,20 +193,16 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
         const queryParams = buildQueryParams(pagination.page, pagination.pageSize, searchQuery, filters);
         const url = `/api/residents?${queryParams}`;
         
-        // console.log(`Fetching residents with filters:`, { 
-        //   page: pagination.page, 
-        //   pageSize: pagination.pageSize, 
-        //   searchQuery, 
-        //   filters,
-        //   url 
-        // });
+        // OPTIMIZATION: Enable caching for better performance
+        // Only invalidate cache when absolutely necessary (on user actions, not navigation)
+        // invalidateCache(url); // Removed - let cache work naturally
         
-        // Clear cache for the new query
-        invalidateCache(url);
-        
-        // Use direct fetch for pagination to avoid cache issues
+        // Use cached fetch for better performance, but allow fresh data when needed
         const response = await fetch(url, {
-          cache: 'no-store'
+          // OPTIMIZATION: Allow caching for navigation, force fresh for user actions
+          cache: searchQuery || Object.values(filters).some(f => f && (Array.isArray(f) ? f.length > 0 : true)) 
+            ? 'no-store' 
+            : 'default'
         });
         
         if (!response.ok) {
@@ -651,9 +647,16 @@ export function EnhancedResidentsView({ initialResidents, total, initialPage, in
 
   // Loading component
   const LoadingSpinner = () => (
-    <div className="flex items-center justify-center p-8">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      <span className="ml-2">Loading...</span>
+    <div className="flex items-center justify-center p-4">
+      <div className="relative animate-pulse" style={{ width: 60, height: 60 }}>
+        <div className="absolute inset-0 rounded-full border-4 border-transparent animate-spin" style={{ borderTopColor: '#14B8A6', borderRightColor: '#14B8A6', opacity: 0.6, animationDuration: '2s' }} />
+        <div className="absolute inset-1 rounded-full border-2 border-transparent animate-spin" style={{ borderBottomColor: '#14B8A6', borderLeftColor: '#14B8A6', opacity: 0.4, animationDuration: '1.5s', animationDirection: 'reverse' }} />
+        <div className="absolute inset-0 flex items-center justify-center" style={{ color: '#14B8A6' }}>
+          <svg width={24} height={24} viewBox="0 0 24 24" fill="currentColor" className="animate-bounce" style={{ animationDuration: '2s' }}>
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+        </div>
+      </div>
     </div>
   );
 

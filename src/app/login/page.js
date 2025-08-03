@@ -57,7 +57,8 @@ const LoginPage = () => {
     setError('');
 
     try {
-      // Use API-based login instead of direct Firebase Auth
+      console.log('Login page - Starting login process');
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -70,35 +71,53 @@ const LoginPage = () => {
         }),
       });
 
+      console.log('Login page - Login response:', {
+        status: response.status,
+        ok: response.ok
+      });
+
       const data = await response.json();
+      console.log('Login page - Login data received:', {
+        success: data.success,
+        hasToken: !!data.token,
+        hasUser: !!data.user,
+        userType: data.userType
+      });
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
+      if (data.success) {
+        // Store user data and token
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('userType', data.userType);
+        
+        console.log('Login page - Data stored in localStorage:', {
+          token: localStorage.getItem('token') ? 'stored' : 'missing',
+          user: localStorage.getItem('user') ? 'stored' : 'missing',
+          userType: localStorage.getItem('userType') ? 'stored' : 'missing'
+        });
 
-      // Store user info in localStorage
-      localStorage.setItem('userType', userType);
-      
-      // Store complete user data from the API response
-      const userDataToStore = {
-        ...data.user, // Include all user data from API
-        email: formData.email,
-        uid: data.user?.uid || data.user?.id || data.user?.uniqueId,
-        token: data.token
-      };
-      
-      console.log('Storing user data in localStorage:', userDataToStore);
-      localStorage.setItem('user', JSON.stringify(userDataToStore));
-      
-      // Redirect based on user type
-      if (userType === 'resident') {
-        router.push('/resident-dashboard');
+        // Set cookie for middleware
+        document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+        
+        console.log('Login page - Cookie set:', {
+          hasCookie: document.cookie.includes('token=')
+        });
+
+        // Redirect based on user type
+        if (data.userType === 'admin') {
+          console.log('Login page - Redirecting to admin dashboard');
+          router.push('/dashboard');
+        } else {
+          console.log('Login page - Redirecting to resident dashboard');
+          router.push('/resident-dashboard');
+        }
       } else {
-        router.push('/dashboard');
+        console.error('Login page - Login failed:', data.error);
+        setError(data.error || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError(error.message || 'Login failed. Please check your credentials.');
+      console.error('Login page - Login error:', error);
+      setError('An error occurred during login');
     } finally {
       setIsLoading(false);
     }

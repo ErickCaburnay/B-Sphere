@@ -101,7 +101,7 @@ export default function ResidentsPage({ searchParams }) {
       heading="Resident Records"
       subtitle="Manage and monitor all registered residents in the barangay"
     >
-      <EnhancedResidentsView
+      <EnhancedResidentsView 
         initialResidents={residents}
         total={total}
         initialPage={page}

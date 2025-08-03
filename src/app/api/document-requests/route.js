@@ -86,9 +86,39 @@ export async function POST(request) {
 
 export async function GET(request) {
   try {
+    console.log('Document requests API - GET request received');
+    
+    // Verify admin token
+    const authHeader = request.headers.get('authorization');
+    console.log('Document requests API - Auth header:', {
+      hasHeader: !!authHeader,
+      headerStart: authHeader ? authHeader.substring(0, 20) + '...' : 'none'
+    });
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Document requests API - No valid auth header, returning 401');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    console.log('Document requests API - Token extracted:', {
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0
+    });
+    
+    const isValid = await verifyToken(token);
+    console.log('Document requests API - Token validation result:', isValid);
+    
+    if (!isValid) {
+      console.log('Document requests API - Invalid token, returning 401');
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const residentId = searchParams.get('residentId');
+    
+    console.log('Document requests API - Query params:', { status, residentId });
     
     let query = adminDb.collection('document_requests');
     
@@ -103,7 +133,13 @@ export async function GET(request) {
     // Order by creation date, newest first
     query = query.orderBy('createdAt', 'desc');
     
+    console.log('Document requests API - Executing Firestore query');
     const snapshot = await query.get();
+    console.log('Document requests API - Firestore query result:', {
+      size: snapshot.size,
+      empty: snapshot.empty
+    });
+    
     const requests = [];
     
     snapshot.forEach((doc) => {
@@ -113,10 +149,14 @@ export async function GET(request) {
       });
     });
     
+    console.log('Document requests API - Returning data:', {
+      requestsCount: requests.length
+    });
+    
     return NextResponse.json({ data: requests });
     
   } catch (error) {
-    console.error('Error fetching document requests:', error);
+    console.error('Document requests API - Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch document requests' },
       { status: 500 }

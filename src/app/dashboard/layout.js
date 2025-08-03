@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from '@/components/ui/ThemeContext';
-import PerformanceMonitor from '@/components/ui/PerformanceMonitor';
+import { PerformanceMonitor } from '@/components/ui/PerformanceMonitor';
 import AccountMenu from '@/components/AccountMenu';
 import { NotificationProvider } from '@/components/ui/NotificationContext';
 import NotificationBell from '@/components/ui/NotificationBell';
@@ -65,7 +65,7 @@ export default function DashboardLayout({ children }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Add navigation loading state
+  // OPTIMIZATION: Simplified navigation loading state
   useEffect(() => {
     const handleStart = () => setIsNavigating(true);
     const handleComplete = () => setIsNavigating(false);
@@ -75,8 +75,8 @@ export default function DashboardLayout({ children }) {
     router.push = (...args) => {
       handleStart();
       const result = originalPush.apply(router, args);
-      // Handle navigation completion after a delay since App Router doesn't return a promise
-      setTimeout(handleComplete, 500);
+      // OPTIMIZATION: Reduced timeout for faster perceived performance
+      setTimeout(handleComplete, 200);
       return result;
     };
 

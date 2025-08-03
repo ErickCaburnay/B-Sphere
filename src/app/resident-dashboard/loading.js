@@ -1,10 +1,9 @@
+import SmartHomeLoader from '@/components/ui/SmartHomeLoader';
+
 export default function Loading() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading your dashboard...</p>
-      </div>
+    <div className="flex flex-col justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+      <SmartHomeLoader size={120} message="Loading your dashboard..." />
     </div>
   );
 } 
