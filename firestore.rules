@@ -99,6 +99,14 @@ service cloud.firestore {
       allow read, write: if true; // Allow for signup process
     }
 
+    // Announcements collection
+    match /announcements/{announcementId} {
+      // Anyone can read published announcements
+      allow read: if resource.data.status == 'published' || isAdmin();
+      // Only admins can create, update, or delete announcements
+      allow create, update, delete: if isAdmin();
+    }
+
     // Default deny for other collections
     match /{document=**} {
       allow read, write: if false;

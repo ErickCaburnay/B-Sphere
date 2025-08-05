@@ -9,7 +9,7 @@ function getFirebaseAdminDirect() {
       const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
       
       if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
-        console.error('Missing Firebase Admin configuration');
+        //console.error('Missing Firebase Admin configuration');
         return null;
       }
 
@@ -22,7 +22,7 @@ function getFirebaseAdminDirect() {
         projectId: process.env.FIREBASE_PROJECT_ID,
       });
     } catch (error) {
-      console.error('Firebase Admin initialization error:', error);
+      //console.error('Firebase Admin initialization error:', error);
       return null;
     }
   }
@@ -35,23 +35,23 @@ function getFirebaseAdminDirect() {
 
 export async function GET(request) {
   try {
-    console.log('GET /api/notifications - Starting request');
+    //console.log('GET /api/notifications - Starting request');
     
     const { adminDb } = getFirebaseAdminDirect();
     if (!adminDb) {
-      console.error('Firebase Admin not available');
+      //console.error('Firebase Admin not available');
       return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
     }
 
-    console.log('Firebase Admin initialized successfully');
+    //console.log('Firebase Admin initialized successfully');
 
     // Test if we can access the notifications collection
     try {
       const testQuery = adminDb.collection('notifications').limit(1);
       await testQuery.get();
-      console.log('Notifications collection is accessible');
+      //console.log('Notifications collection is accessible');
     } catch (collectionError) {
-      console.error('Error accessing notifications collection:', collectionError);
+      //console.error('Error accessing notifications collection:', collectionError);
       return NextResponse.json(
         { error: "Notifications collection not accessible", details: collectionError.message },
         { status: 500 }
@@ -66,17 +66,17 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    console.log('Query parameters:', { targetRole, residentId, type, unreadOnly, limit, offset });
+    //console.log('Query parameters:', { targetRole, residentId, type, unreadOnly, limit, offset });
 
     let query = adminDb.collection('notifications');
     let useFallbackQuery = false;
 
-    console.log('Base query created');
+    //console.log('Base query created');
 
     // Handle new notification structure
     if (targetRole) {
       query = query.where('targetRole', '==', targetRole);
-      console.log('Added targetRole filter:', targetRole);
+      //console.log('Added targetRole filter:', targetRole);
     }
     
     if (residentId) {
@@ -84,44 +84,44 @@ export async function GET(request) {
       // For admin notifications, filter by senderUserId (notifications sent FROM residents)
       if (targetRole === 'resident') {
         query = query.where('targetUserId', '==', residentId);
-        console.log('Added targetUserId filter for resident:', residentId);
+        //console.log('Added targetUserId filter for resident:', residentId);
       } else {
         query = query.where('senderUserId', '==', residentId);
-        console.log('Added senderUserId filter for admin:', residentId);
+        //console.log('Added senderUserId filter for admin:', residentId);
       }
     }
     
     if (type) {
       query = query.where('type', '==', type);
-      console.log('Added type filter:', type);
+      //console.log('Added type filter:', type);
     }
     
     if (unreadOnly) {
       query = query.where('read', '==', false);
-      console.log('Added unreadOnly filter');
+      //console.log('Added unreadOnly filter');
     }
 
     // Add ordering after all filters
     query = query.orderBy('createdAt', 'desc');
-    console.log('Added ordering by createdAt desc');
+    //console.log('Added ordering by createdAt desc');
 
     // Apply pagination
     query = query.limit(limit).offset(offset);
-    console.log('Applied pagination:', { limit, offset });
+    //console.log('Applied pagination:', { limit, offset });
 
-    console.log('Executing Firestore query...');
+    //console.log('Executing Firestore query...');
     let snapshot;
     try {
       snapshot = await query.get();
-      console.log('Query executed successfully, found', snapshot.docs.length, 'documents');
+      //console.log('Query executed successfully, found', snapshot.docs.length, 'documents');
     } catch (indexError) {
-      console.log('Index error, trying fallback query:', indexError.message);
+      //console.log('Index error, trying fallback query:', indexError.message);
       useFallbackQuery = true;
       
       // Fallback: Get all notifications and filter in memory
       const fallbackQuery = adminDb.collection('notifications').limit(100); // Get more to account for filtering
       snapshot = await fallbackQuery.get();
-      console.log('Fallback query executed, found', snapshot.docs.length, 'documents');
+      //console.log('Fallback query executed, found', snapshot.docs.length, 'documents');
     }
 
     let notifications = snapshot.docs.map(doc => ({
@@ -133,11 +133,11 @@ export async function GET(request) {
 
     // Apply fallback filtering if index failed
     if (useFallbackQuery) {
-      console.log('Applying fallback filtering in memory');
+      //console.log('Applying fallback filtering in memory');
       
       if (targetRole) {
         notifications = notifications.filter(n => n.targetRole === targetRole);
-        console.log('Filtered by targetRole:', targetRole, 'remaining:', notifications.length);
+        //console.log('Filtered by targetRole:', targetRole, 'remaining:', notifications.length);
       }
       
       if (residentId) {
@@ -145,21 +145,21 @@ export async function GET(request) {
         // For admin notifications, filter by senderUserId (notifications sent FROM residents)
         if (targetRole === 'resident') {
           notifications = notifications.filter(n => n.targetUserId === residentId);
-          console.log('Filtered by targetUserId for resident:', residentId, 'remaining:', notifications.length);
+          //console.log('Filtered by targetUserId for resident:', residentId, 'remaining:', notifications.length);
         } else {
           notifications = notifications.filter(n => n.senderUserId === residentId);
-          console.log('Filtered by senderUserId for admin:', residentId, 'remaining:', notifications.length);
+          //console.log('Filtered by senderUserId for admin:', residentId, 'remaining:', notifications.length);
         }
       }
       
       if (type) {
         notifications = notifications.filter(n => n.type === type);
-        console.log('Filtered by type:', type, 'remaining:', notifications.length);
+        //console.log('Filtered by type:', type, 'remaining:', notifications.length);
       }
       
       if (unreadOnly) {
         notifications = notifications.filter(n => !n.read);
-        console.log('Filtered by unreadOnly, remaining:', notifications.length);
+        //console.log('Filtered by unreadOnly, remaining:', notifications.length);
       }
       
       // Sort by createdAt desc
@@ -167,10 +167,10 @@ export async function GET(request) {
       
       // Apply pagination manually
       notifications = notifications.slice(offset, offset + limit);
-      console.log('Applied manual pagination, final count:', notifications.length);
+      //console.log('Applied manual pagination, final count:', notifications.length);
     }
 
-    console.log('Processed notifications:', notifications.length);
+    //console.log('Processed notifications:', notifications.length);
 
     // Add support for fetching a single notification by ID
     const notificationId = searchParams.get('id');
@@ -191,7 +191,7 @@ export async function GET(request) {
     }
 
     // Get total count for pagination
-    console.log('Getting total count...');
+    //console.log('Getting total count...');
     let total;
     let unreadCount;
     
@@ -264,8 +264,8 @@ export async function GET(request) {
       unreadCount = unreadSnapshot.size;
     }
     
-    console.log('Total count:', total);
-    console.log('Unread count:', unreadCount);
+    //console.log('Total count:', total);
+    //console.log('Unread count:', unreadCount);
 
     const response = { 
       notifications,
@@ -276,12 +276,12 @@ export async function GET(request) {
       }
     };
 
-    console.log('Returning response with', notifications.length, 'notifications and', unreadCount, 'unread');
+    //console.log('Returning response with', notifications.length, 'notifications and', unreadCount, 'unread');
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Error fetching notifications:", error);
-    console.error("Error stack:", error.stack);
-    console.error("Error message:", error.message);
+    //console.error("Error fetching notifications:", error);
+    //console.error("Error stack:", error.stack);
+    //console.error("Error message:", error.message);
     return NextResponse.json(
       { error: "Failed to fetch notifications", details: error.message },
       { status: 500 }
@@ -297,7 +297,7 @@ export async function POST(request) {
     }
 
     const data = await request.json();
-    console.log('Creating notification with data:', data);
+    //console.log('Creating notification with data:', data);
 
     // Handle both old and new notification structures
     const notification = {
@@ -334,7 +334,7 @@ export async function POST(request) {
       }
     });
 
-    console.log('Final notification object:', notification);
+    //console.log('Final notification object:', notification);
 
     const docRef = await adminDb.collection('notifications').add(notification);
 
@@ -346,7 +346,7 @@ export async function POST(request) {
       }
     });
   } catch (error) {
-    console.error("Error creating notification:", error);
+    //console.error("Error creating notification:", error);
     return NextResponse.json(
       { error: "Failed to create notification" },
       { status: 500 }
@@ -388,7 +388,7 @@ export async function PATCH(request) {
       message: "Notification updated successfully"
     });
   } catch (error) {
-    console.error("Error updating notification:", error);
+    //console.error("Error updating notification:", error);
     return NextResponse.json(
       { error: "Failed to update notification" },
       { status: 500 }
@@ -419,7 +419,7 @@ export async function DELETE(request) {
     return NextResponse.json({ message: 'Notification deleted successfully' });
 
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    //console.error('Error deleting notification:', error);
     return NextResponse.json(
       { error: 'Failed to delete notification' },
       { status: 500 }

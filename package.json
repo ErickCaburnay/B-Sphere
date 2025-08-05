@@ -9,7 +9,10 @@
     "lint": "next lint",
     "validate-env": "node scripts/validate-env.js",
     "create-admin": "node scripts/create-admin.js",
-    "fix-admin-password": "node scripts/fix-admin-password.js"
+    "fix-admin-password": "node scripts/fix-admin-password.js",
+    "setup-announcements": "node scripts/setup-announcements-collection.js",
+    "test-announcements": "node scripts/test-announcements.js",
+    "test-auto-management": "node scripts/test-auto-management.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",

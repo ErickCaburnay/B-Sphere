@@ -9,12 +9,12 @@ export function middleware(request) {
 
     // OPTIMIZATION: Removed excessive debug logging for better performance
     // Only log in development mode
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Middleware check:', {
-        pathname: request.nextUrl.pathname,
-        hasToken: !!token
-      });
-    }
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('Middleware check:', {
+    //     pathname: request.nextUrl.pathname,
+    //     hasToken: !!token
+    //   });
+    // }
 
     if (!token) {
       // Allow client-side navigation to proceed (user-agent includes 'Mozilla')
