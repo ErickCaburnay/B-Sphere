@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -10,27 +10,43 @@ import {
   Key,
   Shield
 } from 'lucide-react';
+import AddAdminModal from './AddAdminModal';
 
 export default function AdminManagement() {
-  const [admins, setAdmins] = useState([
-    {
-      id: 1,
-      name: 'Admin User',
-      email: 'admin@example.com',
-      role: 'Super Admin',
-      status: 'Active',
-      lastActive: '2024-03-15T10:30:00'
-    },
-    {
-      id: 2,
-      name: 'Sub Admin',
-      email: 'subadmin@example.com',
-      role: 'Content Manager',
-      status: 'Active',
-      lastActive: '2024-03-15T09:15:00'
+  const [admins, setAdmins] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const fetchAdmins = async () => {
+    try {
+      setLoading(true);
+      const resp = await fetch('/api/admins', { cache: 'no-store' });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Failed to load admins');
+      const normalized = (data.admins || []).map(a => ({
+        id: a.id,
+        name: `${a.firstName || ''} ${a.lastName || ''}`.trim(),
+        email: a.email,
+        role: a.role,
+        status: 'Active',
+        lastActive: a.updatedAt || a.createdAt || new Date().toISOString()
+      }));
+      setAdmins(normalized);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    // Add more sample admins
-  ]);
+  };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  const handleCreated = (user) => {
+    // After creating, refresh list to ensure server truth
+    fetchAdmins();
+  };
 
   return (
     <div className="space-y-6">
@@ -39,13 +55,17 @@ export default function AdminManagement() {
           <h2 className="text-2xl font-semibold">Admin Management</h2>
           <p className="text-gray-500">Manage administrator accounts and permissions</p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-600 to-green-700 text-white shadow hover:from-green-700 hover:to-green-800" onClick={()=>setIsModalOpen(true)}>
           <Plus className="h-5 w-5" />
           Add Admin
         </Button>
       </div>
 
       <div className="grid gap-4">
+        {loading && <div className="text-gray-500">Loading admins...</div>}
+        {!loading && admins.length === 0 && (
+          <div className="text-gray-500">No admins found.</div>
+        )}
         {admins.map((admin) => (
           <Card key={admin.id} className="p-4">
             <div className="flex items-center justify-between">
@@ -87,6 +107,8 @@ export default function AdminManagement() {
           </Card>
         ))}
       </div>
+
+      <AddAdminModal isOpen={isModalOpen} onClose={()=>setIsModalOpen(false)} onCreated={handleCreated} />
     </div>
   );
 } 

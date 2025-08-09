@@ -102,23 +102,15 @@ export default function SystemManagementPage() {
                     onClick={() => setActiveTab(category.id)}
                     className={`font-medium px-6 py-3 rounded-lg transition-all duration-200 relative overflow-hidden ${
                       activeTab === category.id
-                        ? 'text-white shadow-lg'
+                        ? 'text-green-700'
                         : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
                     }`}
                   >
                     <span className="relative z-10">{category.title}</span>
                     {activeTab === category.id && (
-                      <motion.div
-                        layoutId="active-tab-bg"
-                        transition={{ 
-                          type: "spring", 
-                          duration: 0.5,
-                          bounce: 0.15,
-                          stiffness: 400,
-                          damping: 40
-                        }}
-                        className="absolute inset-0 bg-gradient-to-r from-green-600 to-green-700 rounded-lg"
-                      />
+                      <>
+                        <span className="absolute left-4 right-4 bottom-0 h-0.5 bg-gradient-to-r from-green-600 to-green-700 rounded-full" />
+                      </>
                     )}
                   </button>
                 </Tooltip.Trigger>

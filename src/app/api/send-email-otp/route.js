@@ -100,7 +100,7 @@ export async function POST(request) {
     
     const mailOptions = {
       from: {
-        name: 'Barangay System',
+        name: 'B-Sphere',
         address: senderEmail,
       },
       to: email,

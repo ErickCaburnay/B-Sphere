@@ -26,7 +26,7 @@ async function testEmail() {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: testEmail,
-      subject: 'Test OTP - Barangay System',
+      subject: 'Test OTP - B-Sphere',
       text: `Test OTP: ${testOTP}`,
       html: `<h2>Test OTP: <b>${testOTP}</b></h2>`
     };

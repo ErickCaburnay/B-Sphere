@@ -1278,6 +1278,138 @@ const Step3Personal = ({ data, setData, onBack, accountData, errors, setErrors }
   );
 };
 
+function AdminSignupForm({
+  adminForm,
+  setAdminForm,
+  adminErrors,
+  adminOtpMethod,
+  setAdminOtpMethod,
+  adminOtpSent,
+  adminOtp,
+  setAdminOtp,
+  adminIsVerifying,
+  sendAdminOtp,
+  verifyAdminOtpAndCreate,
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">Create Admin Account</h2>
+        <p className="text-white/80">Temporary tool to register admin accounts</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">First Name *</label>
+          <input type="text" value={adminForm.firstName} onChange={e=>setAdminForm(p=>({...p,firstName:e.target.value}))} className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.firstName?'border-red-500':'border-white/30'} text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`} placeholder="Juan" />
+          {adminErrors.firstName && <p className="text-red-400 text-xs mt-1">{adminErrors.firstName}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Last Name *</label>
+          <input type="text" value={adminForm.lastName} onChange={e=>setAdminForm(p=>({...p,lastName:e.target.value}))} className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.lastName?'border-red-500':'border-white/30'} text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`} placeholder="Dela Cruz" />
+          {adminErrors.lastName && <p className="text-red-400 text-xs mt-1">{adminErrors.lastName}</p>}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Middle Name</label>
+        <input type="text" value={adminForm.middleName} onChange={e=>setAdminForm(p=>({...p,middleName:e.target.value}))} className="w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition" placeholder="Santos" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Birth Date *</label>
+          <input type="date" value={adminForm.birthdate} onChange={e=>setAdminForm(p=>({...p,birthdate:e.target.value}))} className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.birthdate?'border-red-500':'border-white/30'} text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`} />
+          {adminErrors.birthdate && <p className="text-red-400 text-xs mt-1">{adminErrors.birthdate}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Role *</label>
+          <div className={`w-full rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.role?'border-red-500':'border-white/30'} text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`}>
+            <select value={adminForm.role} onChange={e=>setAdminForm(p=>({...p,role:e.target.value}))} className="w-full p-3 bg-transparent">
+              <option value="admin">Admin</option>
+              <option value="sub-admin1">Sub-Admin1</option>
+              <option value="sub-admin2">Sub-Admin2</option>
+              <option value="sub-admin3">Sub-Admin3</option>
+            </select>
+          </div>
+          {adminErrors.role && <p className="text-red-400 text-xs mt-1">{adminErrors.role}</p>}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Email Address *</label>
+        <input type="email" value={adminForm.email} onChange={e=>setAdminForm(p=>({...p,email:e.target.value}))} className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.email?'border-red-500':'border-white/30'} text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`} placeholder="you@example.com" />
+        {adminErrors.email && <p className="text-red-400 text-xs mt-1">{adminErrors.email}</p>}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white/90 mb-1">Contact Number *</label>
+        <input type="tel" value={adminForm.contactNumber} onChange={e=>setAdminForm(p=>({...p,contactNumber:e.target.value}))} className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.contactNumber?'border-red-500':'border-white/30'} text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`} placeholder="0921 234 5678" />
+        {adminErrors.contactNumber && <p className="text-red-400 text-xs mt-1">{adminErrors.contactNumber}</p>}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Password *</label>
+          <input type="password" value={adminForm.password} onChange={e=>setAdminForm(p=>({...p,password:e.target.value}))} className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.password?'border-red-500':'border-white/30'} text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`} placeholder="••••••••" />
+          {adminErrors.password && <p className="text-red-400 text-xs mt-1">{adminErrors.password}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-1">Confirm Password *</label>
+          <input type="password" value={adminForm.confirmPassword} onChange={e=>setAdminForm(p=>({...p,confirmPassword:e.target.value}))} className={`w-full p-3 rounded-lg bg-white/20 backdrop-blur-sm border ${adminErrors.confirmPassword?'border-red-500':'border-white/30'} text-white placeholder-white/70 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition`} placeholder="••••••••" />
+          {adminErrors.confirmPassword && <p className="text-red-400 text-xs mt-1">{adminErrors.confirmPassword}</p>}
+        </div>
+      </div>
+
+      {adminErrors.submit && (
+        <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <p className="text-red-400 text-sm">{adminErrors.submit}</p>
+        </div>
+      )}
+
+      {!adminOtpSent ? (
+        <div className="space-y-4">
+          <div className="text-center">
+            <h3 className="text-xl font-semibold text-white mb-4">Choose verification method</h3>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button onClick={()=>setAdminOtpMethod('email')} className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all ${adminOtpMethod==='email'?'border-green-500 bg-green-500/20 text-white':'border-white/30 bg-white/10 text-white/80 hover:border-white/50'}`}>
+                <Mail className="w-5 h-5" />
+                <span>Email OTP</span>
+              </button>
+              <button onClick={()=>setAdminOtpMethod('phone')} className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all ${adminOtpMethod==='phone'?'border-green-500 bg-green-500/20 text-white':'border-white/30 bg-white/10 text-white/80 hover:border-white/50'}`}>
+                <Phone className="w-5 h-5" />
+                <span>SMS OTP</span>
+              </button>
+            </div>
+          </div>
+          <div className="text-center">
+            <button onClick={sendAdminOtp} disabled={adminIsVerifying} className={`px-8 py-3 rounded-lg font-medium transition duration-300 ${adminIsVerifying?'bg-gray-500/50 text-gray-300 cursor-not-allowed':'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'}`}>
+              {adminIsVerifying? 'Sending OTP...' : (adminOtpMethod==='email'?'Send Email OTP':'Send SMS OTP')}
+            </button>
+            {adminOtpMethod==='phone' && (
+              <div>
+                <div id="admin-recaptcha-container" className="mt-2"></div>
+                <p className="text-white/50 text-xs mt-2">🔒 Protected by invisible reCAPTCHA</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <input type="text" value={adminOtp} onChange={e=>setAdminOtp(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="Enter 6-digit code" className="w-full p-4 text-center text-2xl font-mono rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/50 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition" maxLength={6} />
+          {adminErrors.otp && <div className="text-red-400 text-sm">{adminErrors.otp}</div>}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button onClick={verifyAdminOtpAndCreate} disabled={adminIsVerifying || !adminOtp.trim()} className={`px-8 py-3 rounded-lg font-medium transition duration-300 ${adminIsVerifying||!adminOtp.trim()? 'bg-gray-500/50 text-gray-300 cursor-not-allowed':'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'}`}>{adminIsVerifying? 'Verifying...' : 'Verify & Create Admin'}</button>
+            <button onClick={()=>{setAdminOtp(''); }} disabled={adminIsVerifying} className="px-6 py-3 rounded-lg font-medium bg-white/20 text-white border border-white/30 hover:bg-white/30 transition duration-300 disabled:opacity-50">Clear</button>
+            <button onClick={()=>{ setAdminOtp(''); sendAdminOtp(); }} disabled={adminIsVerifying} className="px-6 py-3 rounded-lg font-medium bg-white/20 text-white border border-white/30 hover:bg-white/30 transition duration-300 disabled:opacity-50">Resend OTP</button>
+            <button onClick={()=>{ setAdminOtp(''); setAdminOtpMethod('email'); }} className="px-6 py-3 rounded-lg font-medium bg-white/20 text-white border border-white/30 hover:bg-white/30 transition duration-300">Change Method</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const SignupPage = () => {
   const pathname = usePathname();
   const [currentStep, setCurrentStep] = useState(0);
@@ -1285,6 +1417,148 @@ const SignupPage = () => {
   const [otpData, setOtpData] = useState({});
   const [personalData, setPersonalData] = useState({});
   const [errors, setErrors] = useState({});
+  const [mode, setMode] = useState('resident'); // 'resident' | 'admin'
+
+  // Admin form state
+  const [adminForm, setAdminForm] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    birthdate: '',
+    email: '',
+    contactNumber: '',
+    password: '',
+    confirmPassword: '',
+    role: 'admin',
+  });
+  const [adminErrors, setAdminErrors] = useState({});
+  const [adminOtpMethod, setAdminOtpMethod] = useState('email'); // 'email' | 'phone'
+  const [adminOtpSent, setAdminOtpSent] = useState(false);
+  const [adminOtp, setAdminOtp] = useState('');
+  const [adminIsVerifying, setAdminIsVerifying] = useState(false);
+  const [adminRecaptchaVerifier, setAdminRecaptchaVerifier] = useState(null);
+  const [adminConfirmationResult, setAdminConfirmationResult] = useState(null);
+
+  const validateAdminForm = () => {
+    const e = {};
+    if (!adminForm.firstName.trim()) e.firstName = 'First name is required';
+    if (!adminForm.lastName.trim()) e.lastName = 'Last name is required';
+    if (!adminForm.birthdate.trim()) e.birthdate = 'Birth date is required';
+    if (!adminForm.email.trim()) e.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(adminForm.email)) e.email = 'Email is invalid';
+    if (!adminForm.contactNumber.trim()) e.contactNumber = 'Phone number is required';
+    else if (!/^09\d{9}$/.test(adminForm.contactNumber.replace(/\s/g, ''))) e.contactNumber = 'Use format 09xxxxxxxxx';
+    if (!adminForm.password) e.password = 'Password is required';
+    else if (adminForm.password.length < 6) e.password = 'At least 6 characters';
+    if (!adminForm.confirmPassword) e.confirmPassword = 'Confirm your password';
+    else if (adminForm.password !== adminForm.confirmPassword) e.confirmPassword = 'Passwords do not match';
+    if (!adminForm.role) e.role = 'Role is required';
+    setAdminErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  // Admin OTP send
+  const sendAdminOtp = async () => {
+    if (!validateAdminForm()) return;
+    setAdminIsVerifying(true);
+    setAdminErrors(prev => ({ ...prev, submit: '' }));
+    try {
+      // Create a tempId for admin OTP tracking (reuse step1 style)
+      const tempId = `admin_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      localStorage.setItem('admin_signup_tempId', tempId);
+      localStorage.setItem('admin_signup_data', JSON.stringify(adminForm));
+
+      if (adminOtpMethod === 'email') {
+        // Server-side OTP storage + email send
+        const resp = await fetch('/api/auth/admin-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'send_email_otp', tempId, email: adminForm.email })
+        });
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result.error || 'Failed to send OTP');
+        setAdminOtpSent(true);
+      } else {
+        // Phone via Firebase (similar to resident)
+        if (typeof window !== 'undefined') {
+          if (window.adminRecaptchaVerifier) {
+            try { window.adminRecaptchaVerifier.clear(); delete window.adminRecaptchaVerifier; } catch {}
+          }
+          const verifier = new RecaptchaVerifier(auth, 'admin-recaptcha-container', { size: 'invisible' });
+          window.adminRecaptchaVerifier = verifier;
+          setAdminRecaptchaVerifier(verifier);
+          const cleanNumber = adminForm.contactNumber.replace(/\D/g, '');
+          if (!/^09\d{9}$/.test(cleanNumber)) throw new Error('Invalid phone number');
+          const phoneNumber = '+63' + cleanNumber.substring(1);
+          const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+          setAdminConfirmationResult(confirmation);
+          setAdminOtpSent(true);
+        }
+      }
+    } catch (error) {
+      setAdminErrors(prev => ({ ...prev, submit: error.message || 'Failed to send OTP' }));
+    } finally {
+      setAdminIsVerifying(false);
+    }
+  };
+
+  const verifyAdminOtpAndCreate = async () => {
+    if (!adminOtp.trim()) {
+      setAdminErrors(prev => ({ ...prev, otp: 'Enter the verification code' }));
+      return;
+    }
+    setAdminIsVerifying(true);
+    setAdminErrors(prev => ({ ...prev, otp: '', submit: '' }));
+    try {
+      const tempId = localStorage.getItem('admin_signup_tempId');
+      const saved = localStorage.getItem('admin_signup_data');
+      if (!tempId || !saved) throw new Error('Session expired. Please restart.');
+      const data = JSON.parse(saved);
+
+      if (adminOtpMethod === 'email') {
+        // Verify OTP server-side using existing endpoint
+        const verifyResp = await fetch('/api/auth/admin-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verify_email_otp', tempId, otp: adminOtp })
+        });
+        const verifyRes = await verifyResp.json();
+        if (!verifyResp.ok) throw new Error(verifyRes.error || 'Invalid or expired OTP');
+      } else {
+        // Confirm SMS OTP
+        if (!adminConfirmationResult) throw new Error('No verification session found. Resend OTP.');
+        await adminConfirmationResult.confirm(adminOtp.trim());
+      }
+
+      // On successful OTP, create admin account
+      const createResp = await fetch('/api/auth/admin-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: data.firstName,
+          middleName: data.middleName,
+          lastName: data.lastName,
+          birthdate: data.birthdate,
+          email: data.email,
+          contactNumber: data.contactNumber,
+          password: data.password,
+          role: data.role,
+        })
+      });
+      const createRes = await createResp.json();
+      if (!createResp.ok) throw new Error(createRes.error || 'Failed to create admin');
+
+      // Cleanup and redirect
+      localStorage.removeItem('admin_signup_tempId');
+      localStorage.removeItem('admin_signup_data');
+      alert('Admin account created successfully. You can now log in.');
+      window.location.href = '/login';
+    } catch (error) {
+      setAdminErrors(prev => ({ ...prev, submit: error.message || 'Verification failed' }));
+    } finally {
+      setAdminIsVerifying(false);
+    }
+  };
 
   // Progress Bar Component
   const ProgressBar = () => (
@@ -1452,12 +1726,36 @@ const SignupPage = () => {
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <ProgressBar />
+          {/* Mode toggle */}
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex rounded-xl overflow-hidden border border-white/20 bg-white/10 backdrop-blur-sm">
+              <button onClick={()=>setMode('resident')} className={`px-4 py-2 text-sm font-medium ${mode==='resident'?'bg-green-600 text-white':'text-white/80 hover:bg-white/10'}`}>Resident Signup</button>
+              <button onClick={()=>setMode('admin')} className={`px-4 py-2 text-sm font-medium ${mode==='admin'?'bg-green-600 text-white':'text-white/80 hover:bg-white/10'}`}>Admin Signup</button>
+            </div>
+          </div>
+
+          {/* Progress Bar for resident only */}
+          {mode==='resident' && <ProgressBar />}
 
           {/* Main Content */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
-            {renderCurrentStep()}
+            {mode==='resident' ? (
+              renderCurrentStep()
+            ) : (
+              <AdminSignupForm
+                adminForm={adminForm}
+                setAdminForm={setAdminForm}
+                adminErrors={adminErrors}
+                adminOtpMethod={adminOtpMethod}
+                setAdminOtpMethod={setAdminOtpMethod}
+                adminOtpSent={adminOtpSent}
+                adminOtp={adminOtp}
+                setAdminOtp={setAdminOtp}
+                adminIsVerifying={adminIsVerifying}
+                sendAdminOtp={sendAdminOtp}
+                verifyAdminOtpAndCreate={verifyAdminOtpAndCreate}
+              />
+            )}
           </div>
 
           {/* Footer */}

@@ -71,7 +71,7 @@ async function sendVerificationEmail(email, verificationLink) {
 
   const mailOptions = {
     from: {
-      name: 'Barangay System',
+      name: 'B-Sphere',
       address: senderEmail,
     },
     to: email,
